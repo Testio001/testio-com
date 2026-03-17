@@ -58,6 +58,11 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        turbo: {
+          purple: "hsl(var(--turbo-purple))",
+          "purple-glow": "hsl(var(--turbo-purple-glow))",
+          green: "hsl(var(--turbo-green))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
