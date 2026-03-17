@@ -63,7 +63,7 @@ const HeroSection = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.55 }}
           >
-            <button className="btn-turbo-primary text-lg px-8 py-4">
+            <button onClick={() => navigate("/auth")} className="btn-turbo-primary text-lg px-8 py-4">
               Get Started - It's Free
             </button>
           </motion.div>
