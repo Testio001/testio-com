@@ -1,1 +1,16 @@
 project_id = "kjdduozjlfhgznrcsoxr"
+
+[functions.generate-notes]
+verify_jwt = false
+
+[functions.generate-flashcards]
+verify_jwt = false
+
+[functions.generate-quiz]
+verify_jwt = false
+
+[functions.chat-with-notes]
+verify_jwt = false
+
+[functions.process-document]
+verify_jwt = false

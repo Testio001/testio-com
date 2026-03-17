@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Upload, FileText, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import turboMascot from "@/assets/turbo-mascot.png";
 
 const HeroSection = () => {
