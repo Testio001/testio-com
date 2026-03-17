@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Upload, FileText, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import turboMascot from "@/assets/turbo-mascot.png";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
   return (
     <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
       {/* Background glow */}
@@ -61,7 +63,7 @@ const HeroSection = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.55 }}
           >
-            <button className="btn-turbo-primary text-lg px-8 py-4">
+            <button onClick={() => navigate("/auth")} className="btn-turbo-primary text-lg px-8 py-4">
               Get Started - It's Free
             </button>
           </motion.div>
