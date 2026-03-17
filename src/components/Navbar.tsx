@@ -21,7 +21,7 @@ const Navbar = () => {
         <a href="#" className="text-muted-foreground hover:text-foreground transition-colors text-sm">Careers</a>
       </div>
 
-      <button className="px-5 py-2 rounded-full border border-border text-foreground text-sm font-medium hover:bg-secondary transition-colors">
+      <button onClick={() => navigate("/auth")} className="px-5 py-2 rounded-full border border-border text-foreground text-sm font-medium hover:bg-secondary transition-colors">
         Start now
       </button>
     </motion.nav>
