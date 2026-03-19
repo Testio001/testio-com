@@ -4,22 +4,22 @@ const steps = [
   {
     num: "1",
     title: "Upload Your Content",
-    desc: "Record lectures live or upload PDFs, videos, audio files, and documents. Works with any format you need.",
+    desc: "Upload PDFs, paste text, or add YouTube links. Works with any format you need.",
   },
   {
     num: "2",
-    title: "Let AI Process",
-    desc: "Our AI transcribes and analyzes your content, identifying key concepts and creating structured editable notes.",
+    title: "AI Extracts & Processes",
+    desc: "Testio extracts text from your files and analyzes the content, identifying key concepts.",
   },
   {
     num: "3",
     title: "Get Study Materials",
-    desc: "Receive comprehensive notes, flashcards, quizzes, and podcasts tailored to your learning needs.",
+    desc: "Receive comprehensive notes, flashcards, and quizzes tailored to your learning needs.",
   },
   {
     num: "4",
     title: "Study & Succeed",
-    desc: "Access materials anywhere, share with classmates, and use built-in study modes to ace your exams.",
+    desc: "Use the built-in chat to ask questions, review flashcards, and ace your exams.",
   },
 ];
 
@@ -43,7 +43,7 @@ const HowItWorks = () => {
           transition={{ delay: 0.1 }}
           className="text-muted-foreground text-center mb-16 max-w-2xl mx-auto text-lg"
         >
-          Transform any PDF, YouTube video, or audio into beautiful notes and study tools in four simple steps.
+          Transform any PDF or text into beautiful notes and study tools in four simple steps.
         </motion.p>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-5xl mx-auto">

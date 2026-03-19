@@ -11,8 +11,8 @@ serve(async (req) => {
 
   try {
     const { documentId, message, history } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -25,27 +25,26 @@ serve(async (req) => {
     const messages = [
       {
         role: "system",
-        content: `You are Turbo AI, a helpful study assistant. You have full context of the user's document and notes. Answer questions, explain concepts, and help the user study. Be concise but thorough.\n\nDocument: ${doc.title}\n\nNotes context:\n${noteContent.substring(0, 10000)}`
+        content: `You are Testio AI, a helpful study assistant. You have full context of the user's document and notes. Answer questions, explain concepts, and help the user study. Be concise but thorough.\n\nDocument: ${doc.title}\n\nNotes context:\n${noteContent.substring(0, 10000)}`
       },
       ...(history || []),
       { role: "user", content: message }
     ];
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gpt-4o-mini",
         messages,
       }),
     });
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limited" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "Credits exhausted" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       throw new Error("AI failed");
     }
 

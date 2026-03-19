@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
-import { Zap, Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Mail, Lock, User, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import testioLogo from "@/assets/testio-logo.png";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -44,7 +45,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-turbo-glow pointer-events-none" />
+      <div className="absolute inset-0 bg-testio-glow pointer-events-none" />
       
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -52,19 +53,19 @@ const Auth = () => {
         className="w-full max-w-md relative z-10"
       >
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Zap className="w-8 h-8 text-primary" fill="currentColor" />
-            <span className="text-foreground font-bold text-2xl">turbo ai</span>
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <img src={testioLogo} alt="Testio" className="w-10 h-10" />
+            <span className="text-foreground font-bold text-2xl" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
           </div>
           <h1 className="text-2xl font-bold text-foreground">
             {isLogin ? "Welcome back" : "Create your account"}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {isLogin ? "Sign in to your Turbo AI account" : "Start turning anything into study materials"}
+            {isLogin ? "Sign in to your Testio account" : "Start turning anything into study materials"}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-turbo-card rounded-2xl p-8 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-testio-card rounded-2xl p-8 space-y-4">
           {!isLogin && (
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -106,7 +107,7 @@ const Auth = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-turbo-primary flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full btn-testio-primary flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading ? "Loading..." : isLogin ? "Sign In" : "Create Account"}
             <ArrowRight className="w-4 h-4" />

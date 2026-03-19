@@ -10,14 +10,14 @@ const features = [
   },
   {
     icon: Users,
-    title: "Live collaboration",
-    description: "Turbo AI actively works alongside you — editing your doc, highlighting issues, adding AI comments.",
+    title: "AI-powered collaboration",
+    description: "Testio actively works alongside you — editing your doc, highlighting issues, adding AI comments.",
     gradient: "from-primary/15 to-primary/5",
   },
   {
     icon: BookOpen,
     title: "Study smarter, not harder.",
-    description: "Generate quizzes, podcasts, flashcards from your notes. Students love us.",
+    description: "Generate quizzes, flashcards from your notes. Students love us.",
     gradient: "from-primary/20 to-primary/5",
   },
 ];
@@ -26,24 +26,13 @@ const FeaturesSection = () => {
   return (
     <section className="py-24 relative">
       <div className="container mx-auto px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-4"
-        >
-          <a href="#" className="inline-flex items-center gap-2 text-primary text-sm font-medium hover:underline mb-6">
-            We're now Turbo AI (formerly Turbolearn AI) →
-          </a>
-        </motion.div>
-
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="text-3xl md:text-5xl font-black text-foreground text-center mb-4 tracking-tight"
         >
-          The last notetaker you'll ever need
+          The last study tool you'll ever need
         </motion.h2>
 
         <motion.p
@@ -53,7 +42,7 @@ const FeaturesSection = () => {
           transition={{ delay: 0.1 }}
           className="text-muted-foreground text-center mb-16 max-w-2xl mx-auto text-lg"
         >
-          Turbo AI records live, edits, comments and collaborates like a real assistant.
+          Testio processes your content and generates everything you need to ace your exams.
         </motion.p>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -64,7 +53,7 @@ const FeaturesSection = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="group bg-turbo-card rounded-2xl p-8 hover:border-primary/30 transition-all duration-300 cursor-pointer"
+              className="group bg-testio-card rounded-2xl p-8 hover:border-primary/30 transition-all duration-300 cursor-pointer"
             >
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-6`}>
                 <feature.icon className="w-6 h-6 text-primary" />

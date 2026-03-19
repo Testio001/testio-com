@@ -1,4 +1,4 @@
-import { Zap } from "lucide-react";
+import testioLogo from "@/assets/testio-logo.png";
 
 const Footer = () => {
   return (
@@ -6,8 +6,8 @@ const Footer = () => {
       <div className="container mx-auto px-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-primary" fill="currentColor" />
-            <span className="text-foreground font-bold">turbo ai</span>
+            <img src={testioLogo} alt="Testio" className="w-6 h-6" />
+            <span className="text-foreground font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
           </div>
           <div className="flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#" className="hover:text-foreground transition-colors">Blog</a>
@@ -15,7 +15,7 @@ const Footer = () => {
             <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
             <a href="#" className="hover:text-foreground transition-colors">Terms</a>
           </div>
-          <p className="text-xs text-muted-foreground">© 2025 Turbo AI. All rights reserved.</p>
+          <p className="text-xs text-muted-foreground">© 2025 Testio. All rights reserved.</p>
         </div>
       </div>
     </footer>
