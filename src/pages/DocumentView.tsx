@@ -1,15 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Zap, Loader2 } from "lucide-react";
+import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NoteViewer from "@/components/app/NoteViewer";
 import FlashcardViewer from "@/components/app/FlashcardViewer";
 import QuizViewer from "@/components/app/QuizViewer";
 import ChatPanel from "@/components/app/ChatPanel";
 import type { Tables } from "@/integrations/supabase/types";
+import testioLogo from "@/assets/testio-logo.png";
 
 type Document = Tables<"documents">;
 type Note = Tables<"notes">;
@@ -23,6 +24,9 @@ const DocumentView = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeTab, setActiveTab] = useState<"notes" | "flashcards" | "quiz" | "chat">("notes");
   const [generating, setGenerating] = useState<string | null>(null);
+  // Keys to force re-mount of child components after generation
+  const [flashcardKey, setFlashcardKey] = useState(0);
+  const [quizKey, setQuizKey] = useState(0);
 
   useEffect(() => {
     if (id && user) fetchDocument();
@@ -45,7 +49,7 @@ const DocumentView = () => {
       });
       if (error) throw error;
       toast({ title: "Notes generated!" });
-      fetchDocument();
+      await fetchDocument();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -62,6 +66,8 @@ const DocumentView = () => {
       });
       if (error) throw error;
       toast({ title: "Flashcards generated!" });
+      // Force re-mount of FlashcardViewer to fetch new data
+      setFlashcardKey(prev => prev + 1);
       setActiveTab("flashcards");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -79,6 +85,8 @@ const DocumentView = () => {
       });
       if (error) throw error;
       toast({ title: "Quiz generated!" });
+      // Force re-mount of QuizViewer to fetch new data
+      setQuizKey(prev => prev + 1);
       setActiveTab("quiz");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -115,7 +123,7 @@ const DocumentView = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-primary" fill="currentColor" />
+            <img src={testioLogo} alt="Testio" className="w-8 h-8" />
           </div>
         </div>
       </header>
@@ -143,9 +151,9 @@ const DocumentView = () => {
             <button
               onClick={generateNotes}
               disabled={generating === "notes"}
-              className="btn-turbo-primary text-sm !py-2 !px-6 flex items-center gap-2"
+              className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2"
             >
-              {generating === "notes" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+              {generating === "notes" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               Generate Notes with AI
             </button>
           </div>
@@ -156,7 +164,7 @@ const DocumentView = () => {
             <button
               onClick={generateFlashcards}
               disabled={generating === "flashcards"}
-              className="btn-turbo-primary text-sm !py-2 !px-6 flex items-center gap-2"
+              className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2"
             >
               {generating === "flashcards" ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
               Generate Flashcards
@@ -169,7 +177,7 @@ const DocumentView = () => {
             <button
               onClick={generateQuiz}
               disabled={generating === "quiz"}
-              className="btn-turbo-primary text-sm !py-2 !px-6 flex items-center gap-2"
+              className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2"
             >
               {generating === "quiz" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
               Generate Quiz
@@ -180,8 +188,8 @@ const DocumentView = () => {
         {/* Content */}
         <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {activeTab === "notes" && <NoteViewer documentId={id!} notes={notes} onRefresh={fetchDocument} />}
-          {activeTab === "flashcards" && <FlashcardViewer documentId={id!} />}
-          {activeTab === "quiz" && <QuizViewer documentId={id!} />}
+          {activeTab === "flashcards" && <FlashcardViewer key={flashcardKey} documentId={id!} />}
+          {activeTab === "quiz" && <QuizViewer key={quizKey} documentId={id!} />}
           {activeTab === "chat" && <ChatPanel documentId={id!} />}
         </motion.div>
       </div>

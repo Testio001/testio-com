@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { Plus, FileText, FolderOpen, Upload, Search, LogOut, Zap, MoreVertical, Trash2 } from "lucide-react";
+import { Plus, FileText, FolderOpen, Upload, Search, LogOut, MoreVertical, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
+import testioLogo from "@/assets/testio-logo.png";
 
 type Document = Tables<"documents">;
 type Folder = Tables<"folders">;
@@ -71,7 +72,6 @@ const Dashboard = () => {
     setShowUpload(false);
     fetchData();
 
-    // Trigger AI processing
     if (doc) {
       try {
         await supabase.functions.invoke("process-document", {
@@ -131,11 +131,10 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top bar */}
       <header className="border-b border-border/50 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Zap className="w-5 h-5 text-primary" fill="currentColor" />
-          <span className="text-foreground font-bold text-lg">turbo ai</span>
+          <img src={testioLogo} alt="Testio" className="w-7 h-7" />
+          <span className="text-foreground font-bold text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground hidden sm:block">{user?.email}</span>
@@ -146,7 +145,6 @@ const Dashboard = () => {
       </header>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
-        {/* Actions bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-foreground">My Documents</h1>
@@ -157,14 +155,13 @@ const Dashboard = () => {
               <FolderOpen className="w-4 h-4" />
               New Folder
             </button>
-            <button onClick={() => setShowUpload(true)} className="btn-turbo-primary text-sm flex items-center gap-2 !py-2 !px-4">
+            <button onClick={() => setShowUpload(true)} className="btn-testio-primary text-sm flex items-center gap-2 !py-2 !px-4">
               <Plus className="w-4 h-4" />
               Upload
             </button>
           </div>
         </div>
 
-        {/* Search */}
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
@@ -176,7 +173,6 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* Upload Modal */}
         {showUpload && (
           <UploadModal
             onClose={() => setShowUpload(false)}
@@ -185,7 +181,6 @@ const Dashboard = () => {
           />
         )}
 
-        {/* Documents Grid */}
         {loading ? (
           <div className="text-center text-muted-foreground py-20">Loading...</div>
         ) : filteredDocs.length === 0 ? (
@@ -197,7 +192,7 @@ const Dashboard = () => {
             <Upload className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
             <h3 className="text-foreground font-semibold mb-2">No documents yet</h3>
             <p className="text-muted-foreground text-sm mb-6">Upload a PDF, paste text, or add a YouTube link to get started</p>
-            <button onClick={() => setShowUpload(true)} className="btn-turbo-primary text-sm !py-2 !px-6">
+            <button onClick={() => setShowUpload(true)} className="btn-testio-primary text-sm !py-2 !px-6">
               Upload Your First Document
             </button>
           </motion.div>
@@ -210,13 +205,13 @@ const Dashboard = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
                 onClick={() => navigate(`/document/${doc.id}`)}
-                className="bg-turbo-card rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group"
+                className="bg-testio-card rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group"
               >
                 <div className="flex items-start justify-between mb-3">
                   <FileText className="w-8 h-8 text-primary/60" />
                   <div className="flex items-center gap-1">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      doc.status === "completed" ? "bg-turbo-green/20 text-turbo-green" :
+                      doc.status === "completed" ? "bg-testio-green/20 text-testio-green" :
                       doc.status === "processing" ? "bg-yellow-500/20 text-yellow-400" :
                       doc.status === "failed" ? "bg-destructive/20 text-destructive" :
                       "bg-muted text-muted-foreground"
@@ -244,7 +239,6 @@ const Dashboard = () => {
   );
 };
 
-// Upload Modal
 const UploadModal = ({
   onClose,
   onFileUpload,
@@ -269,7 +263,6 @@ const UploadModal = ({
       >
         <h2 className="text-lg font-bold text-foreground mb-4">Add Content</h2>
 
-        {/* Tabs */}
         <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6">
           {(["file", "text", "youtube"] as const).map((t) => (
             <button
@@ -288,7 +281,7 @@ const UploadModal = ({
           <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
             <Upload className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
             <p className="text-muted-foreground text-sm mb-3">Drop a PDF or click to browse</p>
-            <label className="btn-turbo-primary text-sm !py-2 !px-6 cursor-pointer">
+            <label className="btn-testio-primary text-sm !py-2 !px-6 cursor-pointer">
               Choose File
               <input type="file" accept=".pdf,.txt,.doc,.docx" onChange={onFileUpload} className="hidden" />
             </label>
@@ -314,7 +307,7 @@ const UploadModal = ({
             <button
               onClick={() => onTextUpload(text, title)}
               disabled={!text.trim()}
-              className="w-full btn-turbo-primary text-sm !py-2.5 disabled:opacity-50"
+              className="w-full btn-testio-primary text-sm !py-2.5 disabled:opacity-50"
             >
               Process with AI
             </button>
@@ -333,7 +326,7 @@ const UploadModal = ({
             <button
               onClick={() => onTextUpload(youtubeUrl, `YouTube: ${youtubeUrl}`)}
               disabled={!youtubeUrl.trim()}
-              className="w-full btn-turbo-primary text-sm !py-2.5 disabled:opacity-50"
+              className="w-full btn-testio-primary text-sm !py-2.5 disabled:opacity-50"
             >
               Process Video
             </button>

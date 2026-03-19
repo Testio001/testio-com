@@ -14,7 +14,7 @@ const LogoBar = () => {
         viewport={{ once: true }}
         className="text-center text-sm text-muted-foreground mb-10"
       >
-        Turbo AI is trusted by students and professionals at...
+        Testio is trusted by students and professionals at...
       </motion.p>
 
       <div className="overflow-hidden relative">

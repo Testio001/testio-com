@@ -8,24 +8,24 @@ import {
 
 const faqs = [
   {
-    q: "What happened to TurboLearn? Why the name change to Turbo AI?",
-    a: "We've rebranded from TurboLearn to Turbo AI to reflect the platform's full capabilities. Don't worry - everything you love about the platform remains the same!",
+    q: "What is Testio?",
+    a: "Testio is an AI-powered study platform that turns any document, PDF, or text into comprehensive study materials including notes, flashcards, and quizzes.",
   },
   {
-    q: "How do I record lectures and turn them into notes?",
-    a: "Just hit the record button during class and Turbo AI captures everything. After your lecture, you'll get organized notes with all the key concepts.",
+    q: "How does it extract content from my PDFs?",
+    a: "Just upload your PDF and Testio automatically extracts the text content and processes it with AI to create structured study materials.",
   },
   {
     q: "Can I convert my PDF textbooks into study materials?",
-    a: "Yes! Upload any PDF - textbooks, research papers, lecture slides - and Turbo AI instantly creates notes, flashcards, and quizzes from them.",
+    a: "Yes! Upload any PDF - textbooks, research papers, lecture slides - and Testio instantly creates notes, flashcards, and quizzes from them.",
   },
   {
-    q: "Is Turbo AI free to use?",
-    a: "Yes! Turbo AI offers a generous free tier that includes note generation, flashcards, and quizzes. You can upgrade to unlock unlimited features.",
+    q: "Is Testio free to use?",
+    a: "Yes! Testio offers a generous free tier that includes note generation, flashcards, and quizzes. You can upgrade to unlock unlimited features.",
   },
   {
     q: "Does it work for STEM subjects with formulas and diagrams?",
-    a: "Absolutely! Turbo AI handles math formulas, chemical equations, physics diagrams, and code snippets perfectly.",
+    a: "Absolutely! Testio handles math formulas, chemical equations, physics diagrams, and code snippets perfectly.",
   },
 ];
 
@@ -49,7 +49,7 @@ const FAQSection = () => {
           transition={{ delay: 0.1 }}
           className="text-muted-foreground text-center mb-12"
         >
-          Everything you need to know about Turbo AI
+          Everything you need to know about Testio
         </motion.p>
 
         <motion.div
@@ -63,7 +63,7 @@ const FAQSection = () => {
               <AccordionItem
                 key={i}
                 value={`item-${i}`}
-                className="bg-turbo-card rounded-xl px-6 border-none"
+                className="bg-testio-card rounded-xl px-6 border-none"
               >
                 <AccordionTrigger className="text-foreground text-sm font-medium hover:no-underline py-5">
                   {faq.q}

@@ -11,14 +11,11 @@ serve(async (req) => {
 
   try {
     const { documentId } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Get document
     const { data: doc, error: docError } = await supabase
       .from("documents")
       .select("*")
@@ -27,20 +24,18 @@ serve(async (req) => {
 
     if (docError || !doc) throw new Error("Document not found");
 
-    // Update status to processing
     await supabase.from("documents").update({ status: "processing" }).eq("id", documentId);
 
     const content = doc.original_content || `Document: ${doc.title}. Source type: ${doc.source_type}.`;
 
-    // Generate notes via AI
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -56,17 +51,12 @@ serve(async (req) => {
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
-      console.error("AI error:", aiResponse.status, errText);
+      console.error("OpenAI error:", aiResponse.status, errText);
       await supabase.from("documents").update({ status: "failed" }).eq("id", documentId);
-      
+
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limited. Please try again later." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       throw new Error("AI generation failed");
@@ -75,7 +65,6 @@ serve(async (req) => {
     const aiData = await aiResponse.json();
     const notesContent = aiData.choices?.[0]?.message?.content || "No notes generated.";
 
-    // Save notes
     await supabase.from("notes").insert({
       user_id: doc.user_id,
       document_id: documentId,
@@ -83,7 +72,6 @@ serve(async (req) => {
       content: notesContent,
     });
 
-    // Update document status
     await supabase.from("documents").update({ status: "completed" }).eq("id", documentId);
 
     return new Response(JSON.stringify({ success: true }), {
