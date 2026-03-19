@@ -58,10 +58,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        testio: {
+          teal: "hsl(var(--testio-teal))",
+          "teal-glow": "hsl(var(--testio-teal-glow))",
+          green: "hsl(var(--testio-green))",
+        },
         turbo: {
-          purple: "hsl(var(--turbo-purple))",
-          "purple-glow": "hsl(var(--turbo-purple-glow))",
-          green: "hsl(var(--turbo-green))",
+          green: "hsl(var(--testio-green))",
         },
       },
       borderRadius: {
