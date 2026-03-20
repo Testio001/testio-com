@@ -10,7 +10,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { documentId } = await req.json();
+    const { documentId, count } = await req.json();
+    const questionCount = count || 10;
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
@@ -22,23 +23,26 @@ serve(async (req) => {
     const { data: notes } = await supabase.from("notes").select("content").eq("document_id", documentId);
     const noteContent = notes?.map(n => n.content).join("\n") || doc.original_content || doc.title;
 
+    // Get existing questions to avoid duplicates
+    const { data: existingQuizzes } = await supabase.from("quizzes").select("id").eq("document_id", documentId);
+    let existingQuestions: string[] = [];
+    if (existingQuizzes && existingQuizzes.length > 0) {
+      const { data: existing } = await supabase.from("quiz_questions").select("question").in("quiz_id", existingQuizzes.map(q => q.id));
+      existingQuestions = existing?.map(q => q.question) || [];
+    }
+
+    const avoidPrompt = existingQuestions.length > 0
+      ? `\n\nIMPORTANT: Do NOT repeat these existing questions:\n${existingQuestions.slice(-30).join("\n")}`
+      : "";
+
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-          {
-            role: "system",
-            content: "Generate a multiple-choice quiz from the study content. Return structured data."
-          },
-          {
-            role: "user",
-            content: `Create a 10-question multiple-choice quiz from this content. Each question should have 4 options with exactly one correct answer and an explanation:\n\n${noteContent.substring(0, 12000)}`
-          }
+          { role: "system", content: "Generate a multiple-choice quiz from the study content. Return structured data." },
+          { role: "user", content: `Create ${questionCount} NEW unique multiple-choice questions from this content. Each question should have 4 options with exactly one correct answer and an explanation.${avoidPrompt}\n\nContent:\n${noteContent.substring(0, 12000)}` }
         ],
         tools: [{
           type: "function",
@@ -54,18 +58,7 @@ serve(async (req) => {
                     type: "object",
                     properties: {
                       question: { type: "string" },
-                      options: {
-                        type: "array",
-                        items: {
-                          type: "object",
-                          properties: {
-                            text: { type: "string" },
-                            isCorrect: { type: "boolean" }
-                          },
-                          required: ["text", "isCorrect"],
-                          additionalProperties: false
-                        }
-                      },
+                      options: { type: "array", items: { type: "object", properties: { text: { type: "string" }, isCorrect: { type: "boolean" } }, required: ["text", "isCorrect"], additionalProperties: false } },
                       explanation: { type: "string" }
                     },
                     required: ["question", "options", "explanation"],
@@ -92,30 +85,21 @@ serve(async (req) => {
     const questions = JSON.parse(toolCall?.function?.arguments || "{}").questions || [];
 
     const { data: quiz } = await supabase.from("quizzes").insert({
-      user_id: doc.user_id,
-      document_id: documentId,
-      title: `Quiz: ${doc.title}`,
+      user_id: doc.user_id, document_id: documentId, title: `Quiz: ${doc.title}`,
     }).select().single();
 
     if (quiz && questions.length > 0) {
+      const startIndex = existingQuestions.length;
       await supabase.from("quiz_questions").insert(
         questions.map((q: any, i: number) => ({
-          quiz_id: quiz.id,
-          question: q.question,
-          options: q.options,
-          explanation: q.explanation,
-          order_index: i,
+          quiz_id: quiz.id, question: q.question, options: q.options, explanation: q.explanation, order_index: startIndex + i,
         }))
       );
     }
 
-    return new Response(JSON.stringify({ success: true, count: questions.length }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ success: true, count: questions.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("Error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
