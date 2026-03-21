@@ -160,7 +160,7 @@ const Dashboard = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
             <Upload className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
             <h3 className="text-foreground font-semibold mb-2">No documents yet</h3>
-            <p className="text-muted-foreground text-sm mb-6">Upload a PDF, paste text, or add a YouTube link to get started</p>
+            <p className="text-muted-foreground text-sm mb-6">Upload a PDF, paste text, or upload an image to get started</p>
             <button onClick={() => setShowUpload(true)} className="btn-testio-primary text-sm !py-2 !px-6">Upload Your First Document</button>
           </motion.div>
         ) : (
