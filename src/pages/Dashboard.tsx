@@ -26,12 +26,8 @@ const Dashboard = () => {
   }, [user]);
 
   const fetchData = async () => {
-    const [docsRes, foldersRes] = await Promise.all([
-      supabase.from("documents").select("*").order("created_at", { ascending: false }),
-      supabase.from("folders").select("*").order("name"),
-    ]);
+    const docsRes = await supabase.from("documents").select("*").order("created_at", { ascending: false });
     if (docsRes.data) setDocuments(docsRes.data);
-    if (foldersRes.data) setFolders(foldersRes.data);
     setLoading(false);
   };
 
