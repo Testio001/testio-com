@@ -236,6 +236,47 @@ export type Database = {
           },
         ]
       }
+      podcasts: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          document_id: string | null
+          id: string
+          script: string | null
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          script?: string | null
+          status?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          script?: string | null
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "podcasts_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
