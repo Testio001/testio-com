@@ -24,7 +24,6 @@ const Auth = () => {
       navigate("/dashboard", { replace: true });
     }
   }, [user, authLoading, navigate]);
-  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
