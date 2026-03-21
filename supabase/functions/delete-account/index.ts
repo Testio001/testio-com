@@ -48,7 +48,7 @@ serve(async (req) => {
 
     await supabase.from("notes").delete().eq("user_id", userId);
     await supabase.from("documents").delete().eq("user_id", userId);
-    await supabase.from("folders").delete().eq("user_id", userId);
+    
     await supabase.from("profiles").delete().eq("user_id", userId);
 
     // Delete auth user
