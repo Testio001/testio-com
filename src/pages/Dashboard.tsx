@@ -181,7 +181,7 @@ const Dashboard = () => {
   );
 };
 
-const UploadModal = ({ onClose, onFileUpload, onTextUpload }: { onClose: () => void; onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; onTextUpload: (text: string, title: string) => void; }) => {
+const UploadModal = ({ onClose, onFileUpload, onTextUpload, onYouTubeUpload }: { onClose: () => void; onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; onTextUpload: (text: string, title: string) => void; onYouTubeUpload: (url: string, title: string) => void; }) => {
   const [tab, setTab] = useState<"file" | "text" | "youtube">("file");
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
