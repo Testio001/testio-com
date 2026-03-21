@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import DocumentView from "./pages/DocumentView";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import VerifyEmail from "./pages/VerifyEmail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
