@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Brain, MessageSquare, Mic, ArrowRight, Sparkles } from "lucide-react";
+import { FileText, Brain, MessageSquare, Mic, ArrowRight, Sparkles, Moon, Sun, Check } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
 import testioLogo from "@/assets/testio-logo.png";
 
 const steps = [
@@ -29,11 +30,34 @@ const steps = [
     description: "Ask questions, get explanations, and dive deeper into topics with an AI assistant that knows your material.",
     color: "text-testio-green",
   },
+  {
+    icon: Sparkles,
+    title: "Choose Your Theme",
+    description: "Pick the look you want to start with. You can still change it anytime later in settings.",
+    color: "text-primary",
+  },
+];
+
+const themeOptions = [
+  {
+    value: "dark" as const,
+    title: "Dark",
+    description: "The default Testio look",
+    icon: Moon,
+  },
+  {
+    value: "light" as const,
+    title: "Light",
+    description: "A brighter workspace",
+    icon: Sun,
+  },
 ];
 
 const Onboarding = () => {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+  const isThemeStep = step === steps.length - 1;
 
   const handleNext = () => {
     if (step < steps.length - 1) {
@@ -91,6 +115,50 @@ const Onboarding = () => {
             <p className="text-muted-foreground leading-relaxed mb-10 max-w-sm mx-auto">
               {steps[step].description}
             </p>
+
+            {isThemeStep && (
+              <div className="grid gap-3 mb-10 text-left">
+                {themeOptions.map((option) => {
+                  const Icon = option.icon;
+                  const selected = theme === option.value;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setTheme(option.value)}
+                      className={`w-full rounded-2xl border p-4 transition-all ${
+                        selected
+                          ? "border-primary bg-secondary shadow-[0_0_0_1px_hsl(var(--primary))]"
+                          : "border-border bg-card hover:border-primary/40 hover:bg-secondary/70"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-primary">
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{option.title}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">{option.description}</p>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`flex h-6 w-6 items-center justify-center rounded-full border ${
+                            selected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border text-transparent"
+                          }`}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </motion.div>
         </AnimatePresence>
 
