@@ -9,7 +9,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 
 type Document = Tables<"documents">;
-type Folder = Tables<"folders">;
+
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
