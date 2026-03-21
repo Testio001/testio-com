@@ -31,7 +31,13 @@ serve(async (req) => {
       if (downloadError) throw new Error(`Failed to download image: ${downloadError.message}`);
 
       const arrayBuffer = await fileData.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      const base64 = btoa(binary);
       const ext = doc.storage_path.split('.').pop()?.toLowerCase() || 'png';
       const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/png';
       const dataUrl = `data:${mimeType};base64,${base64}`;
