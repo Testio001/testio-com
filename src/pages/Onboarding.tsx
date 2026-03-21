@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, Brain, MessageSquare, Mic, ArrowRight, Sparkles, Moon, Sun, Check } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
