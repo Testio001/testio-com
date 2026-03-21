@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { Plus, FileText, FolderOpen, Upload, Search, LogOut, Trash2, Settings, UserCircle } from "lucide-react";
+import { Plus, FileText, FolderOpen, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
