@@ -56,6 +56,13 @@ const themeOptions = [
 const Onboarding = () => {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
   const { theme, setTheme } = useTheme();
   const isThemeStep = step === steps.length - 1;
 
