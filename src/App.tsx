@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import DocumentView from "./pages/DocumentView";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import VerifyEmail from "./pages/VerifyEmail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Onboarding />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/document/:id" element={<ProtectedRoute><DocumentView /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

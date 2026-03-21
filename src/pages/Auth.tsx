@@ -32,11 +32,10 @@ const Auth = () => {
           password,
           options: {
             data: { display_name: displayName },
-            emailRedirectTo: window.location.origin,
           },
         });
         if (error) throw error;
-        toast({ title: "Account created!", description: "Check your email to confirm your account." });
+        navigate("/verify-email", { state: { email } });
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
