@@ -187,6 +187,12 @@ const DocumentView = () => {
               {generating === "podcast" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
               Generate Podcast
             </button>
+            {generating === "podcast" && (
+              <p className="text-muted-foreground text-xs mt-3 flex items-center gap-2">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                This may take up to 2-3 minutes. Please do not close this page while the podcast is being generated.
+              </p>
+            )}
           </div>
         )}
 

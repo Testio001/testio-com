@@ -68,6 +68,19 @@ const Dashboard = () => {
     }
   };
 
+  const handleYouTubeUpload = async (url: string, title: string) => {
+    if (!user || !url.trim()) return;
+    const { data: doc } = await supabase.from("documents").insert({
+      user_id: user.id, title: title || "YouTube Video", source_type: "youtube", original_content: url, status: "pending",
+    }).select().single();
+    toast({ title: "Processing YouTube video...", description: "Extracting transcript, this may take a moment." });
+    setShowUpload(false);
+    fetchData();
+    if (doc) {
+      try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("YouTube processing error:", err); }
+    }
+  };
+
   const deleteDocument = async (id: string) => {
     await supabase.from("documents").delete().eq("id", id);
     fetchData();
@@ -77,8 +90,14 @@ const Dashboard = () => {
   const createFolder = async () => {
     if (!user) return;
     const name = prompt("Folder name:");
-    if (!name) return;
-    await supabase.from("folders").insert({ user_id: user.id, name });
+    if (!name?.trim()) return;
+    const { error } = await supabase.from("folders").insert({ user_id: user.id, name: name.trim() });
+    if (error) {
+      console.error("Folder creation error:", error);
+      toast({ title: "Failed to create folder", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Folder created!", description: name.trim() });
     fetchData();
   };
 
@@ -126,7 +145,7 @@ const Dashboard = () => {
             className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
         </div>
 
-        {showUpload && <UploadModal onClose={() => setShowUpload(false)} onFileUpload={handleFileUpload} onTextUpload={handleTextUpload} />}
+        {showUpload && <UploadModal onClose={() => setShowUpload(false)} onFileUpload={handleFileUpload} onTextUpload={handleTextUpload} onYouTubeUpload={handleYouTubeUpload} />}
 
         {loading ? (
           <div className="text-center text-muted-foreground py-20">Loading...</div>
@@ -162,7 +181,7 @@ const Dashboard = () => {
   );
 };
 
-const UploadModal = ({ onClose, onFileUpload, onTextUpload }: { onClose: () => void; onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; onTextUpload: (text: string, title: string) => void; }) => {
+const UploadModal = ({ onClose, onFileUpload, onTextUpload, onYouTubeUpload }: { onClose: () => void; onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; onTextUpload: (text: string, title: string) => void; onYouTubeUpload: (url: string, title: string) => void; }) => {
   const [tab, setTab] = useState<"file" | "text" | "youtube">("file");
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
@@ -196,7 +215,14 @@ const UploadModal = ({ onClose, onFileUpload, onTextUpload }: { onClose: () => v
         {tab === "youtube" && (
           <div className="space-y-3">
             <input type="url" placeholder="https://youtube.com/watch?v=..." value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            <button onClick={() => onTextUpload(youtubeUrl, `YouTube: ${youtubeUrl}`)} disabled={!youtubeUrl.trim()} className="w-full btn-testio-primary text-sm !py-2.5 disabled:opacity-50">Process Video</button>
+            <button onClick={() => {
+              if (!youtubeUrl.trim()) return;
+              // Extract a clean title from the URL
+              const urlTitle = youtubeUrl.includes("youtube.com") || youtubeUrl.includes("youtu.be") 
+                ? `YouTube Video` 
+                : `YouTube: ${youtubeUrl}`;
+              onYouTubeUpload(youtubeUrl.trim(), urlTitle);
+            }} disabled={!youtubeUrl.trim()} className="w-full btn-testio-primary text-sm !py-2.5 disabled:opacity-50">Process Video</button>
           </div>
         )}
         <button onClick={onClose} className="w-full mt-4 text-center text-sm text-muted-foreground hover:text-foreground">Cancel</button>
