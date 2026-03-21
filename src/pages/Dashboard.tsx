@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { Plus, FileText, FolderOpen, Upload, Search, LogOut, Trash2, Settings, UserCircle } from "lucide-react";
+import { Plus, FileText, FolderOpen, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
@@ -68,16 +68,23 @@ const Dashboard = () => {
     }
   };
 
-  const handleYouTubeUpload = async (url: string, title: string) => {
-    if (!user || !url.trim()) return;
-    const { data: doc } = await supabase.from("documents").insert({
-      user_id: user.id, title: title || "YouTube Video", source_type: "youtube", original_content: url, status: "pending",
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+    toast({ title: "Uploading image...", description: file.name });
+    const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
+    if (uploadError) { toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
+    const { data: doc, error: docError } = await supabase.from("documents").insert({
+      user_id: user.id, title: file.name.replace(`.${fileExt}`, ""), source_type: "image", storage_path: filePath, status: "pending",
     }).select().single();
-    toast({ title: "Processing YouTube video...", description: "Extracting transcript, this may take a moment." });
+    if (docError) { toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
+    toast({ title: "Uploaded!", description: "Extracting text from image with AI..." });
     setShowUpload(false);
     fetchData();
     if (doc) {
-      try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("YouTube processing error:", err); }
+      try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("Image processing error:", err); }
     }
   };
 
@@ -145,7 +152,7 @@ const Dashboard = () => {
             className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
         </div>
 
-        {showUpload && <UploadModal onClose={() => setShowUpload(false)} onFileUpload={handleFileUpload} onTextUpload={handleTextUpload} onYouTubeUpload={handleYouTubeUpload} />}
+        {showUpload && <UploadModal onClose={() => setShowUpload(false)} onFileUpload={handleFileUpload} onTextUpload={handleTextUpload} onImageUpload={handleImageUpload} />}
 
         {loading ? (
           <div className="text-center text-muted-foreground py-20">Loading...</div>
@@ -153,7 +160,7 @@ const Dashboard = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
             <Upload className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
             <h3 className="text-foreground font-semibold mb-2">No documents yet</h3>
-            <p className="text-muted-foreground text-sm mb-6">Upload a PDF, paste text, or add a YouTube link to get started</p>
+            <p className="text-muted-foreground text-sm mb-6">Upload a PDF, paste text, or upload an image to get started</p>
             <button onClick={() => setShowUpload(true)} className="btn-testio-primary text-sm !py-2 !px-6">Upload Your First Document</button>
           </motion.div>
         ) : (
@@ -181,20 +188,19 @@ const Dashboard = () => {
   );
 };
 
-const UploadModal = ({ onClose, onFileUpload, onTextUpload, onYouTubeUpload }: { onClose: () => void; onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; onTextUpload: (text: string, title: string) => void; onYouTubeUpload: (url: string, title: string) => void; }) => {
-  const [tab, setTab] = useState<"file" | "text" | "youtube">("file");
+const UploadModal = ({ onClose, onFileUpload, onTextUpload, onImageUpload }: { onClose: () => void; onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; onTextUpload: (text: string, title: string) => void; onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; }) => {
+  const [tab, setTab] = useState<"file" | "text" | "image">("file");
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
-  const [youtubeUrl, setYoutubeUrl] = useState("");
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={(e) => e.stopPropagation()} className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg">
         <h2 className="text-lg font-bold text-foreground mb-4">Add Content</h2>
         <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6">
-          {(["file", "text", "youtube"] as const).map((t) => (
+          {(["file", "text", "image"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              {t === "file" ? "Upload PDF" : t === "text" ? "Paste Text" : "YouTube URL"}
+              {t === "file" ? "Upload PDF" : t === "text" ? "Paste Text" : "Upload Image"}
             </button>
           ))}
         </div>
@@ -212,17 +218,11 @@ const UploadModal = ({ onClose, onFileUpload, onTextUpload, onYouTubeUpload }: {
             <button onClick={() => onTextUpload(text, title)} disabled={!text.trim()} className="w-full btn-testio-primary text-sm !py-2.5 disabled:opacity-50">Process with AI</button>
           </div>
         )}
-        {tab === "youtube" && (
-          <div className="space-y-3">
-            <input type="url" placeholder="https://youtube.com/watch?v=..." value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            <button onClick={() => {
-              if (!youtubeUrl.trim()) return;
-              // Extract a clean title from the URL
-              const urlTitle = youtubeUrl.includes("youtube.com") || youtubeUrl.includes("youtu.be") 
-                ? `YouTube Video` 
-                : `YouTube: ${youtubeUrl}`;
-              onYouTubeUpload(youtubeUrl.trim(), urlTitle);
-            }} disabled={!youtubeUrl.trim()} className="w-full btn-testio-primary text-sm !py-2.5 disabled:opacity-50">Process Video</button>
+        {tab === "image" && (
+          <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
+            <Image className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm mb-3">Upload an image to extract text via AI</p>
+            <label className="btn-testio-primary text-sm !py-2 !px-6 cursor-pointer">Choose Image<input type="file" accept="image/*" onChange={onImageUpload} className="hidden" /></label>
           </div>
         )}
         <button onClick={onClose} className="w-full mt-4 text-center text-sm text-muted-foreground hover:text-foreground">Cancel</button>
