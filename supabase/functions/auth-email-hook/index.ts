@@ -36,17 +36,12 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "testio-com"
+const SITE_NAME = "Testio"
 const SENDER_DOMAIN = "notify.testio.online"
 const ROOT_DOMAIN = "testio.online"
-const FROM_DOMAIN = "testio.online" // Domain shown in From address (may be root or sender subdomain)
+const FROM_DOMAIN = "testio.online"
 
-// Sample data for preview mode ONLY (not used in actual email sending).
-// URLs are baked in at scaffold time from the project's real data.
-// The sample email uses a fixed placeholder (RFC 6761 .test TLD) so the Go backend
-// can always find-and-replace it with the actual recipient when sending test emails,
-// even if the project's domain has changed since the template was scaffolded.
-const SAMPLE_PROJECT_URL = "https://testio-com.lovable.app"
+const SAMPLE_PROJECT_URL = "https://testio.online"
 const SAMPLE_EMAIL = "user@example.test"
 const SAMPLE_DATA: Record<string, object> = {
   signup: {
