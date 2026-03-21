@@ -16,7 +16,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
+  
   const [search, setSearch] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const [loading, setLoading] = useState(true);
