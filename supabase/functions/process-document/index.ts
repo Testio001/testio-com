@@ -6,99 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function extractYouTubeVideoId(url: string): string | null {
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
-    /^([a-zA-Z0-9_-]{11})$/,
-  ];
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
-  }
-  return null;
-}
-
-async function fetchYouTubeTranscript(videoId: string): Promise<string> {
-  // Fetch the YouTube page to get caption tracks
-  const pageUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  const pageResponse = await fetch(pageUrl, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
-  });
-
-  if (!pageResponse.ok) throw new Error("Failed to fetch YouTube page");
-
-  const pageHtml = await pageResponse.text();
-
-  // Extract captions player response
-  const captionMatch = pageHtml.match(/"captions":\s*(\{.*?"playerCaptionsTracklistRenderer".*?\})\s*,\s*"videoDetails"/s);
-  if (!captionMatch) {
-    // Try alternative: get title from page for context
-    const titleMatch = pageHtml.match(/<title>(.*?)<\/title>/);
-    const title = titleMatch ? titleMatch[1].replace(" - YouTube", "").trim() : "";
-    
-    // Try to get description
-    const descMatch = pageHtml.match(/"shortDescription":"(.*?)"/);
-    const description = descMatch ? descMatch[1].replace(/\\n/g, "\n").substring(0, 5000) : "";
-    
-    if (title || description) {
-      return `YouTube Video: ${title}\n\nDescription:\n${description}\n\nNote: Auto-generated captions were not available for this video. Content is based on available metadata.`;
-    }
-    throw new Error("No captions available for this video");
-  }
-
-  // Parse captions JSON
-  let captionsData;
-  try {
-    const captionsJson = captionMatch[1];
-    captionsData = JSON.parse(captionsJson);
-  } catch {
-    throw new Error("Failed to parse caption data");
-  }
-
-  const tracks = captionsData?.playerCaptionsTracklistRenderer?.captionTracks;
-  if (!tracks || tracks.length === 0) throw new Error("No caption tracks found");
-
-  // Prefer English, fall back to first available
-  const englishTrack = tracks.find((t: any) => t.languageCode === "en" || t.languageCode?.startsWith("en"));
-  const track = englishTrack || tracks[0];
-  const captionUrl = track.baseUrl;
-
-  if (!captionUrl) throw new Error("No caption URL found");
-
-  // Fetch the caption XML
-  const captionResponse = await fetch(captionUrl);
-  if (!captionResponse.ok) throw new Error("Failed to fetch captions");
-
-  const captionXml = await captionResponse.text();
-
-  // Parse XML to extract text
-  const textParts: string[] = [];
-  const textRegex = /<text[^>]*>(.*?)<\/text>/gs;
-  let match;
-  while ((match = textRegex.exec(captionXml)) !== null) {
-    let text = match[1]
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\n/g, " ")
-      .trim();
-    if (text) textParts.push(text);
-  }
-
-  if (textParts.length === 0) throw new Error("No text found in captions");
-
-  // Also try to get the video title
-  const titleMatch = pageHtml.match(/<title>(.*?)<\/title>/);
-  const title = titleMatch ? titleMatch[1].replace(" - YouTube", "").trim() : "YouTube Video";
-
-  return `YouTube Video: ${title}\n\nTranscript:\n${textParts.join(" ")}`;
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -114,23 +21,53 @@ serve(async (req) => {
 
     let extractedContent = doc.original_content || "";
 
-    // Check if the content is a YouTube URL
-    if (extractedContent && (extractedContent.includes("youtube.com") || extractedContent.includes("youtu.be"))) {
-      console.log("Detected YouTube URL, extracting transcript...");
-      const videoId = extractYouTubeVideoId(extractedContent.trim());
-      if (videoId) {
-        try {
-          extractedContent = await fetchYouTubeTranscript(videoId);
-          console.log(`Extracted YouTube transcript: ${extractedContent.length} chars`);
-        } catch (ytError) {
-          console.error("YouTube transcript error:", ytError);
-          extractedContent = `YouTube Video URL: ${extractedContent}. Could not extract transcript: ${ytError instanceof Error ? ytError.message : "Unknown error"}. Please try pasting the video content manually.`;
-        }
+    // If document is an image, use OpenAI Vision to extract text
+    if (doc.source_type === "image" && doc.storage_path) {
+      console.log("Processing image with OpenAI Vision...");
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from("documents")
+        .download(doc.storage_path);
+
+      if (downloadError) throw new Error(`Failed to download image: ${downloadError.message}`);
+
+      const arrayBuffer = await fileData.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const ext = doc.storage_path.split('.').pop()?.toLowerCase() || 'png';
+      const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/png';
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+
+      const openaiKey = Deno.env.get("OPENAI_API_KEY");
+      if (!openaiKey) throw new Error("OpenAI API key not configured");
+
+      const visionRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{
+            role: "user",
+            content: [
+              { type: "text", text: "Extract ALL text content from this image. Include every word, number, heading, label, and piece of text you can see. Preserve the structure and formatting as much as possible. If it's a document, textbook page, or notes, capture everything in full detail." },
+              { type: "image_url", image_url: { url: dataUrl } }
+            ]
+          }],
+          max_tokens: 4096,
+        }),
+      });
+
+      if (!visionRes.ok) {
+        const errBody = await visionRes.text();
+        console.error("Vision API error:", errBody);
+        throw new Error("Failed to extract text from image");
       }
+
+      const visionData = await visionRes.json();
+      extractedContent = visionData.choices?.[0]?.message?.content || "";
+      console.log(`Extracted ${extractedContent.length} chars from image via Vision`);
     }
 
     // If document has a storage_path (uploaded file), download and extract text
-    if (doc.storage_path && !extractedContent) {
+    if (doc.storage_path && !extractedContent && doc.source_type !== "image") {
       console.log("Downloading file from storage:", doc.storage_path);
       const { data: fileData, error: downloadError } = await supabase.storage
         .from("documents")
