@@ -3,12 +3,13 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Mic, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NoteViewer from "@/components/app/NoteViewer";
 import FlashcardViewer from "@/components/app/FlashcardViewer";
 import QuizViewer from "@/components/app/QuizViewer";
 import ChatPanel from "@/components/app/ChatPanel";
+import PodcastPlayer from "@/components/app/PodcastPlayer";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 
@@ -22,11 +23,11 @@ const DocumentView = () => {
   const { toast } = useToast();
   const [doc, setDoc] = useState<Document | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
-  const [activeTab, setActiveTab] = useState<"notes" | "flashcards" | "quiz" | "chat">("notes");
+  const [activeTab, setActiveTab] = useState<"notes" | "flashcards" | "quiz" | "chat" | "podcast">("notes");
   const [generating, setGenerating] = useState<string | null>(null);
-  // Keys to force re-mount of child components after generation
   const [flashcardKey, setFlashcardKey] = useState(0);
   const [quizKey, setQuizKey] = useState(0);
+  const [podcastKey, setPodcastKey] = useState(0);
 
   useEffect(() => {
     if (id && user) fetchDocument();
@@ -35,7 +36,6 @@ const DocumentView = () => {
   const fetchDocument = async () => {
     const { data: docData } = await supabase.from("documents").select("*").eq("id", id!).single();
     if (docData) setDoc(docData);
-
     const { data: notesData } = await supabase.from("notes").select("*").eq("document_id", id!).order("created_at");
     if (notesData) setNotes(notesData);
   };
@@ -44,9 +44,7 @@ const DocumentView = () => {
     if (!id) return;
     setGenerating("notes");
     try {
-      const { data, error } = await supabase.functions.invoke("generate-notes", {
-        body: { documentId: id },
-      });
+      const { data, error } = await supabase.functions.invoke("generate-notes", { body: { documentId: id } });
       if (error) throw error;
       toast({ title: "Notes generated!" });
       await fetchDocument();
@@ -61,12 +59,9 @@ const DocumentView = () => {
     if (!id) return;
     setGenerating("flashcards");
     try {
-      const { data, error } = await supabase.functions.invoke("generate-flashcards", {
-        body: { documentId: id },
-      });
+      const { data, error } = await supabase.functions.invoke("generate-flashcards", { body: { documentId: id } });
       if (error) throw error;
       toast({ title: "Flashcards generated!" });
-      // Force re-mount of FlashcardViewer to fetch new data
       setFlashcardKey(prev => prev + 1);
       setActiveTab("flashcards");
     } catch (err: any) {
@@ -80,14 +75,27 @@ const DocumentView = () => {
     if (!id) return;
     setGenerating("quiz");
     try {
-      const { data, error } = await supabase.functions.invoke("generate-quiz", {
-        body: { documentId: id },
-      });
+      const { data, error } = await supabase.functions.invoke("generate-quiz", { body: { documentId: id } });
       if (error) throw error;
       toast({ title: "Quiz generated!" });
-      // Force re-mount of QuizViewer to fetch new data
       setQuizKey(prev => prev + 1);
       setActiveTab("quiz");
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  const generatePodcast = async () => {
+    if (!id) return;
+    setGenerating("podcast");
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-podcast", { body: { documentId: id } });
+      if (error) throw error;
+      toast({ title: "Podcast generated!" });
+      setPodcastKey(prev => prev + 1);
+      setActiveTab("podcast");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -105,12 +113,12 @@ const DocumentView = () => {
     { id: "notes" as const, label: "Notes", icon: FileText },
     { id: "flashcards" as const, label: "Flashcards", icon: BookOpen },
     { id: "quiz" as const, label: "Quiz", icon: Brain },
+    { id: "podcast" as const, label: "Podcast", icon: Mic },
     { id: "chat" as const, label: "Chat", icon: MessageSquare },
   ];
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border/50 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -130,12 +138,12 @@ const DocumentView = () => {
 
       <div className="max-w-6xl mx-auto px-6 py-6">
         {/* Tabs */}
-        <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6 max-w-md">
+        <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6 max-w-lg overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -148,11 +156,7 @@ const DocumentView = () => {
         {/* Action buttons */}
         {activeTab === "notes" && notes.length === 0 && (
           <div className="mb-6">
-            <button
-              onClick={generateNotes}
-              disabled={generating === "notes"}
-              className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2"
-            >
+            <button onClick={generateNotes} disabled={generating === "notes"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
               {generating === "notes" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               Generate Notes with AI
             </button>
@@ -161,11 +165,7 @@ const DocumentView = () => {
 
         {activeTab === "flashcards" && (
           <div className="mb-6">
-            <button
-              onClick={generateFlashcards}
-              disabled={generating === "flashcards"}
-              className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2"
-            >
+            <button onClick={generateFlashcards} disabled={generating === "flashcards"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
               {generating === "flashcards" ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
               Generate Flashcards
             </button>
@@ -174,13 +174,18 @@ const DocumentView = () => {
 
         {activeTab === "quiz" && (
           <div className="mb-6">
-            <button
-              onClick={generateQuiz}
-              disabled={generating === "quiz"}
-              className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2"
-            >
+            <button onClick={generateQuiz} disabled={generating === "quiz"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
               {generating === "quiz" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
               Generate Quiz
+            </button>
+          </div>
+        )}
+
+        {activeTab === "podcast" && (
+          <div className="mb-6">
+            <button onClick={generatePodcast} disabled={generating === "podcast"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
+              {generating === "podcast" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
+              Generate Podcast
             </button>
           </div>
         )}
@@ -190,6 +195,7 @@ const DocumentView = () => {
           {activeTab === "notes" && <NoteViewer documentId={id!} notes={notes} onRefresh={fetchDocument} />}
           {activeTab === "flashcards" && <FlashcardViewer key={flashcardKey} documentId={id!} />}
           {activeTab === "quiz" && <QuizViewer key={quizKey} documentId={id!} />}
+          {activeTab === "podcast" && <PodcastPlayer key={podcastKey} documentId={id!} />}
           {activeTab === "chat" && <ChatPanel documentId={id!} />}
         </motion.div>
       </div>
