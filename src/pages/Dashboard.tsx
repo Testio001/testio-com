@@ -77,8 +77,14 @@ const Dashboard = () => {
   const createFolder = async () => {
     if (!user) return;
     const name = prompt("Folder name:");
-    if (!name) return;
-    await supabase.from("folders").insert({ user_id: user.id, name });
+    if (!name?.trim()) return;
+    const { error } = await supabase.from("folders").insert({ user_id: user.id, name: name.trim() });
+    if (error) {
+      console.error("Folder creation error:", error);
+      toast({ title: "Failed to create folder", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Folder created!", description: name.trim() });
     fetchData();
   };
 
