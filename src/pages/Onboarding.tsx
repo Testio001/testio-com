@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, Brain, MessageSquare, Mic, ArrowRight, Sparkles, Moon, Sun, Check } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
@@ -56,6 +57,13 @@ const themeOptions = [
 const Onboarding = () => {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
   const { theme, setTheme } = useTheme();
   const isThemeStep = step === steps.length - 1;
 
