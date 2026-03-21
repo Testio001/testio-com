@@ -17,7 +17,7 @@ const corsHeaders = {
 }
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirm your email',
+  signup: 'Your Testio verification code',
   invite: "You've been invited",
   magiclink: 'Your login link',
   recovery: 'Reset your password',
@@ -36,8 +36,8 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "testio-com"
-const SENDER_DOMAIN = "notify.testio.online"
+const SITE_NAME = "Testio"
+const SENDER_DOMAIN = "testio.online"
 const ROOT_DOMAIN = "testio.online"
 const FROM_DOMAIN = "testio.online" // Domain shown in From address (may be root or sender subdomain)
 
@@ -54,6 +54,7 @@ const SAMPLE_DATA: Record<string, object> = {
     siteUrl: SAMPLE_PROJECT_URL,
     recipient: SAMPLE_EMAIL,
     confirmationUrl: SAMPLE_PROJECT_URL,
+    token: '123456',
   },
   magiclink: {
     siteName: SITE_NAME,
