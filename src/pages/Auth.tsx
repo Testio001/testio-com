@@ -10,19 +10,20 @@ import testioLogo from "@/assets/testio-logo.png";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const { user, loading: authLoading } = useAuth();
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [user, authLoading]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
