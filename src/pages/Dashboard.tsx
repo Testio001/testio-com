@@ -3,20 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { Plus, FileText, FolderOpen, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image } from "lucide-react";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 
 type Document = Tables<"documents">;
-type Folder = Tables<"folders">;
+
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
+  
   const [search, setSearch] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -26,12 +26,8 @@ const Dashboard = () => {
   }, [user]);
 
   const fetchData = async () => {
-    const [docsRes, foldersRes] = await Promise.all([
-      supabase.from("documents").select("*").order("created_at", { ascending: false }),
-      supabase.from("folders").select("*").order("name"),
-    ]);
+    const docsRes = await supabase.from("documents").select("*").order("created_at", { ascending: false });
     if (docsRes.data) setDocuments(docsRes.data);
-    if (foldersRes.data) setFolders(foldersRes.data);
     setLoading(false);
   };
 
@@ -94,19 +90,6 @@ const Dashboard = () => {
     toast({ title: "Deleted" });
   };
 
-  const createFolder = async () => {
-    if (!user) return;
-    const name = prompt("Folder name:");
-    if (!name?.trim()) return;
-    const { error } = await supabase.from("folders").insert({ user_id: user.id, name: name.trim() });
-    if (error) {
-      console.error("Folder creation error:", error);
-      toast({ title: "Failed to create folder", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: "Folder created!", description: name.trim() });
-    fetchData();
-  };
 
   const filteredDocs = documents.filter((d) => d.title.toLowerCase().includes(search.toLowerCase()));
 
@@ -137,9 +120,6 @@ const Dashboard = () => {
             <p className="text-muted-foreground text-sm mt-1">Upload content and let AI do the rest</p>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={createFolder} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-foreground text-sm hover:bg-secondary transition-colors">
-              <FolderOpen className="w-4 h-4" /> New Folder
-            </button>
             <button onClick={() => setShowUpload(true)} className="btn-testio-primary text-sm flex items-center gap-2 !py-2 !px-4">
               <Plus className="w-4 h-4" /> Upload
             </button>
