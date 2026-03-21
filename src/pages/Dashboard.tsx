@@ -68,16 +68,23 @@ const Dashboard = () => {
     }
   };
 
-  const handleYouTubeUpload = async (url: string, title: string) => {
-    if (!user || !url.trim()) return;
-    const { data: doc } = await supabase.from("documents").insert({
-      user_id: user.id, title: title || "YouTube Video", source_type: "youtube", original_content: url, status: "pending",
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+    toast({ title: "Uploading image...", description: file.name });
+    const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
+    if (uploadError) { toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
+    const { data: doc, error: docError } = await supabase.from("documents").insert({
+      user_id: user.id, title: file.name.replace(`.${fileExt}`, ""), source_type: "image", storage_path: filePath, status: "pending",
     }).select().single();
-    toast({ title: "Processing YouTube video...", description: "Extracting transcript, this may take a moment." });
+    if (docError) { toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
+    toast({ title: "Uploaded!", description: "Extracting text from image with AI..." });
     setShowUpload(false);
     fetchData();
     if (doc) {
-      try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("YouTube processing error:", err); }
+      try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("Image processing error:", err); }
     }
   };
 
