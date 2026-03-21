@@ -152,7 +152,7 @@ const Dashboard = () => {
             className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
         </div>
 
-        {showUpload && <UploadModal onClose={() => setShowUpload(false)} onFileUpload={handleFileUpload} onTextUpload={handleTextUpload} onYouTubeUpload={handleYouTubeUpload} />}
+        {showUpload && <UploadModal onClose={() => setShowUpload(false)} onFileUpload={handleFileUpload} onTextUpload={handleTextUpload} onImageUpload={handleImageUpload} />}
 
         {loading ? (
           <div className="text-center text-muted-foreground py-20">Loading...</div>
