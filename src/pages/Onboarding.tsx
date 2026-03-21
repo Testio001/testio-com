@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Brain, MessageSquare, ArrowRight, Sparkles } from "lucide-react";
+import { FileText, Brain, MessageSquare, Mic, ArrowRight, Sparkles } from "lucide-react";
 import testioLogo from "@/assets/testio-logo.png";
 
 const steps = [
@@ -18,10 +18,16 @@ const steps = [
     color: "text-testio-green",
   },
   {
+    icon: Mic,
+    title: "Listen as a Podcast",
+    description: "Turn your notes into an engaging two-person podcast conversation. Learn on the go by listening to your study material.",
+    color: "text-primary",
+  },
+  {
     icon: MessageSquare,
     title: "Chat With Your Notes",
     description: "Ask questions, get explanations, and dive deeper into topics with an AI assistant that knows your material.",
-    color: "text-primary",
+    color: "text-testio-green",
   },
 ];
 
