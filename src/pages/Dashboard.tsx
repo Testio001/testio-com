@@ -68,6 +68,19 @@ const Dashboard = () => {
     }
   };
 
+  const handleYouTubeUpload = async (url: string, title: string) => {
+    if (!user || !url.trim()) return;
+    const { data: doc } = await supabase.from("documents").insert({
+      user_id: user.id, title: title || "YouTube Video", source_type: "youtube", original_content: url, status: "pending",
+    }).select().single();
+    toast({ title: "Processing YouTube video...", description: "Extracting transcript, this may take a moment." });
+    setShowUpload(false);
+    fetchData();
+    if (doc) {
+      try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("YouTube processing error:", err); }
+    }
+  };
+
   const deleteDocument = async (id: string) => {
     await supabase.from("documents").delete().eq("id", id);
     fetchData();
