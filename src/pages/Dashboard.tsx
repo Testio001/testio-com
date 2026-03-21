@@ -90,19 +90,6 @@ const Dashboard = () => {
     toast({ title: "Deleted" });
   };
 
-  const createFolder = async () => {
-    if (!user) return;
-    const name = prompt("Folder name:");
-    if (!name?.trim()) return;
-    const { error } = await supabase.from("folders").insert({ user_id: user.id, name: name.trim() });
-    if (error) {
-      console.error("Folder creation error:", error);
-      toast({ title: "Failed to create folder", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: "Folder created!", description: name.trim() });
-    fetchData();
-  };
 
   const filteredDocs = documents.filter((d) => d.title.toLowerCase().includes(search.toLowerCase()));
 
