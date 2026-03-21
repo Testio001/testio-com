@@ -120,9 +120,6 @@ const Dashboard = () => {
             <p className="text-muted-foreground text-sm mt-1">Upload content and let AI do the rest</p>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={createFolder} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-foreground text-sm hover:bg-secondary transition-colors">
-              <FolderOpen className="w-4 h-4" /> New Folder
-            </button>
             <button onClick={() => setShowUpload(true)} className="btn-testio-primary text-sm flex items-center gap-2 !py-2 !px-4">
               <Plus className="w-4 h-4" /> Upload
             </button>
