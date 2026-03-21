@@ -202,7 +202,14 @@ const UploadModal = ({ onClose, onFileUpload, onTextUpload }: { onClose: () => v
         {tab === "youtube" && (
           <div className="space-y-3">
             <input type="url" placeholder="https://youtube.com/watch?v=..." value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            <button onClick={() => onTextUpload(youtubeUrl, `YouTube: ${youtubeUrl}`)} disabled={!youtubeUrl.trim()} className="w-full btn-testio-primary text-sm !py-2.5 disabled:opacity-50">Process Video</button>
+            <button onClick={() => {
+              if (!youtubeUrl.trim()) return;
+              // Extract a clean title from the URL
+              const urlTitle = youtubeUrl.includes("youtube.com") || youtubeUrl.includes("youtu.be") 
+                ? `YouTube Video` 
+                : `YouTube: ${youtubeUrl}`;
+              onYouTubeUpload(youtubeUrl.trim(), urlTitle);
+            }} disabled={!youtubeUrl.trim()} className="w-full btn-testio-primary text-sm !py-2.5 disabled:opacity-50">Process Video</button>
           </div>
         )}
         <button onClick={onClose} className="w-full mt-4 text-center text-sm text-muted-foreground hover:text-foreground">Cancel</button>
