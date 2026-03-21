@@ -21,21 +21,31 @@ interface EmailChangeEmailProps {
   confirmationUrl: string
 }
 
-export const EmailChangeEmail = ({ siteName, email, newEmail, confirmationUrl }: EmailChangeEmailProps) => (
+export const EmailChangeEmail = ({
+  siteName,
+  email,
+  newEmail,
+  confirmationUrl,
+}: EmailChangeEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Confirm your email change for Testio</Preview>
+    <Preview>Confirm your email change for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={logo}>Testio</Text>
+        <Text style={logo}>{siteName}</Text>
         <Heading style={h1}>Confirm your email change</Heading>
         <Text style={text}>
-          You requested to change your email address for Testio from{' '}
-          <Link href={`mailto:${email}`} style={link}>{email}</Link> to{' '}
+          You requested to change your email from{' '}
+          <Link href={`mailto:${email}`} style={link}>{email}</Link>{' '}
+          to{' '}
           <Link href={`mailto:${newEmail}`} style={link}>{newEmail}</Link>.
         </Text>
-        <Button style={button} href={confirmationUrl}>Confirm Email Change</Button>
-        <Text style={footer}>If you didn't request this change, please secure your account immediately.</Text>
+        <Button style={button} href={confirmationUrl}>
+          Confirm Email Change
+        </Button>
+        <Text style={footer}>
+          If you didn't request this change, please secure your account immediately.
+        </Text>
       </Container>
     </Body>
   </Html>
@@ -49,5 +59,5 @@ const logo = { fontSize: '24px', fontWeight: 'bold' as const, color: '#22c9a0', 
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#111111', margin: '0 0 20px' }
 const text = { fontSize: '14px', color: '#55575d', lineHeight: '1.5', margin: '0 0 25px' }
 const link = { color: '#22c9a0', textDecoration: 'underline' }
-const button = { backgroundColor: '#22c9a0', color: '#0a0c10', fontSize: '14px', fontWeight: 'bold' as const, borderRadius: '12px', padding: '12px 24px', textDecoration: 'none' }
+const button = { backgroundColor: '#22c9a0', color: '#ffffff', fontSize: '14px', borderRadius: '12px', padding: '12px 24px', textDecoration: 'none', fontWeight: 'bold' as const }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

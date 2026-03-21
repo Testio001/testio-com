@@ -20,21 +20,29 @@ interface InviteEmailProps {
   confirmationUrl: string
 }
 
-export const InviteEmail = ({ siteName, siteUrl, confirmationUrl }: InviteEmailProps) => (
+export const InviteEmail = ({
+  siteName,
+  siteUrl,
+  confirmationUrl,
+}: InviteEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>You've been invited to join Testio</Preview>
+    <Preview>You've been invited to join {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={logo}>Testio</Text>
+        <Text style={logo}>{siteName}</Text>
         <Heading style={h1}>You've been invited</Heading>
         <Text style={text}>
           You've been invited to join{' '}
-          <Link href={siteUrl} style={link}><strong>Testio</strong></Link>.
+          <Link href={siteUrl} style={link}><strong>{siteName}</strong></Link>.
           Click the button below to accept the invitation.
         </Text>
-        <Button style={button} href={confirmationUrl}>Accept Invitation</Button>
-        <Text style={footer}>If you weren't expecting this invitation, you can safely ignore this email.</Text>
+        <Button style={button} href={confirmationUrl}>
+          Accept Invitation
+        </Button>
+        <Text style={footer}>
+          If you weren't expecting this invitation, you can safely ignore this email.
+        </Text>
       </Container>
     </Body>
   </Html>
@@ -48,5 +56,5 @@ const logo = { fontSize: '24px', fontWeight: 'bold' as const, color: '#22c9a0', 
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#111111', margin: '0 0 20px' }
 const text = { fontSize: '14px', color: '#55575d', lineHeight: '1.5', margin: '0 0 25px' }
 const link = { color: '#22c9a0', textDecoration: 'underline' }
-const button = { backgroundColor: '#22c9a0', color: '#0a0c10', fontSize: '14px', fontWeight: 'bold' as const, borderRadius: '12px', padding: '12px 24px', textDecoration: 'none' }
+const button = { backgroundColor: '#22c9a0', color: '#ffffff', fontSize: '14px', borderRadius: '12px', padding: '12px 24px', textDecoration: 'none', fontWeight: 'bold' as const }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
