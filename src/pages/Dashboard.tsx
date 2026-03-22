@@ -74,19 +74,22 @@ const Dashboard = () => {
     if (!file || !user) return;
     const fileExt = file.name.split(".").pop();
     const filePath = `${user.id}/${Date.now()}.${fileExt}`;
-    toast({ title: "Uploading image...", description: file.name });
+    setUploading("Uploading image...");
+    setShowUpload(false);
     const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
-    if (uploadError) { toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
+    if (uploadError) { setUploading(null); toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
+    setUploading("Creating document...");
     const { data: doc, error: docError } = await supabase.from("documents").insert({
       user_id: user.id, title: file.name.replace(`.${fileExt}`, ""), source_type: "image", storage_path: filePath, status: "pending",
     }).select().single();
-    if (docError) { toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
-    toast({ title: "Uploaded!", description: "Extracting text from image with AI..." });
-    setShowUpload(false);
+    if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
+    setUploading("Extracting text from image with AI... This may take a moment.");
     fetchData();
     if (doc) {
       try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("Image processing error:", err); }
     }
+    setUploading(null);
+    toast({ title: "Done!", description: "Your image has been processed." });
   };
 
   const deleteDocument = async (id: string) => {
