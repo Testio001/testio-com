@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image } from "lucide-react";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
@@ -16,10 +16,10 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
-  
   const [search, setSearch] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) fetchData();
@@ -36,32 +36,37 @@ const Dashboard = () => {
     if (!file || !user) return;
     const fileExt = file.name.split(".").pop();
     const filePath = `${user.id}/${Date.now()}.${fileExt}`;
-    toast({ title: "Uploading...", description: file.name });
+    setUploading("Uploading document...");
+    setShowUpload(false);
     const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
-    if (uploadError) { toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
+    if (uploadError) { setUploading(null); toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
+    setUploading("Creating document...");
     const { data: doc, error: docError } = await supabase.from("documents").insert({
       user_id: user.id, title: file.name.replace(`.${fileExt}`, ""), source_type: fileExt === "pdf" ? "pdf" : "text", storage_path: filePath, status: "pending",
     }).select().single();
-    if (docError) { toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
-    toast({ title: "Uploaded!", description: "Processing document with AI..." });
-    setShowUpload(false);
+    if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
+    setUploading("Processing with AI... This may take a moment.");
     fetchData();
     if (doc) {
       try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("AI processing error:", err); }
     }
+    setUploading(null);
+    toast({ title: "Done!", description: "Your document has been processed." });
   };
 
   const handleTextUpload = async (text: string, title: string) => {
     if (!user || !text.trim()) return;
+    setUploading("Processing text with AI...");
+    setShowUpload(false);
     const { data: doc } = await supabase.from("documents").insert({
       user_id: user.id, title: title || "Untitled", source_type: "text", original_content: text, status: "pending",
     }).select().single();
-    toast({ title: "Created!", description: "Processing with AI..." });
-    setShowUpload(false);
     fetchData();
     if (doc) {
       try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("AI processing error:", err); }
     }
+    setUploading(null);
+    toast({ title: "Done!", description: "Your text has been processed." });
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,19 +74,22 @@ const Dashboard = () => {
     if (!file || !user) return;
     const fileExt = file.name.split(".").pop();
     const filePath = `${user.id}/${Date.now()}.${fileExt}`;
-    toast({ title: "Uploading image...", description: file.name });
+    setUploading("Uploading image...");
+    setShowUpload(false);
     const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
-    if (uploadError) { toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
+    if (uploadError) { setUploading(null); toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
+    setUploading("Creating document...");
     const { data: doc, error: docError } = await supabase.from("documents").insert({
       user_id: user.id, title: file.name.replace(`.${fileExt}`, ""), source_type: "image", storage_path: filePath, status: "pending",
     }).select().single();
-    if (docError) { toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
-    toast({ title: "Uploaded!", description: "Extracting text from image with AI..." });
-    setShowUpload(false);
+    if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
+    setUploading("Extracting text from image with AI... This may take a moment.");
     fetchData();
     if (doc) {
       try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("Image processing error:", err); }
     }
+    setUploading(null);
+    toast({ title: "Done!", description: "Your image has been processed." });
   };
 
   const deleteDocument = async (id: string) => {
@@ -125,6 +133,17 @@ const Dashboard = () => {
             </button>
           </div>
         </div>
+
+        {/* Upload Progress Overlay */}
+        {uploading && (
+          <div className="mb-6 bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
+            <div>
+              <p className="text-foreground text-sm font-medium">{uploading}</p>
+              <p className="text-muted-foreground text-xs mt-0.5">Please do not close this page.</p>
+            </div>
+          </div>
+        )}
 
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

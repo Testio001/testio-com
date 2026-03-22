@@ -2,10 +2,25 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Moon, Sun, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Trash2, Loader2, Mail, Globe, FileText, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
 import testioLogo from "@/assets/testio-logo.png";
+
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "es", label: "Español" },
+  { code: "fr", label: "Français" },
+  { code: "de", label: "Deutsch" },
+  { code: "pt", label: "Português" },
+  { code: "ar", label: "العربية" },
+  { code: "zh", label: "中文" },
+  { code: "hi", label: "हिन्दी" },
+  { code: "yo", label: "Yorùbá" },
+  { code: "ha", label: "Hausa" },
+  { code: "ig", label: "Igbo" },
+  { code: "sw", label: "Kiswahili" },
+];
 
 const Settings = () => {
   const { user, signOut } = useAuth();
@@ -14,6 +29,13 @@ const Settings = () => {
   const { theme, setTheme } = useTheme();
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [language, setLanguage] = useState(() => localStorage.getItem("testio-language") || "en");
+
+  const handleLanguageChange = (code: string) => {
+    setLanguage(code);
+    localStorage.setItem("testio-language", code);
+    toast({ title: "Language updated", description: `Language set to ${LANGUAGES.find(l => l.code === code)?.label}` });
+  };
 
   const handleDeleteAccount = async () => {
     if (!confirmDelete) {
@@ -73,6 +95,22 @@ const Settings = () => {
           </div>
         </div>
 
+        {/* Language */}
+        <div className="bg-testio-card rounded-xl p-6">
+          <h3 className="text-foreground font-semibold mb-4 flex items-center gap-2">
+            <Globe className="w-4 h-4" /> Language
+          </h3>
+          <select
+            value={language}
+            onChange={(e) => handleLanguageChange(e.target.value)}
+            className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >
+            {LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>{lang.label}</option>
+            ))}
+          </select>
+        </div>
+
         {/* Account Info */}
         <div className="bg-testio-card rounded-xl p-6">
           <h3 className="text-foreground font-semibold mb-4">Account</h3>
@@ -81,6 +119,36 @@ const Settings = () => {
               <p className="text-muted-foreground text-xs">Email</p>
               <p className="text-foreground text-sm">{user?.email}</p>
             </div>
+          </div>
+        </div>
+
+        {/* Contact & Legal */}
+        <div className="bg-testio-card rounded-xl p-6">
+          <h3 className="text-foreground font-semibold mb-4">Support & Legal</h3>
+          <div className="space-y-1">
+            <a
+              href="mailto:Testio4171@gmail.com"
+              className="flex items-center justify-between py-3 px-1 text-foreground hover:bg-secondary/50 rounded-lg transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Mail className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Contact Support</p>
+                  <p className="text-xs text-muted-foreground">Testio4171@gmail.com</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </a>
+            <button
+              onClick={() => navigate("/terms")}
+              className="flex items-center justify-between py-3 px-1 w-full text-foreground hover:bg-secondary/50 rounded-lg transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <FileText className="w-4 h-4 text-muted-foreground" />
+                <p className="text-sm font-medium">Terms of Service</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
           </div>
         </div>
 

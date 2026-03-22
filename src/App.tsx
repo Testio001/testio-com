@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
+import PWAInstallBanner from "@/components/PWAInstallBanner";
 import Onboarding from "./pages/Onboarding";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -12,6 +13,7 @@ import DocumentView from "./pages/DocumentView";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import VerifyEmail from "./pages/VerifyEmail";
+import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,12 +37,14 @@ const App = () => (
               <Route path="/" element={<Onboarding />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/terms" element={<TermsOfService />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/document/:id" element={<ProtectedRoute><DocumentView /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <PWAInstallBanner />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

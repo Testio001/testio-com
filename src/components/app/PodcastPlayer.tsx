@@ -23,6 +23,7 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [script, setScript] = useState<PodcastSegment[]>([]);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -148,6 +149,18 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
 
         {/* Controls */}
         <div className="flex items-center justify-center gap-6">
+          <button
+            onClick={() => {
+              const rates = [0.5, 0.75, 1, 1.25, 1.5, 2];
+              const idx = rates.indexOf(playbackRate);
+              const next = rates[(idx + 1) % rates.length];
+              setPlaybackRate(next);
+              if (audioRef.current) audioRef.current.playbackRate = next;
+            }}
+            className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors w-10 text-center"
+          >
+            {playbackRate}x
+          </button>
           <button onClick={() => skip(-15)} className="text-muted-foreground hover:text-foreground transition-colors">
             <SkipBack className="w-5 h-5" />
           </button>
