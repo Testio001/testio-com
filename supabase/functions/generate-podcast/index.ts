@@ -49,9 +49,10 @@ serve(async (req) => {
 Rules:
 - Write a natural, flowing conversation (NOT a lecture)
 - Each speaker turn should be 1-3 sentences max
-- Include about 15-20 exchanges total
+- Include about ${exchangeLimit} exchanges total
 - Make it educational but fun and conversational
 - Start with a brief intro and end with a quick summary
+- ${exchangeLimit <= 8 ? "This is a SHORT preview podcast. Make it engaging and end with a teaser: 'Want to dive deeper? Upgrade to Testio Premium for full-length podcasts!'" : ""}
 - Output ONLY valid JSON array of objects with "speaker" (either "Alex" or "Sam") and "text" fields
 - No markdown, no code blocks, just the raw JSON array`,
           },
