@@ -27,7 +27,19 @@ const Dashboard = () => {
   const [showReferral, setShowReferral] = useState(false);
 
   useEffect(() => {
-    if (user) fetchData();
+    if (user) {
+      fetchData();
+      // Process pending referral
+      const pendingRef = localStorage.getItem("testio-referral");
+      if (pendingRef) {
+        localStorage.removeItem("testio-referral");
+        gamification.processReferral(pendingRef).then(result => {
+          if (result.success) {
+            toast({ title: "🎉 Referral applied!", description: result.message });
+          }
+        });
+      }
+    }
   }, [user]);
 
   const fetchData = async () => {
