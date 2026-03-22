@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { motion } from "framer-motion";
-import { Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Gift } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import testioLogo from "@/assets/testio-logo.png";
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [searchParams] = useSearchParams();
+  const referralCode = searchParams.get("ref");
+  const [isLogin, setIsLogin] = useState(false); // Default to signup for new users
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -21,9 +23,28 @@ const Auth = () => {
 
   useEffect(() => {
     if (!authLoading && user) {
+      // Process referral if present
+      if (referralCode) {
+        processReferral(referralCode);
+      }
       navigate("/dashboard", { replace: true });
     }
   }, [user, authLoading, navigate]);
+
+  // Store referral code for after signup
+  useEffect(() => {
+    if (referralCode) {
+      localStorage.setItem("testio-referral", referralCode);
+    }
+  }, [referralCode]);
+
+  const processReferral = async (code: string) => {
+    try {
+      // Import dynamically to avoid circular deps
+      const { useGamification } = await import("@/hooks/useGamification");
+      // We'll process this in the dashboard instead
+    } catch {}
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +102,12 @@ const Auth = () => {
           <p className="text-muted-foreground mt-1 text-sm">
             {isLogin ? "Sign in to your Testio account" : "Start turning anything into study materials"}
           </p>
+          {referralCode && !isLogin && (
+            <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-primary bg-primary/10 rounded-full px-3 py-1.5 w-fit mx-auto">
+              <Gift className="w-3.5 h-3.5" />
+              You'll get a bonus upload from this referral!
+            </div>
+          )}
         </div>
 
         <div className="bg-testio-card rounded-2xl p-8 space-y-4">

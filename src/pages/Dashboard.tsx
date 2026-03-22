@@ -2,24 +2,29 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
 import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import GamificationSidebar from "@/components/app/GamificationSidebar";
+import UpgradePrompt from "@/components/app/UpgradePrompt";
+import StreakDisplay from "@/components/app/StreakDisplay";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 
 type Document = Tables<"documents">;
 
-
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const gamification = useGamification();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [search, setSearch] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [showReferral, setShowReferral] = useState(false);
 
   useEffect(() => {
     if (user) fetchData();
@@ -29,6 +34,14 @@ const Dashboard = () => {
     const docsRes = await supabase.from("documents").select("*").order("created_at", { ascending: false });
     if (docsRes.data) setDocuments(docsRes.data);
     setLoading(false);
+  };
+
+  const tryUpload = () => {
+    if (!gamification.canUpload) {
+      setShowReferral(true);
+      return;
+    }
+    setShowUpload(true);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,6 +59,15 @@ const Dashboard = () => {
     }).select().single();
     if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
     setUploading("Processing with AI... This may take a moment.");
+
+    // Record upload for gamification
+    const result = await gamification.recordUpload();
+    if (result?.bonusEarned) {
+      toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak! You earned 1 bonus upload.` });
+    } else if (result?.isNewDay) {
+      toast({ title: `🔥 ${result.newStreak}-day streak!`, description: "Keep uploading daily to earn bonus uploads!" });
+    }
+
     fetchData();
     if (doc) {
       try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("AI processing error:", err); }
@@ -61,6 +83,12 @@ const Dashboard = () => {
     const { data: doc } = await supabase.from("documents").insert({
       user_id: user.id, title: title || "Untitled", source_type: "text", original_content: text, status: "pending",
     }).select().single();
+
+    const result = await gamification.recordUpload();
+    if (result?.bonusEarned) {
+      toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
+    }
+
     fetchData();
     if (doc) {
       try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("AI processing error:", err); }
@@ -84,6 +112,12 @@ const Dashboard = () => {
     }).select().single();
     if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
     setUploading("Extracting text from image with AI... This may take a moment.");
+
+    const result = await gamification.recordUpload();
+    if (result?.bonusEarned) {
+      toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
+    }
+
     fetchData();
     if (doc) {
       try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("Image processing error:", err); }
@@ -98,7 +132,6 @@ const Dashboard = () => {
     toast({ title: "Deleted" });
   };
 
-
   const filteredDocs = documents.filter((d) => d.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -109,6 +142,7 @@ const Dashboard = () => {
           <span className="text-foreground font-bold text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
         </div>
         <div className="flex items-center gap-3">
+          <StreakDisplay stats={gamification.stats} compact />
           <button onClick={() => navigate("/profile")} className="text-muted-foreground hover:text-foreground transition-colors" title="Profile">
             <UserCircle className="w-5 h-5" />
           </button>
@@ -121,67 +155,108 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">My Documents</h1>
-            <p className="text-muted-foreground text-sm mt-1">Upload content and let AI do the rest</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => setShowUpload(true)} className="btn-testio-primary text-sm flex items-center gap-2 !py-2 !px-4">
-              <Plus className="w-4 h-4" /> Upload
-            </button>
-          </div>
-        </div>
-
-        {/* Upload Progress Overlay */}
-        {uploading && (
-          <div className="mb-6 bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
-            <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
-            <div>
-              <p className="text-foreground text-sm font-medium">{uploading}</p>
-              <p className="text-muted-foreground text-xs mt-0.5">Please do not close this page.</p>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Main content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">My Documents</h1>
+                <p className="text-muted-foreground text-sm mt-1">
+                  {gamification.canUpload
+                    ? `${gamification.uploadsRemaining} upload${gamification.uploadsRemaining > 1 ? "s" : ""} remaining`
+                    : "Upload limit reached"}
+                </p>
+              </div>
+              <button onClick={tryUpload} className="btn-testio-primary text-sm flex items-center gap-2 !py-2 !px-4">
+                <Plus className="w-4 h-4" /> Upload
+              </button>
             </div>
-          </div>
-        )}
 
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input type="text" placeholder="Search documents..." value={search} onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
+            {uploading && (
+              <div className="mb-6 bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
+                <div>
+                  <p className="text-foreground text-sm font-medium">{uploading}</p>
+                  <p className="text-muted-foreground text-xs mt-0.5">Please do not close this page.</p>
+                </div>
+              </div>
+            )}
+
+            <div className="relative mb-6">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input type="text" placeholder="Search documents..." value={search} onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
+            </div>
+
+            {showUpload && <UploadModal onClose={() => setShowUpload(false)} onFileUpload={handleFileUpload} onTextUpload={handleTextUpload} onImageUpload={handleImageUpload} />}
+
+            {showReferral && (
+              <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowReferral(false)}>
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm">
+                  <UpgradePrompt
+                    onUpgrade={() => { toast({ title: "Coming soon!", description: "Premium plans are launching soon." }); setShowReferral(false); }}
+                    onRefer={() => {
+                      const link = gamification.getReferralLink();
+                      if (navigator.share) {
+                        navigator.share({ title: "Join Testio!", text: "Study smarter with AI-powered notes. Use my link to get a bonus upload!", url: link });
+                      } else {
+                        navigator.clipboard.writeText(link);
+                        toast({ title: "Link copied!", description: "Share it with friends to earn uploads." });
+                      }
+                      setShowReferral(false);
+                    }}
+                    streakBroken={gamification.stats?.current_streak === 0 && (gamification.stats?.longest_streak || 0) > 0}
+                  />
+                </motion.div>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="text-center text-muted-foreground py-20">Loading...</div>
+            ) : filteredDocs.length === 0 ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
+                <Upload className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <h3 className="text-foreground font-semibold mb-2">No documents yet</h3>
+                <p className="text-muted-foreground text-sm mb-6">Upload a PDF, paste text, or upload an image to get started</p>
+                <button onClick={tryUpload} className="btn-testio-primary text-sm !py-2 !px-6">Upload Your First Document</button>
+              </motion.div>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-4">
+                {filteredDocs.map((doc, i) => (
+                  <motion.div key={doc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                    onClick={() => navigate(`/document/${doc.id}`)} className="bg-testio-card rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group">
+                    <div className="flex items-start justify-between mb-3">
+                      <FileText className="w-8 h-8 text-primary/60" />
+                      <div className="flex items-center gap-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${doc.status === "completed" ? "bg-testio-green/20 text-testio-green" : doc.status === "processing" ? "bg-yellow-500/20 text-yellow-400" : doc.status === "failed" ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>{doc.status}</span>
+                        <button onClick={(e) => { e.stopPropagation(); deleteDocument(doc.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <h3 className="text-foreground font-semibold text-sm mb-1 truncate">{doc.title}</h3>
+                    <p className="text-muted-foreground text-xs">{doc.source_type.toUpperCase()} · {new Date(doc.created_at).toLocaleDateString()}</p>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Gamification sidebar - hidden on mobile, shown on lg+ */}
+          <div className="hidden lg:block w-80 shrink-0">
+            <GamificationSidebar
+              onUpgrade={() => toast({ title: "Coming soon!", description: "Premium plans are launching soon." })}
+            />
+          </div>
         </div>
 
-        {showUpload && <UploadModal onClose={() => setShowUpload(false)} onFileUpload={handleFileUpload} onTextUpload={handleTextUpload} onImageUpload={handleImageUpload} />}
-
-        {loading ? (
-          <div className="text-center text-muted-foreground py-20">Loading...</div>
-        ) : filteredDocs.length === 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
-            <Upload className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <h3 className="text-foreground font-semibold mb-2">No documents yet</h3>
-            <p className="text-muted-foreground text-sm mb-6">Upload a PDF, paste text, or upload an image to get started</p>
-            <button onClick={() => setShowUpload(true)} className="btn-testio-primary text-sm !py-2 !px-6">Upload Your First Document</button>
-          </motion.div>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredDocs.map((doc, i) => (
-              <motion.div key={doc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                onClick={() => navigate(`/document/${doc.id}`)} className="bg-testio-card rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group">
-                <div className="flex items-start justify-between mb-3">
-                  <FileText className="w-8 h-8 text-primary/60" />
-                  <div className="flex items-center gap-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${doc.status === "completed" ? "bg-testio-green/20 text-testio-green" : doc.status === "processing" ? "bg-yellow-500/20 text-yellow-400" : doc.status === "failed" ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>{doc.status}</span>
-                    <button onClick={(e) => { e.stopPropagation(); deleteDocument(doc.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                <h3 className="text-foreground font-semibold text-sm mb-1 truncate">{doc.title}</h3>
-                <p className="text-muted-foreground text-xs">{doc.source_type.toUpperCase()} · {new Date(doc.created_at).toLocaleDateString()}</p>
-              </motion.div>
-            ))}
-          </div>
-        )}
+        {/* Mobile gamification - shown only on mobile */}
+        <div className="lg:hidden mt-8">
+          <GamificationSidebar
+            onUpgrade={() => toast({ title: "Coming soon!", description: "Premium plans are launching soon." })}
+          />
+        </div>
       </div>
     </div>
   );
