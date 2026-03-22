@@ -458,6 +458,27 @@ export type Database = {
           },
         ]
       }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referred_user_id: string
+          referrer_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referred_user_id: string
+          referrer_user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referred_user_id?: string
+          referrer_user_id?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -479,6 +500,78 @@ export type Database = {
           id?: string
           metadata?: Json | null
           reason?: string
+        }
+        Relationships: []
+      }
+      user_badges: {
+        Row: {
+          badge_name: string
+          badge_type: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          badge_name: string
+          badge_type: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          badge_name?: string
+          badge_type?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_stats: {
+        Row: {
+          bonus_uploads: number
+          created_at: string
+          current_streak: number
+          id: string
+          last_upload_date: string | null
+          longest_streak: number
+          referral_code: string
+          referrals_month_reset: string
+          referrals_this_month: number
+          streak_freezes: number
+          updated_at: string
+          uploads_used: number
+          user_id: string
+        }
+        Insert: {
+          bonus_uploads?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_upload_date?: string | null
+          longest_streak?: number
+          referral_code: string
+          referrals_month_reset?: string
+          referrals_this_month?: number
+          streak_freezes?: number
+          updated_at?: string
+          uploads_used?: number
+          user_id: string
+        }
+        Update: {
+          bonus_uploads?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_upload_date?: string | null
+          longest_streak?: number
+          referral_code?: string
+          referrals_month_reset?: string
+          referrals_this_month?: number
+          streak_freezes?: number
+          updated_at?: string
+          uploads_used?: number
+          user_id?: string
         }
         Relationships: []
       }
