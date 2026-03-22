@@ -1,7 +1,7 @@
 {
-  "name": "Testio - AI Study Tools",
+  "name": "Testio - Notes, Flashcards & Podcasts",
   "short_name": "Testio",
-  "description": "Turn any PDF, text, or document into notes, flashcards, quizzes, and more with Testio AI.",
+  "description": "Turn any PDF or text into notes, flashcards, quizzes & AI podcasts. Listen to your study material as a conversation.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",

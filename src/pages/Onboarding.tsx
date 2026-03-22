@@ -21,8 +21,8 @@ const steps = [
   },
   {
     icon: Mic,
-    title: "Listen as a Podcast",
-    description: "Turn your notes into an engaging two-person podcast conversation. Learn on the go by listening to your study material.",
+    title: "🎙️ Listen as a Podcast",
+    description: "Your notes come alive as a two-person podcast with realistic AI voices. Perfect for learning on the go — commute, gym, or before bed.",
     color: "text-primary",
   },
   {
