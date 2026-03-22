@@ -11,7 +11,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { documentId } = await req.json();
+    const { documentId, maxExchanges } = await req.json();
+    const exchangeLimit = maxExchanges || 20; // Default to full podcast
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
