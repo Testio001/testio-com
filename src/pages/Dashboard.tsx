@@ -134,6 +134,17 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Upload Progress Overlay */}
+        {uploading && (
+          <div className="mb-6 bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
+            <div>
+              <p className="text-foreground text-sm font-medium">{uploading}</p>
+              <p className="text-muted-foreground text-xs mt-0.5">Please do not close this page.</p>
+            </div>
+          </div>
+        )}
+
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" placeholder="Search documents..." value={search} onChange={(e) => setSearch(e.target.value)}
