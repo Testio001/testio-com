@@ -36,19 +36,22 @@ const Dashboard = () => {
     if (!file || !user) return;
     const fileExt = file.name.split(".").pop();
     const filePath = `${user.id}/${Date.now()}.${fileExt}`;
-    toast({ title: "Uploading...", description: file.name });
+    setUploading("Uploading document...");
+    setShowUpload(false);
     const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
-    if (uploadError) { toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
+    if (uploadError) { setUploading(null); toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
+    setUploading("Creating document...");
     const { data: doc, error: docError } = await supabase.from("documents").insert({
       user_id: user.id, title: file.name.replace(`.${fileExt}`, ""), source_type: fileExt === "pdf" ? "pdf" : "text", storage_path: filePath, status: "pending",
     }).select().single();
-    if (docError) { toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
-    toast({ title: "Uploaded!", description: "Processing document with AI..." });
-    setShowUpload(false);
+    if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
+    setUploading("Processing with AI... This may take a moment.");
     fetchData();
     if (doc) {
       try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("AI processing error:", err); }
     }
+    setUploading(null);
+    toast({ title: "Done!", description: "Your document has been processed." });
   };
 
   const handleTextUpload = async (text: string, title: string) => {
