@@ -1,0 +1,70 @@
+import { Flame, Shield, Snowflake } from "lucide-react";
+import { UserStats } from "@/hooks/useGamification";
+
+interface StreakDisplayProps {
+  stats: UserStats | null;
+  compact?: boolean;
+}
+
+const StreakDisplay = ({ stats, compact }: StreakDisplayProps) => {
+  if (!stats) return null;
+
+  const streak = stats.current_streak;
+  const nextBonus = stats.current_streak > 0
+    ? 10 - (stats.current_streak % 10)
+    : 10;
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-1.5 text-sm">
+        <Flame className={`w-4 h-4 ${streak > 0 ? "text-orange-400" : "text-muted-foreground"}`} />
+        <span className={`font-bold ${streak > 0 ? "text-orange-400" : "text-muted-foreground"}`}>{streak}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-testio-card rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${streak > 0 ? "bg-orange-500/20" : "bg-muted"}`}>
+            <Flame className={`w-5 h-5 ${streak > 0 ? "text-orange-400" : "text-muted-foreground"}`} />
+          </div>
+          <div>
+            <p className="text-foreground font-bold text-lg">{streak} day streak</p>
+            <p className="text-muted-foreground text-xs">Longest: {stats.longest_streak} days</p>
+          </div>
+        </div>
+        {stats.streak_freezes > 0 && (
+          <div className="flex items-center gap-1 bg-cyan-500/10 text-cyan-400 text-xs px-2 py-1 rounded-full">
+            <Snowflake className="w-3 h-3" />
+            {stats.streak_freezes} freeze{stats.streak_freezes > 1 ? "s" : ""}
+          </div>
+        )}
+      </div>
+
+      {streak > 0 && (
+        <div>
+          <div className="flex justify-between text-xs text-muted-foreground mb-1">
+            <span>Next bonus upload</span>
+            <span>{nextBonus} day{nextBonus > 1 ? "s" : ""}</span>
+          </div>
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-orange-400 to-orange-500 rounded-full transition-all"
+              style={{ width: `${((10 - nextBonus) / 10) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {streak === 0 && stats.longest_streak > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Your streak was broken. Refer a friend to earn a Streak Freeze for next time!
+        </p>
+      )}
+    </div>
+  );
+};
+
+export default StreakDisplay;
