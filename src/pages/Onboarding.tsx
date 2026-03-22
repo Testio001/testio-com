@@ -10,19 +10,19 @@ const steps = [
   {
     icon: FileText,
     title: "Upload Any Content",
-    description: "Drop a PDF, paste text, or add a YouTube link. Testio extracts and understands your material instantly.",
+    description: "Drop a PDF, paste text, or upload an image. Testio extracts and understands your material instantly.",
     color: "text-primary",
   },
   {
     icon: Brain,
     title: "AI-Powered Study Tools",
-    description: "Get comprehensive notes, flashcards, and quizzes generated from your content — all tailored to help you learn faster.",
+    description: "Get comprehensive notes, flashcards, quizzes, and even AI-generated podcasts — all from your content.",
     color: "text-testio-green",
   },
   {
     icon: Mic,
-    title: "Listen as a Podcast",
-    description: "Turn your notes into an engaging two-person podcast conversation. Learn on the go by listening to your study material.",
+    title: "🎙️ Listen as a Podcast",
+    description: "Your notes come alive as a two-person podcast with realistic AI voices. Perfect for learning on the go — commute, gym, or before bed.",
     color: "text-primary",
   },
   {
