@@ -56,15 +56,17 @@ const Dashboard = () => {
 
   const handleTextUpload = async (text: string, title: string) => {
     if (!user || !text.trim()) return;
+    setUploading("Processing text with AI...");
+    setShowUpload(false);
     const { data: doc } = await supabase.from("documents").insert({
       user_id: user.id, title: title || "Untitled", source_type: "text", original_content: text, status: "pending",
     }).select().single();
-    toast({ title: "Created!", description: "Processing with AI..." });
-    setShowUpload(false);
     fetchData();
     if (doc) {
       try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("AI processing error:", err); }
     }
+    setUploading(null);
+    toast({ title: "Done!", description: "Your text has been processed." });
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
