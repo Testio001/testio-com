@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Mic, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Mic, Loader2, Sparkles, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NoteViewer from "@/components/app/NoteViewer";
 import FlashcardViewer from "@/components/app/FlashcardViewer";
@@ -21,6 +22,7 @@ const DocumentView = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { FREE_PODCAST_MAX_EXCHANGES, FREE_QUIZ_MAX_QUESTIONS } = useGamification();
   const [doc, setDoc] = useState<Document | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeTab, setActiveTab] = useState<"notes" | "flashcards" | "quiz" | "chat" | "podcast">("notes");
@@ -75,7 +77,10 @@ const DocumentView = () => {
     if (!id) return;
     setGenerating("quiz");
     try {
-      const { data, error } = await supabase.functions.invoke("generate-quiz", { body: { documentId: id } });
+      // Free users get max 20 questions
+      const { data, error } = await supabase.functions.invoke("generate-quiz", {
+        body: { documentId: id, count: FREE_QUIZ_MAX_QUESTIONS, maxQuestions: FREE_QUIZ_MAX_QUESTIONS }
+      });
       if (error) throw error;
       toast({ title: "Quiz generated!" });
       setQuizKey(prev => prev + 1);
@@ -91,7 +96,10 @@ const DocumentView = () => {
     if (!id) return;
     setGenerating("podcast");
     try {
-      const { data, error } = await supabase.functions.invoke("generate-podcast", { body: { documentId: id } });
+      // Free users get shortened podcast (8 exchanges ~3 mins)
+      const { data, error } = await supabase.functions.invoke("generate-podcast", {
+        body: { documentId: id, maxExchanges: FREE_PODCAST_MAX_EXCHANGES }
+      });
       if (error) throw error;
       toast({ title: "Podcast generated!" });
       setPodcastKey(prev => prev + 1);
@@ -178,6 +186,9 @@ const DocumentView = () => {
               {generating === "quiz" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
               Generate Quiz
             </button>
+            <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
+              <Crown className="w-3 h-3" /> Free plan: up to {FREE_QUIZ_MAX_QUESTIONS} questions per quiz
+            </p>
           </div>
         )}
 
@@ -187,6 +198,9 @@ const DocumentView = () => {
               {generating === "podcast" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
               Generate Podcast
             </button>
+            <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
+              <Crown className="w-3 h-3" /> Free plan: ~3 minute preview. Upgrade for full-length podcasts.
+            </p>
             {generating === "podcast" && (
               <p className="text-muted-foreground text-xs mt-3 flex items-center gap-2">
                 <Loader2 className="w-3 h-3 animate-spin" />
