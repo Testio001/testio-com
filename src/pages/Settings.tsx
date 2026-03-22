@@ -2,10 +2,25 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Moon, Sun, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Trash2, Loader2, Mail, Globe, FileText, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
 import testioLogo from "@/assets/testio-logo.png";
+
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "es", label: "Español" },
+  { code: "fr", label: "Français" },
+  { code: "de", label: "Deutsch" },
+  { code: "pt", label: "Português" },
+  { code: "ar", label: "العربية" },
+  { code: "zh", label: "中文" },
+  { code: "hi", label: "हिन्दी" },
+  { code: "yo", label: "Yorùbá" },
+  { code: "ha", label: "Hausa" },
+  { code: "ig", label: "Igbo" },
+  { code: "sw", label: "Kiswahili" },
+];
 
 const Settings = () => {
   const { user, signOut } = useAuth();
