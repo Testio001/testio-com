@@ -23,6 +23,7 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [script, setScript] = useState<PodcastSegment[]>([]);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
