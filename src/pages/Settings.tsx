@@ -29,6 +29,13 @@ const Settings = () => {
   const { theme, setTheme } = useTheme();
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [language, setLanguage] = useState(() => localStorage.getItem("testio-language") || "en");
+
+  const handleLanguageChange = (code: string) => {
+    setLanguage(code);
+    localStorage.setItem("testio-language", code);
+    toast({ title: "Language updated", description: `Language set to ${LANGUAGES.find(l => l.code === code)?.label}` });
+  };
 
   const handleDeleteAccount = async () => {
     if (!confirmDelete) {
