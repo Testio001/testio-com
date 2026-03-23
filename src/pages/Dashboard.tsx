@@ -108,6 +108,7 @@ const Dashboard = () => {
       user_id: user.id, title: title || "Untitled", source_type: "text", original_content: text, status: "pending",
     }).select().single();
 
+    gamification.optimisticIncrement();
     const result = await gamification.recordUpload();
     if (result?.bonusEarned) {
       toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
@@ -121,8 +122,7 @@ const Dashboard = () => {
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your text has been processed." });
-      } catch (err: any) {
-        console.error("AI processing error:", err);
+      } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the text. Please try again.", variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
