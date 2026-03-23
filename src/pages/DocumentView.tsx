@@ -47,11 +47,18 @@ const DocumentView = () => {
     setGenerating("notes");
     try {
       const { data, error } = await supabase.functions.invoke("generate-notes", { body: { documentId: id } });
-      if (error) throw error;
+      if (error) {
+        const errorBody = typeof error === 'object' && error.message ? error.message : String(error);
+        throw new Error(errorBody);
+      }
+      if (data?.error) throw new Error(data.error);
       toast({ title: "Notes generated!" });
       await fetchDocument();
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      const msg = err?.message?.includes("non-2xx") 
+        ? "We couldn't read the text from this file. Please try re-uploading a clearer PDF or image."
+        : err?.message || "Something went wrong. Please try again.";
+      toast({ title: "Generation failed", description: msg, variant: "destructive" });
     } finally {
       setGenerating(null);
     }
@@ -63,11 +70,15 @@ const DocumentView = () => {
     try {
       const { data, error } = await supabase.functions.invoke("generate-flashcards", { body: { documentId: id } });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast({ title: "Flashcards generated!" });
       setFlashcardKey(prev => prev + 1);
       setActiveTab("flashcards");
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      const msg = err?.message?.includes("non-2xx")
+        ? "We couldn't read the text from this file. Please try re-uploading a clearer PDF or image."
+        : err?.message || "Something went wrong. Please try again.";
+      toast({ title: "Generation failed", description: msg, variant: "destructive" });
     } finally {
       setGenerating(null);
     }
@@ -82,11 +93,15 @@ const DocumentView = () => {
         body: { documentId: id, count: FREE_QUIZ_MAX_QUESTIONS, maxQuestions: FREE_QUIZ_MAX_QUESTIONS }
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast({ title: "Quiz generated!" });
       setQuizKey(prev => prev + 1);
       setActiveTab("quiz");
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      const msg = err?.message?.includes("non-2xx")
+        ? "We couldn't read the text from this file. Please try re-uploading a clearer PDF or image."
+        : err?.message || "Something went wrong. Please try again.";
+      toast({ title: "Generation failed", description: msg, variant: "destructive" });
     } finally {
       setGenerating(null);
     }
@@ -101,11 +116,15 @@ const DocumentView = () => {
         body: { documentId: id, maxExchanges: FREE_PODCAST_MAX_EXCHANGES }
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast({ title: "Podcast generated!" });
       setPodcastKey(prev => prev + 1);
       setActiveTab("podcast");
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      const msg = err?.message?.includes("non-2xx")
+        ? "Podcast generation failed. Please try again in a moment."
+        : err?.message || "Something went wrong. Please try again.";
+      toast({ title: "Generation failed", description: msg, variant: "destructive" });
     } finally {
       setGenerating(null);
     }

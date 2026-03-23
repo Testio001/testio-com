@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getValidatedContent } from "../_shared/extract-content.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,16 +17,18 @@ serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const { data: doc } = await supabase.from("documents").select("*").eq("id", documentId).single();
-    if (!doc) throw new Error("Document not found");
+    // Get validated content
+    const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
 
+    // Also use notes for richer context
     const { data: notes } = await supabase.from("notes").select("content").eq("document_id", documentId);
-    const noteContent = notes?.map(n => n.content).join("\n\n") || doc.original_content || "";
+    const noteContent = notes?.map((n: any) => n.content).join("\n\n") || "";
+    const contextContent = noteContent || content;
 
     const messages = [
       {
         role: "system",
-        content: `You are Testio AI, a helpful study assistant. You have full context of the user's document and notes. Answer questions, explain concepts, and help the user study. Be concise but thorough.\n\nDocument: ${doc.title}\n\nNotes context:\n${noteContent.substring(0, 10000)}`
+        content: `You are Testio AI, a helpful study assistant. You have full context of the user's document and notes. Answer questions, explain concepts, and help the user study. Be concise but thorough.\n\nDocument: ${doc.title}\n\nNotes context:\n${contextContent.substring(0, 10000)}`
       },
       ...(history || []),
       { role: "user", content: message }
@@ -33,19 +36,13 @@ serve(async (req) => {
 
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages,
-      }),
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-4o-mini", messages }),
     });
 
     if (!aiResponse.ok) {
-      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limited" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error("AI failed");
+      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limited. Please try again in a moment." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      throw new Error("Chat failed. Please try again.");
     }
 
     const aiData = await aiResponse.json();
@@ -56,7 +53,7 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("Error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Something went wrong. Please try again." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

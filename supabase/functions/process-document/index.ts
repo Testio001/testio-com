@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractDocumentContent, sanitizeForDb } from "../_shared/extract-content.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,9 @@ serve(async (req) => {
   try {
     const { documentId } = await req.json();
 
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!openaiKey) throw new Error("OPENAI_API_KEY not configured");
+
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: doc } = await supabase.from("documents").select("*").eq("id", documentId).single();
@@ -19,211 +23,45 @@ serve(async (req) => {
 
     await supabase.from("documents").update({ status: "processing" }).eq("id", documentId);
 
-    let extractedContent = doc.original_content || "";
+    // Use shared extraction with quality gates
+    const result = await extractDocumentContent({ supabase, doc, openaiKey });
 
-    // If document is an image, use OpenAI Vision to extract text
-    if (doc.source_type === "image" && doc.storage_path) {
-      console.log("Processing image with OpenAI Vision...");
-      const { data: fileData, error: downloadError } = await supabase.storage
-        .from("documents")
-        .download(doc.storage_path);
-
-      if (downloadError) throw new Error(`Failed to download image: ${downloadError.message}`);
-
-      const arrayBuffer = await fileData.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = '';
-      const chunkSize = 8192;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-      }
-      const base64 = btoa(binary);
-      const ext = doc.storage_path.split('.').pop()?.toLowerCase() || 'png';
-      const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/png';
-      const dataUrl = `data:${mimeType};base64,${base64}`;
-
-      const openaiKey = Deno.env.get("OPENAI_API_KEY");
-      if (!openaiKey) throw new Error("OpenAI API key not configured");
-
-      const visionRes = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{
-            role: "user",
-            content: [
-              { type: "text", text: "Extract ALL text content from this image. Include every word, number, heading, label, and piece of text you can see. Preserve the structure and formatting as much as possible. If it's a document, textbook page, or notes, capture everything in full detail." },
-              { type: "image_url", image_url: { url: dataUrl } }
-            ]
-          }],
-          max_tokens: 4096,
-        }),
-      });
-
-      if (!visionRes.ok) {
-        const errBody = await visionRes.text();
-        console.error("Vision API error:", errBody);
-        throw new Error("Failed to extract text from image");
-      }
-
-      const visionData = await visionRes.json();
-      extractedContent = visionData.choices?.[0]?.message?.content || "";
-      console.log(`Extracted ${extractedContent.length} chars from image via Vision`);
+    if (!result.success) {
+      console.error("Extraction failed:", result.error);
+      await supabase.from("documents").update({ status: "failed" }).eq("id", documentId);
+      return new Response(
+        JSON.stringify({ error: result.error || "Could not extract text from this file. Please try re-uploading a clearer version." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // If document has a storage_path (uploaded file), download and extract text
-    if (doc.storage_path && !extractedContent && doc.source_type !== "image") {
-      console.log("Downloading file from storage:", doc.storage_path);
-      const { data: fileData, error: downloadError } = await supabase.storage
-        .from("documents")
-        .download(doc.storage_path);
+    console.log(`Extraction succeeded via ${result.method}: ${result.content.length} chars`);
 
-      if (downloadError) {
-        console.error("Download error:", downloadError);
-        throw new Error(`Failed to download file: ${downloadError.message}`);
-      }
-
-      if (fileData) {
-        const fileType = doc.storage_path.split('.').pop()?.toLowerCase();
-        
-        if (fileType === 'pdf') {
-          try {
-            const arrayBuffer = await fileData.arrayBuffer();
-            const uint8Array = new Uint8Array(arrayBuffer);
-            const rawText = new TextDecoder('latin1').decode(uint8Array);
-            const textParts: string[] = [];
-            
-            const btEtRegex = /BT\s*([\s\S]*?)\s*ET/g;
-            let match;
-            while ((match = btEtRegex.exec(rawText)) !== null) {
-              const textBlock = match[1];
-              const parenRegex = /\(([^)]*)\)/g;
-              let strMatch;
-              while ((strMatch = parenRegex.exec(textBlock)) !== null) {
-                const decoded = strMatch[1]
-                  .replace(/\\n/g, '\n')
-                  .replace(/\\r/g, '\r')
-                  .replace(/\\t/g, '\t')
-                  .replace(/\\\\/g, '\\')
-                  .replace(/\\([()])/g, '$1');
-                if (decoded.trim()) textParts.push(decoded);
-              }
-              const hexRegex = /<([0-9A-Fa-f]+)>/g;
-              let hexMatch;
-              while ((hexMatch = hexRegex.exec(textBlock)) !== null) {
-                const hex = hexMatch[1];
-                let hexText = '';
-                for (let i = 0; i < hex.length; i += 2) {
-                  const charCode = parseInt(hex.substr(i, 2), 16);
-                  if (charCode >= 32 && charCode < 127) {
-                    hexText += String.fromCharCode(charCode);
-                  }
-                }
-                if (hexText.trim()) textParts.push(hexText);
-              }
-            }
-            
-            extractedContent = textParts.join(' ').replace(/\s+/g, ' ').trim();
-            
-            if (extractedContent.length < 100) {
-              const readableRegex = /[\x20-\x7E]{10,}/g;
-              const readableParts: string[] = [];
-              let rMatch;
-              while ((rMatch = readableRegex.exec(rawText)) !== null) {
-                const text = rMatch[0].trim();
-                if (text && !text.match(/^[\/\[\]<>{}%]+$/) && !text.match(/^\d+\s+\d+\s+obj/)) {
-                  readableParts.push(text);
-                }
-              }
-              if (readableParts.join(' ').length > extractedContent.length) {
-                extractedContent = readableParts.join(' ');
-              }
-            }
-
-            // If regex extraction failed, use OpenAI to extract text from the PDF
-            if (extractedContent.length < 100) {
-              console.log("Regex PDF extraction insufficient, using OpenAI Vision for PDF OCR...");
-              const openaiKey = Deno.env.get("OPENAI_API_KEY");
-              if (openaiKey) {
-                // Convert PDF bytes to base64 and send as image (OpenAI handles multi-format)
-                let binary = '';
-                const chunkSize = 8192;
-                for (let i = 0; i < uint8Array.length; i += chunkSize) {
-                  binary += String.fromCharCode(...uint8Array.subarray(i, i + chunkSize));
-                }
-                const pdfBase64 = btoa(binary);
-                
-                const ocrRes = await fetch("https://api.openai.com/v1/chat/completions", {
-                  method: "POST",
-                  headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    messages: [{
-                      role: "user",
-                      content: [
-                        { type: "text", text: "Extract ALL text content from this PDF document. Include every word, heading, paragraph, bullet point, and piece of text. Preserve the structure and formatting. Capture everything in full detail. Do NOT summarize - extract the raw text." },
-                        { type: "file", file: { filename: `${doc.title}.pdf`, file_data: `data:application/pdf;base64,${pdfBase64}` } }
-                      ]
-                    }],
-                    max_tokens: 16000,
-                  }),
-                });
-
-                if (ocrRes.ok) {
-                  const ocrData = await ocrRes.json();
-                  const ocrContent = ocrData.choices?.[0]?.message?.content || "";
-                  if (ocrContent.length > extractedContent.length) {
-                    extractedContent = ocrContent;
-                    console.log(`Extracted ${extractedContent.length} chars from PDF via OpenAI`);
-                  }
-                } else {
-                  console.error("OpenAI PDF OCR failed:", await ocrRes.text());
-                }
-              }
-            }
-
-            if (extractedContent.length < 50) {
-              extractedContent = `PDF Document titled "${doc.title}". The PDF content could not be extracted. File size: ${uint8Array.length} bytes.`;
-            }
-
-            console.log(`Final PDF extraction: ${extractedContent.length} chars`);
-          } catch (pdfError) {
-            console.error("PDF extraction error:", pdfError);
-            extractedContent = "";
-          }
-        } else {
-          extractedContent = await fileData.text();
-        }
-      }
-    }
-
-    if (!extractedContent) {
-      extractedContent = `Document: ${doc.title}. Source type: ${doc.source_type}.`;
-    }
-
-    const contentToSave = extractedContent.substring(0, 50000);
-    console.log(`Saving content to DB: ${contentToSave.length} chars for document ${documentId}`);
-    
-    const { error: updateError } = await supabase.from("documents").update({ 
-      status: "completed", 
-      original_content: contentToSave 
+    // Save sanitized content - this is the critical step
+    const contentToSave = result.content.substring(0, 50000);
+    const { error: updateError } = await supabase.from("documents").update({
+      status: "completed",
+      original_content: contentToSave,
     }).eq("id", documentId);
-    
+
     if (updateError) {
-      console.error("Failed to update document with content:", updateError.message);
-      // Try saving without content to at least update status
-      await supabase.from("documents").update({ status: "completed" }).eq("id", documentId);
-    } else {
-      console.log("Document content saved successfully");
+      console.error("Failed to save content:", updateError.message);
+      // Mark as failed - do NOT mark completed without content
+      await supabase.from("documents").update({ status: "failed" }).eq("id", documentId);
+      return new Response(
+        JSON.stringify({ error: "Document was processed but couldn't be saved. Please try re-uploading." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    return new Response(JSON.stringify({ success: true, contentLength: extractedContent.length }), {
+    console.log("Document content saved successfully");
+
+    return new Response(JSON.stringify({ success: true, contentLength: result.content.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("Error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

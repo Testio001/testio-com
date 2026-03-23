@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_documents_user_status ON public.documents(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_documents_original_content_null ON public.documents(id) WHERE original_content IS NULL AND status = 'completed';
