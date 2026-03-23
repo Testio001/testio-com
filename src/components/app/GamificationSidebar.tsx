@@ -1,20 +1,20 @@
-import { useGamification } from "@/hooks/useGamification";
 import StreakDisplay from "./StreakDisplay";
 import ReferralCard from "./ReferralCard";
 import BadgesDisplay from "./BadgesDisplay";
 import Leaderboard from "./Leaderboard";
 import { Upload, Crown } from "lucide-react";
+import type { GamificationData } from "@/hooks/useGamification";
 
 interface GamificationSidebarProps {
   onUpgrade: () => void;
+  gamification: GamificationData;
 }
 
-const GamificationSidebar = ({ onUpgrade }: GamificationSidebarProps) => {
+const GamificationSidebar = ({ onUpgrade, gamification }: GamificationSidebarProps) => {
   const {
     stats,
     badges,
     loading,
-    canUpload,
     uploadsRemaining,
     totalUploadsAllowed,
     referralsRemaining,
@@ -22,7 +22,7 @@ const GamificationSidebar = ({ onUpgrade }: GamificationSidebarProps) => {
     daysUntilReferralReset,
     getReferralLink,
     MAX_REFERRALS_PER_MONTH,
-  } = useGamification();
+  } = gamification;
 
   if (loading || !stats) return null;
 
