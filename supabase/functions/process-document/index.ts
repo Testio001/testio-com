@@ -141,14 +141,56 @@ serve(async (req) => {
               }
             }
 
-            if (extractedContent.length < 50) {
-              extractedContent = `PDF Document: ${doc.title}. The PDF content could not be fully extracted via text parsing. File size: ${uint8Array.length} bytes. Please generate study materials based on the document title and any available context.`;
+            // If regex extraction failed, use OpenAI to extract text from the PDF
+            if (extractedContent.length < 100) {
+              console.log("Regex PDF extraction insufficient, using OpenAI Vision for PDF OCR...");
+              const openaiKey = Deno.env.get("OPENAI_API_KEY");
+              if (openaiKey) {
+                // Convert PDF bytes to base64 and send as image (OpenAI handles multi-format)
+                let binary = '';
+                const chunkSize = 8192;
+                for (let i = 0; i < uint8Array.length; i += chunkSize) {
+                  binary += String.fromCharCode(...uint8Array.subarray(i, i + chunkSize));
+                }
+                const pdfBase64 = btoa(binary);
+                
+                const ocrRes = await fetch("https://api.openai.com/v1/chat/completions", {
+                  method: "POST",
+                  headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [{
+                      role: "user",
+                      content: [
+                        { type: "text", text: "Extract ALL text content from this PDF document. Include every word, heading, paragraph, bullet point, and piece of text. Preserve the structure and formatting. Capture everything in full detail. Do NOT summarize - extract the raw text." },
+                        { type: "file", file: { filename: `${doc.title}.pdf`, file_data: `data:application/pdf;base64,${pdfBase64}` } }
+                      ]
+                    }],
+                    max_tokens: 16000,
+                  }),
+                });
+
+                if (ocrRes.ok) {
+                  const ocrData = await ocrRes.json();
+                  const ocrContent = ocrData.choices?.[0]?.message?.content || "";
+                  if (ocrContent.length > extractedContent.length) {
+                    extractedContent = ocrContent;
+                    console.log(`Extracted ${extractedContent.length} chars from PDF via OpenAI`);
+                  }
+                } else {
+                  console.error("OpenAI PDF OCR failed:", await ocrRes.text());
+                }
+              }
             }
 
-            console.log(`Extracted ${extractedContent.length} chars from PDF`);
+            if (extractedContent.length < 50) {
+              extractedContent = `PDF Document titled "${doc.title}". The PDF content could not be extracted. File size: ${uint8Array.length} bytes.`;
+            }
+
+            console.log(`Final PDF extraction: ${extractedContent.length} chars`);
           } catch (pdfError) {
             console.error("PDF extraction error:", pdfError);
-            extractedContent = `PDF Document: ${doc.title}. Unable to extract text directly. Please generate study materials based on the document title.`;
+            extractedContent = "";
           }
         } else {
           extractedContent = await fileData.text();

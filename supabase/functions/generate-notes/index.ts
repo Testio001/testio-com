@@ -21,7 +21,11 @@ serve(async (req) => {
 
     await supabase.from("documents").update({ status: "processing" }).eq("id", documentId);
 
-    const content = doc.original_content || `Document: ${doc.title}. Source type: ${doc.source_type}.`;
+    const content = doc.original_content;
+    if (!content || content.length < 20) {
+      await supabase.from("documents").update({ status: "failed" }).eq("id", documentId);
+      return new Response(JSON.stringify({ error: "Document content could not be extracted. Please try re-uploading or use text input instead." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
