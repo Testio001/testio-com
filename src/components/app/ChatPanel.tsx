@@ -67,8 +67,7 @@ const ChatPanel = ({ documentId }: { documentId: string }) => {
       }).select().single();
 
       if (aiMsg) setMessages((prev) => [...prev, aiMsg]);
-    } catch (err: any) {
-      console.error("Chat error:", err);
+    } catch {
       const { data: errMsg } = await supabase.from("chat_messages").insert({
         user_id: user.id,
         document_id: documentId,
