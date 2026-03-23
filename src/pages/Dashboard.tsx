@@ -82,10 +82,22 @@ const Dashboard = () => {
 
     fetchData();
     if (doc) {
-      try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("AI processing error:", err); }
+      try {
+        const { error: fnError } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
+        if (fnError) throw fnError;
+        fetchData();
+        setUploading(null);
+        toast({ title: "Done!", description: "Your document has been processed." });
+      } catch (err: any) {
+        console.error("AI processing error:", err);
+        setUploading(null);
+        toast({ title: "Processing failed", description: "Couldn't process the document. Please try re-uploading or try again later.", variant: "destructive" });
+        await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
+        fetchData();
+      }
+    } else {
+      setUploading(null);
     }
-    setUploading(null);
-    toast({ title: "Done!", description: "Your document has been processed." });
   };
 
   const handleTextUpload = async (text: string, title: string) => {
@@ -103,10 +115,22 @@ const Dashboard = () => {
 
     fetchData();
     if (doc) {
-      try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("AI processing error:", err); }
+      try {
+        const { error: fnError } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
+        if (fnError) throw fnError;
+        fetchData();
+        setUploading(null);
+        toast({ title: "Done!", description: "Your text has been processed." });
+      } catch (err: any) {
+        console.error("AI processing error:", err);
+        setUploading(null);
+        toast({ title: "Processing failed", description: "Couldn't process the text. Please try again.", variant: "destructive" });
+        await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
+        fetchData();
+      }
+    } else {
+      setUploading(null);
     }
-    setUploading(null);
-    toast({ title: "Done!", description: "Your text has been processed." });
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,16 +156,53 @@ const Dashboard = () => {
 
     fetchData();
     if (doc) {
-      try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("Image processing error:", err); }
+      try {
+        const { error: fnError } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
+        if (fnError) throw fnError;
+        fetchData();
+        setUploading(null);
+        toast({ title: "Done!", description: "Your image has been processed." });
+      } catch (err: any) {
+        console.error("Image processing error:", err);
+        setUploading(null);
+        toast({ title: "Processing failed", description: "Couldn't process the image. Please try again.", variant: "destructive" });
+        await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
+        fetchData();
+      }
+    } else {
+      setUploading(null);
     }
-    setUploading(null);
-    toast({ title: "Done!", description: "Your image has been processed." });
   };
 
-  const deleteDocument = async (id: string) => {
-    await supabase.from("documents").delete().eq("id", id);
-    fetchData();
-    toast({ title: "Deleted" });
+  const deleteDocument = async (docId: string) => {
+    // Remove from UI immediately
+    const deletedDoc = documents.find(d => d.id === docId);
+    setDocuments(prev => prev.filter(d => d.id !== docId));
+
+    let undone = false;
+    const timeout = setTimeout(async () => {
+      if (!undone) {
+        await supabase.from("documents").delete().eq("id", docId);
+      }
+    }, 5000);
+
+    toast({
+      title: "Document deleted",
+      description: "This action will be permanent in a few seconds.",
+      action: (
+        <button
+          onClick={() => {
+            undone = true;
+            clearTimeout(timeout);
+            if (deletedDoc) setDocuments(prev => [deletedDoc, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+            toast({ title: "Restored!", description: "Document has been restored." });
+          }}
+          className="text-xs font-semibold text-primary hover:underline whitespace-nowrap"
+        >
+          Undo
+        </button>
+      ),
+    });
   };
 
   const filteredDocs = documents.filter((d) => d.title.toLowerCase().includes(search.toLowerCase()));
