@@ -41,6 +41,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <NativeHooks />
             <Routes>
               <Route path="/" element={<Onboarding />} />
               <Route path="/auth" element={<Auth />} />
