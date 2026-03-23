@@ -27,6 +27,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const NativeHooks = () => {
+  useBackButton();
+  usePushNotifications();
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
