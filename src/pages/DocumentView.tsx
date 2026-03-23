@@ -93,11 +93,15 @@ const DocumentView = () => {
         body: { documentId: id, count: FREE_QUIZ_MAX_QUESTIONS, maxQuestions: FREE_QUIZ_MAX_QUESTIONS }
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast({ title: "Quiz generated!" });
       setQuizKey(prev => prev + 1);
       setActiveTab("quiz");
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      const msg = err?.message?.includes("non-2xx")
+        ? "We couldn't read the text from this file. Please try re-uploading a clearer PDF or image."
+        : err?.message || "Something went wrong. Please try again.";
+      toast({ title: "Generation failed", description: msg, variant: "destructive" });
     } finally {
       setGenerating(null);
     }
