@@ -55,7 +55,9 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
 
   const getOptions = (q: QuizQuestion): QuizOption[] => {
     try {
-      return (q.options as any) as QuizOption[];
+      const raw = (q.options as any) as QuizOption[];
+      // Filter out options with empty/missing text
+      return raw.filter(opt => opt && opt.text && opt.text.trim().length > 0);
     } catch {
       return [];
     }
