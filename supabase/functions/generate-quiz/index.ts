@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getValidatedContent } from "../_shared/extract-content.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,18 +18,20 @@ serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const { data: doc } = await supabase.from("documents").select("*").eq("id", documentId).single();
-    if (!doc) throw new Error("Document not found");
+    // Get validated content - NO title fallback
+    const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
 
+    // Also check notes for richer content
     const { data: notes } = await supabase.from("notes").select("content").eq("document_id", documentId);
-    const noteContent = notes?.map(n => n.content).join("\n") || doc.original_content || doc.title;
+    const noteContent = notes?.map((n: any) => n.content).join("\n");
+    const sourceContent = (noteContent && noteContent.length > content.length) ? noteContent : content;
 
     // Get existing questions to avoid duplicates
     const { data: existingQuizzes } = await supabase.from("quizzes").select("id").eq("document_id", documentId);
     let existingQuestions: string[] = [];
     if (existingQuizzes && existingQuizzes.length > 0) {
-      const { data: existing } = await supabase.from("quiz_questions").select("question").in("quiz_id", existingQuizzes.map(q => q.id));
-      existingQuestions = existing?.map(q => q.question) || [];
+      const { data: existing } = await supabase.from("quiz_questions").select("question").in("quiz_id", existingQuizzes.map((q: any) => q.id));
+      existingQuestions = existing?.map((q: any) => q.question) || [];
     }
 
     const avoidPrompt = existingQuestions.length > 0
@@ -42,7 +45,7 @@ serve(async (req) => {
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "Generate a multiple-choice quiz from the study content. Return structured data." },
-          { role: "user", content: `Create ${questionCount} NEW unique multiple-choice questions from this content. Each question should have 4 options with exactly one correct answer and an explanation.${avoidPrompt}\n\nContent:\n${noteContent.substring(0, 12000)}` }
+          { role: "user", content: `Create ${questionCount} NEW unique multiple-choice questions from this content. Each question should have 4 options with exactly one correct answer and an explanation.${avoidPrompt}\n\nContent:\n${sourceContent.substring(0, 12000)}` }
         ],
         tools: [{
           type: "function",
@@ -76,8 +79,8 @@ serve(async (req) => {
     });
 
     if (!aiResponse.ok) {
-      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limited" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error("AI failed");
+      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limited. Please try again in a moment." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      throw new Error("Quiz generation failed. Please try again.");
     }
 
     const aiData = await aiResponse.json();
@@ -100,6 +103,6 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, count: questions.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("Error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Something went wrong. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
