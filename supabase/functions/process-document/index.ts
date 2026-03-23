@@ -202,10 +202,21 @@ serve(async (req) => {
       extractedContent = `Document: ${doc.title}. Source type: ${doc.source_type}.`;
     }
 
-    await supabase.from("documents").update({ 
+    const contentToSave = extractedContent.substring(0, 50000);
+    console.log(`Saving content to DB: ${contentToSave.length} chars for document ${documentId}`);
+    
+    const { error: updateError } = await supabase.from("documents").update({ 
       status: "completed", 
-      original_content: extractedContent.substring(0, 50000) 
+      original_content: contentToSave 
     }).eq("id", documentId);
+    
+    if (updateError) {
+      console.error("Failed to update document with content:", updateError.message);
+      // Try saving without content to at least update status
+      await supabase.from("documents").update({ status: "completed" }).eq("id", documentId);
+    } else {
+      console.log("Document content saved successfully");
+    }
 
     return new Response(JSON.stringify({ success: true, contentLength: extractedContent.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
