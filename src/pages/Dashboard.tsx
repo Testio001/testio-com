@@ -329,6 +329,7 @@ const Dashboard = () => {
         <div className="lg:hidden mt-8">
           <GamificationSidebar
             onUpgrade={() => toast({ title: "Coming soon!", description: "Premium plans are launching soon." })}
+            gamification={gamification}
           />
         </div>
       </div>
