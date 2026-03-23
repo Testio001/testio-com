@@ -320,6 +320,7 @@ const Dashboard = () => {
           <div className="hidden lg:block w-80 shrink-0">
             <GamificationSidebar
               onUpgrade={() => toast({ title: "Coming soon!", description: "Premium plans are launching soon." })}
+              gamification={gamification}
             />
           </div>
         </div>
