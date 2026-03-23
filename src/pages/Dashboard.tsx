@@ -138,10 +138,35 @@ const Dashboard = () => {
     toast({ title: "Done!", description: "Your image has been processed." });
   };
 
-  const deleteDocument = async (id: string) => {
-    await supabase.from("documents").delete().eq("id", id);
-    fetchData();
-    toast({ title: "Deleted" });
+  const deleteDocument = async (docId: string) => {
+    // Remove from UI immediately
+    const deletedDoc = documents.find(d => d.id === docId);
+    setDocuments(prev => prev.filter(d => d.id !== docId));
+
+    let undone = false;
+    const timeout = setTimeout(async () => {
+      if (!undone) {
+        await supabase.from("documents").delete().eq("id", docId);
+      }
+    }, 5000);
+
+    toast({
+      title: "Document deleted",
+      description: "This action will be permanent in a few seconds.",
+      action: (
+        <button
+          onClick={() => {
+            undone = true;
+            clearTimeout(timeout);
+            if (deletedDoc) setDocuments(prev => [deletedDoc, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+            toast({ title: "Restored!", description: "Document has been restored." });
+          }}
+          className="text-xs font-semibold text-primary hover:underline whitespace-nowrap"
+        >
+          Undo
+        </button>
+      ),
+    });
   };
 
   const filteredDocs = documents.filter((d) => d.title.toLowerCase().includes(search.toLowerCase()));
