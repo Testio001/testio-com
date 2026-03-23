@@ -103,10 +103,22 @@ const Dashboard = () => {
 
     fetchData();
     if (doc) {
-      try { await supabase.functions.invoke("process-document", { body: { documentId: doc.id } }); fetchData(); } catch (err) { console.error("AI processing error:", err); }
+      try {
+        const { error: fnError } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
+        if (fnError) throw fnError;
+        fetchData();
+        setUploading(null);
+        toast({ title: "Done!", description: "Your text has been processed." });
+      } catch (err: any) {
+        console.error("AI processing error:", err);
+        setUploading(null);
+        toast({ title: "Processing failed", description: "Couldn't process the text. Please try again.", variant: "destructive" });
+        await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
+        fetchData();
+      }
+    } else {
+      setUploading(null);
     }
-    setUploading(null);
-    toast({ title: "Done!", description: "Your text has been processed." });
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
