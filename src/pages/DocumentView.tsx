@@ -47,11 +47,18 @@ const DocumentView = () => {
     setGenerating("notes");
     try {
       const { data, error } = await supabase.functions.invoke("generate-notes", { body: { documentId: id } });
-      if (error) throw error;
+      if (error) {
+        const errorBody = typeof error === 'object' && error.message ? error.message : String(error);
+        throw new Error(errorBody);
+      }
+      if (data?.error) throw new Error(data.error);
       toast({ title: "Notes generated!" });
       await fetchDocument();
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      const msg = err?.message?.includes("non-2xx") 
+        ? "We couldn't read the text from this file. Please try re-uploading a clearer PDF or image."
+        : err?.message || "Something went wrong. Please try again.";
+      toast({ title: "Generation failed", description: msg, variant: "destructive" });
     } finally {
       setGenerating(null);
     }
