@@ -1,95 +1,120 @@
 
+Goal: fix the document-to-notes pipeline so Testio always uses the uploaded file content, not PDF internals, titles, or hallucinated fallback text.
 
-## Optimization Plan for Testio
+What I checked
+- The problem is real and is mainly backend, not CSS/UI.
+- Recent broken PDFs are marked `completed` while `original_content` is still `NULL`.
+- Edge logs show the same root error repeatedly:
+  - `Failed to update document with content: unsupported Unicode escape sequence`
+- The current PDF extractor often treats raw PDF internals as “successful” text because it only checks length, so nonsense gets passed into note generation.
+- `generate-flashcards` and `generate-quiz` still have dangerous fallbacks to `doc.title`, so the same class of bug can affect more than notes.
+- `chat-with-notes` and `generate-podcast` depend on notes/content, so bad extraction contaminates those too.
 
-### Assessment: What's Already Done vs. Needs Work
+Root causes
+1. PDF extraction quality check is too weak  
+   A long blob of PDF object/encoding text is accepted as valid content.
+2. Saving extracted text is failing  
+   The extracted string contains invalid characters/escape sequences, so DB writes fail.
+3. Status handling is wrong  
+   Documents can be marked `completed` even when extracted content was never saved.
+4. Logic is duplicated across functions  
+   `process-document` and `generate-notes` each do their own extraction/fallback, which makes bugs inconsistent.
+5. Unsafe content fallbacks still exist  
+   Quiz/flashcards can fall back to the document title and generate nonsense.
 
-| Area | Status | Notes |
-|------|--------|-------|
-| Podcast TTS at API level | Done | Edge function already handles `maxExchanges` |
-| 3-min cliffhanger cut-off | Done | Already in `generate-podcast` edge function |
-| Separate StreakDisplay/ReferralCard components | Done | Already atomic components |
-| RLS on all gamification tables | Done | Properly configured |
-| Basic error handling with toasts | Partially done | Needs cleanup in some flows |
-| Streak/referral logic on backend | NOT done | All in frontend `useGamification.tsx` |
-| Database indexes | NOT done | No indexes on lookup columns |
-| Race condition protection | NOT done | Double uploads can break streak |
-| Optimistic UI updates | NOT done | UI waits for backend |
-| Console.log cleanup | NOT done | `console.error` calls in Dashboard.tsx and ChatPanel.tsx |
-| GamificationSidebar double-hook issue | NOT done | Both Dashboard and Sidebar call `useGamification()` separately |
+Implementation plan
 
----
+1. Harden extraction at the source
+- Refactor document extraction into a shared backend helper used by:
+  - `process-document`
+  - `generate-notes`
+  - `generate-flashcards`
+  - `generate-quiz`
+  - `chat-with-notes`
+  - `generate-podcast`
+- Use a two-stage extraction flow:
+  - Stage A: direct text extraction for real text PDFs/text files
+  - Stage B: OCR/vision fallback when Stage A looks low-quality
+- Replace the current “length > threshold” rule with a quality gate that rejects content dominated by:
+  - PDF syntax (`obj`, `endobj`, `/Type`, `/Filter`, `/Catalog`, etc.)
+  - unreadable symbol density
+  - low word density / low natural-language score
+  - repeated binary/encoding fragments
 
-### What Will Be Implemented
+2. Sanitize extracted content before saving
+- Add a backend sanitization step before every DB write:
+  - strip null bytes
+  - remove unsupported control characters
+  - normalize Unicode
+  - remove malformed escape patterns that break JSON/PostgREST payloads
+- Save only sanitized content to `documents.original_content`.
+- If sanitization leaves the content unusable, treat extraction as failed instead of pretending success.
 
-#### 1. New Edge Function: `manage-gamification`
+3. Fix document status lifecycle
+- `process-document` should only mark a document `completed` after content is successfully persisted.
+- If extraction succeeds in memory but DB save fails, mark the document `failed` and store a user-safe error message.
+- Avoid silent “completed + NULL content” states entirely.
 
-Move all heavy logic from `useGamification.tsx` into a single edge function with action-based routing:
+4. Remove unsafe fallbacks across the study pipeline
+- Remove `doc.title` fallback from:
+  - `generate-flashcards`
+  - `generate-quiz`
+- Ensure all generators require one of:
+  - validated `original_content`, or
+  - validated notes content
+- If no reliable content exists, return a friendly error instead of generating fake study material.
 
-- **`record-upload`**: Handles streak calculation, bonus upload checks, badge awarding, and race condition prevention (checks `last_upload_date` server-side before incrementing)
-- **`process-referral`**: Validates referral code, checks monthly limits, awards bonuses — all atomically on the server
-- **`get-stats`**: Returns user stats, badges, and referrals in one call
-- **`check-streak`**: Handles streak freeze consumption and streak breaking logic
+5. Make note generation use validated source content only
+- Update `generate-notes` so it only proceeds with content that passed the shared extractor/quality gate.
+- If extraction falls back to OCR, use the OCR result directly and persist it once.
+- Prevent note generation from producing “data encoding / corrupted document” summaries unless the document truly is unreadable.
 
-The frontend `useGamification.tsx` will become a thin wrapper that calls these endpoints and manages local state.
+6. Improve error handling in the app
+- Replace generic “edge function returned a non-2xx status code” messaging with clean, student-friendly errors such as:
+  - “We couldn’t read the text from this file yet. Please try again or upload a clearer PDF/image.”
+  - “This file uploaded successfully, but we couldn’t extract readable study content from it.”
+- Surface processing failure clearly in the document status so users know whether the problem is upload, extraction, or generation.
 
-#### 2. Database Migration: Indexes
+7. Repair already-broken documents
+- Add a recovery path for existing documents where:
+  - `status = completed`
+  - `original_content IS NULL`
+- On next generation attempt, automatically re-run extraction with the new shared pipeline.
+- Optionally backfill recent broken documents so users don’t need to re-upload.
 
-Add indexes for fast lookups:
-- `user_stats(referral_code)` — used during referral validation
-- `user_stats(last_upload_date)` — used for streak checks
-- `referrals(referrer_user_id)` — used for referral count queries
-- `user_stats(current_streak DESC)` — used by leaderboard
+8. QA all related flows, not just notes
+- Test with:
+  - a normal text PDF
+  - a scanned/image PDF
+  - a plain text upload
+  - an image upload
+  - a previously broken PDF
+- Verify:
+  - extracted content is saved
+  - notes use actual file content
+  - flashcards/quiz no longer use the title as source
+  - chat/podcast use valid study content
+  - failed files show clear status/messages
 
-#### 3. Race Condition Fix
+Files I would target
+- `supabase/functions/process-document/index.ts`
+- `supabase/functions/generate-notes/index.ts`
+- `supabase/functions/generate-flashcards/index.ts`
+- `supabase/functions/generate-quiz/index.ts`
+- `supabase/functions/generate-podcast/index.ts`
+- `supabase/functions/chat-with-notes/index.ts`
+- new shared backend helper under `supabase/functions/_shared/`
+- `src/pages/DocumentView.tsx`
+- `src/pages/Dashboard.tsx`
 
-In the `record-upload` edge function action, use a database-level check:
-- Read `last_upload_date` inside the function
-- If it equals today, skip streak increment but still count the upload
-- This prevents double-counting even if the user clicks upload twice rapidly
+Technical details
+- Main confirmed backend bug: extracted text save fails with `unsupported Unicode escape sequence`.
+- Main logic bug: the extractor currently accepts long garbage output as “good enough”, so OCR fallback is skipped when it should run.
+- Main data integrity bug: documents can be `completed` while `original_content` is empty.
+- Main cross-feature bug: quiz/flashcards still fall back to the document title, which spreads nonsense generation beyond notes.
 
-#### 4. Optimistic UI Updates
-
-In `Dashboard.tsx`, when a user uploads:
-- Immediately increment the streak counter in local state before the API responds
-- Show the updated streak in `StreakDisplay` instantly
-- If the backend returns an error, roll back the optimistic state
-
-#### 5. Refactor GamificationSidebar
-
-Remove the independent `useGamification()` call from `GamificationSidebar`. Instead, pass gamification data as props from `Dashboard` (which already has the hook). This eliminates duplicate API calls and duplicate state.
-
-#### 6. Console Cleanup
-
-Remove `console.error` calls from:
-- `src/pages/Dashboard.tsx` (3 occurrences)
-- `src/components/app/ChatPanel.tsx` (1 occurrence)
-
-Keep `console.error` in edge functions (server-side logging is fine).
-
-#### 7. Error Handling Polish
-
-- Invalid referral code: show "This referral code doesn't exist. Double-check and try again."
-- OpenAI TTS failure: show "Podcast generation failed. Please try again in a moment."
-- Network errors: show "Connection issue. Check your internet and try again."
-
-All via toast notifications, no crashes.
-
----
-
-### Files to Create/Modify
-
-| File | Action |
-|------|--------|
-| `supabase/functions/manage-gamification/index.ts` | Create — new edge function |
-| `supabase/config.toml` | Add function config |
-| `src/hooks/useGamification.tsx` | Refactor — thin API wrapper |
-| `src/components/app/GamificationSidebar.tsx` | Refactor — receive props instead of own hook |
-| `src/pages/Dashboard.tsx` | Add optimistic updates, pass props to sidebar, remove console.error |
-| `src/components/app/ChatPanel.tsx` | Remove console.error |
-| DB migration | Add 4 indexes |
-
-### No CSS/Design Changes
-
-All changes are backend plumbing and performance-focused.
-
+Expected result
+- Uploaded files become the single true source of generated study content.
+- Broken PDFs either extract correctly through OCR or fail clearly.
+- No more title-based or PDF-internals-based notes.
+- Notes, flashcards, quiz, podcast, and chat all behave consistently because they share the same validated content pipeline.
