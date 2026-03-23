@@ -149,6 +149,7 @@ const Dashboard = () => {
     if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
     setUploading("Extracting text from image with AI... This may take a moment.");
 
+    gamification.optimisticIncrement();
     const result = await gamification.recordUpload();
     if (result?.bonusEarned) {
       toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
@@ -162,8 +163,7 @@ const Dashboard = () => {
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your image has been processed." });
-      } catch (err: any) {
-        console.error("Image processing error:", err);
+      } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the image. Please try again.", variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
