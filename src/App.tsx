@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
+import { useBackButton } from "@/hooks/useBackButton";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import Onboarding from "./pages/Onboarding";
 import Auth from "./pages/Auth";
