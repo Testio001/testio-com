@@ -72,7 +72,8 @@ const Dashboard = () => {
     if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
     setUploading("Processing with AI... This may take a moment.");
 
-    // Record upload for gamification
+    // Optimistic update + record upload on backend
+    gamification.optimisticIncrement();
     const result = await gamification.recordUpload();
     if (result?.bonusEarned) {
       toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak! You earned 1 bonus upload.` });
@@ -88,8 +89,7 @@ const Dashboard = () => {
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your document has been processed." });
-      } catch (err: any) {
-        console.error("AI processing error:", err);
+      } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the document. Please try re-uploading or try again later.", variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
@@ -108,6 +108,7 @@ const Dashboard = () => {
       user_id: user.id, title: title || "Untitled", source_type: "text", original_content: text, status: "pending",
     }).select().single();
 
+    gamification.optimisticIncrement();
     const result = await gamification.recordUpload();
     if (result?.bonusEarned) {
       toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
@@ -121,8 +122,7 @@ const Dashboard = () => {
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your text has been processed." });
-      } catch (err: any) {
-        console.error("AI processing error:", err);
+      } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the text. Please try again.", variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
@@ -149,6 +149,7 @@ const Dashboard = () => {
     if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
     setUploading("Extracting text from image with AI... This may take a moment.");
 
+    gamification.optimisticIncrement();
     const result = await gamification.recordUpload();
     if (result?.bonusEarned) {
       toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
@@ -162,8 +163,7 @@ const Dashboard = () => {
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your image has been processed." });
-      } catch (err: any) {
-        console.error("Image processing error:", err);
+      } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the image. Please try again.", variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
@@ -320,6 +320,7 @@ const Dashboard = () => {
           <div className="hidden lg:block w-80 shrink-0">
             <GamificationSidebar
               onUpgrade={() => toast({ title: "Coming soon!", description: "Premium plans are launching soon." })}
+              gamification={gamification}
             />
           </div>
         </div>
@@ -328,6 +329,7 @@ const Dashboard = () => {
         <div className="lg:hidden mt-8">
           <GamificationSidebar
             onUpgrade={() => toast({ title: "Coming soon!", description: "Premium plans are launching soon." })}
+            gamification={gamification}
           />
         </div>
       </div>

@@ -30,9 +30,33 @@ export interface Referral {
   created_at: string;
 }
 
+export interface GamificationData {
+  stats: UserStats | null;
+  badges: Badge[];
+  referrals: Referral[];
+  loading: boolean;
+  canUpload: boolean;
+  uploadsRemaining: number;
+  totalUploadsAllowed: number;
+  referralsRemaining: number;
+  canRefer: boolean;
+  daysUntilReferralReset: number;
+  recordUpload: () => Promise<{ bonusEarned: boolean; newStreak: number; isNewDay: boolean } | undefined>;
+  getReferralLink: () => string;
+  processReferral: (code: string) => Promise<{ success: boolean; message: string }>;
+  fetchStats: () => Promise<void>;
+  optimisticIncrement: () => void;
+  FREE_UPLOAD_LIMIT: number;
+  MAX_REFERRALS_PER_MONTH: number;
+  FREE_PODCAST_MAX_EXCHANGES: number;
+  FREE_QUIZ_MAX_QUESTIONS: number;
+  STREAK_BONUS_INTERVAL: number;
+  BADGE_DEFINITIONS: typeof BADGE_DEFINITIONS;
+}
+
 const FREE_UPLOAD_LIMIT = 3;
 const MAX_REFERRALS_PER_MONTH = 5;
-const FREE_PODCAST_MAX_EXCHANGES = 8; // ~3 mins
+const FREE_PODCAST_MAX_EXCHANGES = 8;
 const FREE_QUIZ_MAX_QUESTIONS = 20;
 const STREAK_BONUS_INTERVAL = 10;
 
@@ -45,110 +69,95 @@ const BADGE_DEFINITIONS = [
   { type: "streak_100", name: "The 100-Day Master", threshold: 100 },
 ];
 
-function generateReferralCode(): string {
-  return "testio-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+async function invokeGamification(action: string, params: Record<string, any> = {}) {
+  const { data, error } = await supabase.functions.invoke("manage-gamification", {
+    body: { action, ...params },
+  });
+  if (error) throw error;
+  return data;
 }
 
-export function useGamification() {
+export function useGamification(): GamificationData {
   const { user } = useAuth();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadsRemaining, setUploadsRemaining] = useState(0);
+  const [totalUploadsAllowed, setTotalUploadsAllowed] = useState(FREE_UPLOAD_LIMIT);
+  const [canUpload, setCanUpload] = useState(true);
+  const [referralsRemaining, setReferralsRemaining] = useState(MAX_REFERRALS_PER_MONTH);
+  const [canRefer, setCanRefer] = useState(true);
 
   const fetchStats = useCallback(async () => {
     if (!user) return;
-
-    // Fetch or create user_stats
-    let { data: statsData } = await supabase
-      .from("user_stats")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!statsData) {
-      const code = generateReferralCode();
-      const { data: newStats } = await supabase
-        .from("user_stats")
-        .insert({ user_id: user.id, referral_code: code })
-        .select()
-        .single();
-      statsData = newStats;
+    try {
+      const data = await invokeGamification("get-stats");
+      setStats(data.stats as UserStats);
+      setBadges((data.badges || []) as Badge[]);
+      setReferrals((data.referrals || []) as Referral[]);
+      setTotalUploadsAllowed(data.totalUploadsAllowed);
+      setUploadsRemaining(data.uploadsRemaining);
+      setCanUpload(data.canUpload);
+      setReferralsRemaining(data.referralsRemaining);
+      setCanRefer(data.canRefer);
+    } catch {
+      // Silent fail on stats fetch
+    } finally {
+      setLoading(false);
     }
-
-    if (statsData) {
-      // Reset monthly referrals if needed
-      const resetDate = new Date(statsData.referrals_month_reset);
-      const now = new Date();
-      const monthDiff = (now.getFullYear() - resetDate.getFullYear()) * 12 + now.getMonth() - resetDate.getMonth();
-      if (monthDiff >= 1) {
-        const today = now.toISOString().split("T")[0];
-        await supabase.from("user_stats").update({
-          referrals_this_month: 0,
-          referrals_month_reset: today,
-        }).eq("user_id", user.id);
-        statsData.referrals_this_month = 0;
-        statsData.referrals_month_reset = today;
-      }
-
-      // Check streak - if last_upload_date is more than 1 day ago, streak may be broken
-      if (statsData.last_upload_date) {
-        const lastUpload = new Date(statsData.last_upload_date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        lastUpload.setHours(0, 0, 0, 0);
-        const diffDays = Math.floor((today.getTime() - lastUpload.getTime()) / (1000 * 60 * 60 * 24));
-
-        if (diffDays > 1) {
-          // Use streak freeze if available
-          if (diffDays === 2 && statsData.streak_freezes > 0) {
-            await supabase.from("user_stats").update({
-              streak_freezes: statsData.streak_freezes - 1,
-            }).eq("user_id", user.id);
-            statsData.streak_freezes -= 1;
-          } else if (diffDays > 1) {
-            // Streak broken
-            await supabase.from("user_stats").update({
-              current_streak: 0,
-            }).eq("user_id", user.id);
-            statsData.current_streak = 0;
-          }
-        }
-      }
-
-      setStats(statsData as UserStats);
-    }
-
-    // Fetch badges
-    const { data: badgeData } = await supabase
-      .from("user_badges")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("earned_at", { ascending: true });
-    setBadges((badgeData || []) as Badge[]);
-
-    // Fetch referrals
-    const { data: refData } = await supabase
-      .from("referrals")
-      .select("*")
-      .eq("referrer_user_id", user.id)
-      .order("created_at", { ascending: false });
-    setReferrals((refData || []) as Referral[]);
-
-    setLoading(false);
   }, [user]);
 
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
 
-  const totalUploadsAllowed = FREE_UPLOAD_LIMIT + (stats?.bonus_uploads || 0);
-  const uploadsRemaining = Math.max(0, totalUploadsAllowed - (stats?.uploads_used || 0));
-  const canUpload = uploadsRemaining > 0;
-  const referralsRemaining = MAX_REFERRALS_PER_MONTH - (stats?.referrals_this_month || 0);
-  const canRefer = referralsRemaining > 0;
+  // Optimistic UI: immediately show streak increment before backend confirms
+  const optimisticIncrement = useCallback(() => {
+    setStats((prev) => {
+      if (!prev) return prev;
+      const today = new Date().toISOString().split("T")[0];
+      const isNewDay = prev.last_upload_date !== today;
+      return {
+        ...prev,
+        uploads_used: prev.uploads_used + 1,
+        current_streak: isNewDay ? prev.current_streak + 1 : prev.current_streak,
+        last_upload_date: today,
+      };
+    });
+    setUploadsRemaining((prev) => Math.max(0, prev - 1));
+  }, []);
 
-  // Days until next referral reset
+  const recordUpload = async () => {
+    if (!user || !stats) return;
+    try {
+      const result = await invokeGamification("record-upload");
+      // Refresh stats from server after recording
+      await fetchStats();
+      return result;
+    } catch {
+      // Rollback optimistic update on failure
+      await fetchStats();
+      return undefined;
+    }
+  };
+
+  const getReferralLink = () => {
+    if (!stats) return "";
+    return `${window.location.origin}/auth?ref=${stats.referral_code}`;
+  };
+
+  const processReferral = async (referralCode: string) => {
+    if (!user) return { success: false, message: "Not logged in" };
+    try {
+      const result = await invokeGamification("process-referral", { referralCode });
+      if (result.success) await fetchStats();
+      return result;
+    } catch {
+      return { success: false, message: "Connection issue. Check your internet and try again." };
+    }
+  };
+
   const daysUntilReferralReset = (() => {
     if (!stats) return 0;
     const resetDate = new Date(stats.referrals_month_reset);
@@ -156,106 +165,6 @@ export function useGamification() {
     const diff = Math.ceil((resetDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     return Math.max(0, diff);
   })();
-
-  const recordUpload = async () => {
-    if (!user || !stats) return;
-    const today = new Date().toISOString().split("T")[0];
-    const isNewDay = stats.last_upload_date !== today;
-    const newStreak = isNewDay ? stats.current_streak + 1 : stats.current_streak;
-    const newLongest = Math.max(newStreak, stats.longest_streak);
-
-    // Check for streak bonus (every 10 days = 1 bonus upload)
-    let bonusIncrease = 0;
-    if (isNewDay && newStreak > 0 && newStreak % STREAK_BONUS_INTERVAL === 0) {
-      bonusIncrease = 1;
-    }
-
-    await supabase.from("user_stats").update({
-      uploads_used: stats.uploads_used + 1,
-      current_streak: newStreak,
-      longest_streak: newLongest,
-      last_upload_date: today,
-      bonus_uploads: stats.bonus_uploads + bonusIncrease,
-    }).eq("user_id", user.id);
-
-    // Check for new badges
-    if (isNewDay) {
-      for (const badge of BADGE_DEFINITIONS) {
-        if (newStreak >= badge.threshold) {
-          const existing = badges.find(b => b.badge_type === badge.type);
-          if (!existing) {
-            await supabase.from("user_badges").insert({
-              user_id: user.id,
-              badge_type: badge.type,
-              badge_name: badge.name,
-            });
-          }
-        }
-      }
-    }
-
-    await fetchStats();
-    return { bonusEarned: bonusIncrease > 0, newStreak, isNewDay };
-  };
-
-  const getReferralLink = () => {
-    if (!stats) return "";
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/auth?ref=${stats.referral_code}`;
-  };
-
-  const processReferral = async (referralCode: string) => {
-    if (!user) return { success: false, message: "Not logged in" };
-
-    // Check if already referred
-    const { data: existing } = await supabase
-      .from("referrals")
-      .select("id")
-      .eq("referred_user_id", user.id)
-      .single();
-    if (existing) return { success: false, message: "Already used a referral" };
-
-    // Find referrer
-    const { data: referrer } = await supabase
-      .from("user_stats")
-      .select("user_id, referrals_this_month")
-      .eq("referral_code", referralCode)
-      .single();
-    if (!referrer) return { success: false, message: "Invalid referral code" };
-    if (referrer.user_id === user.id) return { success: false, message: "Cannot refer yourself" };
-
-    // Check referrer's monthly limit
-    if (referrer.referrals_this_month >= MAX_REFERRALS_PER_MONTH) {
-      return { success: false, message: "Referrer has reached monthly limit" };
-    }
-
-    // Create referral
-    await supabase.from("referrals").insert({
-      referrer_user_id: referrer.user_id,
-      referred_user_id: user.id,
-    });
-
-    // Reward referrer: +1 bonus upload and +1 streak freeze
-    await supabase.from("user_stats").update({
-      bonus_uploads: (await supabase.from("user_stats").select("bonus_uploads").eq("user_id", referrer.user_id).single()).data!.bonus_uploads + 1,
-      streak_freezes: (await supabase.from("user_stats").select("streak_freezes").eq("user_id", referrer.user_id).single()).data!.streak_freezes + 1,
-      referrals_this_month: referrer.referrals_this_month + 1,
-    }).eq("user_id", referrer.user_id);
-
-    // Reward referred user: +1 bonus upload
-    await supabase.from("user_stats").update({
-      bonus_uploads: (stats?.bonus_uploads || 0) + 1,
-    }).eq("user_id", user.id);
-
-    await fetchStats();
-    return { success: true, message: "Referral applied! You earned 1 bonus upload." };
-  };
-
-  const renewStreakWithReferral = async () => {
-    // Streak is broken, user must refer 1 person to renew
-    // This is handled by the referral flow giving streak freezes
-    return stats?.current_streak === 0;
-  };
 
   return {
     stats,
@@ -272,6 +181,7 @@ export function useGamification() {
     getReferralLink,
     processReferral,
     fetchStats,
+    optimisticIncrement,
     FREE_UPLOAD_LIMIT,
     MAX_REFERRALS_PER_MONTH,
     FREE_PODCAST_MAX_EXCHANGES,
