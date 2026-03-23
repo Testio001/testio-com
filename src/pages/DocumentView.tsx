@@ -116,11 +116,15 @@ const DocumentView = () => {
         body: { documentId: id, maxExchanges: FREE_PODCAST_MAX_EXCHANGES }
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast({ title: "Podcast generated!" });
       setPodcastKey(prev => prev + 1);
       setActiveTab("podcast");
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      const msg = err?.message?.includes("non-2xx")
+        ? "Podcast generation failed. Please try again in a moment."
+        : err?.message || "Something went wrong. Please try again.";
+      toast({ title: "Generation failed", description: msg, variant: "destructive" });
     } finally {
       setGenerating(null);
     }
