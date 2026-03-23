@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
+import { useBackButton } from "@/hooks/useBackButton";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import Onboarding from "./pages/Onboarding";
 import Auth from "./pages/Auth";
@@ -25,6 +27,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const NativeHooks = () => {
+  useBackButton();
+  usePushNotifications();
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -33,6 +41,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <NativeHooks />
             <Routes>
               <Route path="/" element={<Onboarding />} />
               <Route path="/auth" element={<Auth />} />
