@@ -72,7 +72,8 @@ const Dashboard = () => {
     if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
     setUploading("Processing with AI... This may take a moment.");
 
-    // Record upload for gamification
+    // Optimistic update + record upload on backend
+    gamification.optimisticIncrement();
     const result = await gamification.recordUpload();
     if (result?.bonusEarned) {
       toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak! You earned 1 bonus upload.` });
