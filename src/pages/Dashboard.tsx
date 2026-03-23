@@ -89,8 +89,7 @@ const Dashboard = () => {
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your document has been processed." });
-      } catch (err: any) {
-        console.error("AI processing error:", err);
+      } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the document. Please try re-uploading or try again later.", variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
