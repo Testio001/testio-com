@@ -85,20 +85,19 @@ const Dashboard = () => {
     if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
     setUploading("Processing with AI... This may take a moment.");
 
-    // Optimistic update + record upload on backend
-    gamification.optimisticIncrement();
-    const result = await gamification.recordUpload();
-    if (result?.bonusEarned) {
-      toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak! You earned 1 bonus upload.` });
-    } else if (result?.isNewDay) {
-      toast({ title: `🔥 ${result.newStreak}-day streak!`, description: "Keep uploading daily to earn bonus uploads!" });
-    }
-
     fetchData();
     if (doc) {
       try {
         const { error: fnError } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
         if (fnError) throw fnError;
+        // Only count upload after successful processing
+        gamification.optimisticIncrement();
+        const result = await gamification.recordUpload();
+        if (result?.bonusEarned) {
+          toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak! You earned 1 bonus upload.` });
+        } else if (result?.isNewDay) {
+          toast({ title: `🔥 ${result.newStreak}-day streak!`, description: "Keep uploading daily to earn bonus uploads!" });
+        }
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your document has been processed." });
@@ -121,17 +120,16 @@ const Dashboard = () => {
       user_id: user.id, title: title || "Untitled", source_type: "text", original_content: text, status: "pending",
     }).select().single();
 
-    gamification.optimisticIncrement();
-    const result = await gamification.recordUpload();
-    if (result?.bonusEarned) {
-      toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
-    }
-
     fetchData();
     if (doc) {
       try {
         const { error: fnError } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
         if (fnError) throw fnError;
+        gamification.optimisticIncrement();
+        const result = await gamification.recordUpload();
+        if (result?.bonusEarned) {
+          toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
+        }
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your text has been processed." });
@@ -162,17 +160,16 @@ const Dashboard = () => {
     if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
     setUploading("Extracting text from image with AI... This may take a moment.");
 
-    gamification.optimisticIncrement();
-    const result = await gamification.recordUpload();
-    if (result?.bonusEarned) {
-      toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
-    }
-
     fetchData();
     if (doc) {
       try {
         const { error: fnError } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
         if (fnError) throw fnError;
+        gamification.optimisticIncrement();
+        const result = await gamification.recordUpload();
+        if (result?.bonusEarned) {
+          toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
+        }
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your image has been processed." });
@@ -362,7 +359,7 @@ const UploadModal = ({ onClose, onFileUpload, onTextUpload, onImageUpload }: { o
         <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6">
           {(["file", "text", "image"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              {t === "file" ? "Upload PDF" : t === "text" ? "Paste Text" : "Upload Image"}
+              {t === "file" ? "Upload File" : t === "text" ? "Paste Text" : "Upload Image"}
             </button>
           ))}
         </div>
