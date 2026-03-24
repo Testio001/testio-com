@@ -559,7 +559,14 @@ export async function extractDocumentContent(params: ExtractParams): Promise<Ext
     const ocrContent = await extractWithOpenAI(uint8Array, doc.title, openaiKey);
     console.log(`OpenAI OCR extraction: ${ocrContent.length} chars`);
 
-    if (ocrContent && isQualityContent(ocrContent)) {
+    // Check for explicit failure sentinel
+    if (ocrContent.trim() === "EXTRACTION_FAILED") {
+      console.log("OpenAI reported EXTRACTION_FAILED");
+      return { content: "", method: "openai_ocr", success: false, error: "We couldn't extract readable text from this PDF. Try uploading a clearer version." };
+    }
+
+    // Also reject if the AI returned a meta-description about PDFs instead of actual content
+    if (ocrContent && isQualityContent(ocrContent) && !isCorruptedContent(ocrContent)) {
       return { content: sanitizeForDb(ocrContent.substring(0, 50000)), method: "openai_ocr", success: true };
     }
 
