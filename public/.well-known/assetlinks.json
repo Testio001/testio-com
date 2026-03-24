@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "online.testio.twa",
-        "sha256_cert_fingerprints": ["D2:35:6A:FC:D0:07:F0:D3:C9:C6:82:F4:D6:E0:6B:82:A7:50:F4:D3:A5:40:82:1D:0A:7C:41:84:91:39:13:CE"]
+        "sha256_cert_fingerprints": ["96:A1:AD:EB:11:92:F1:A2:19:1E:CD:82:B4:A7:F0:10:1F:FA:E1:B5:A4:9A:E4:04:0C:69:DB:FC:F4:DC:62:C3"]
       }
     }]
