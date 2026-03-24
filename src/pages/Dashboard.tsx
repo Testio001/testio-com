@@ -120,17 +120,16 @@ const Dashboard = () => {
       user_id: user.id, title: title || "Untitled", source_type: "text", original_content: text, status: "pending",
     }).select().single();
 
-    gamification.optimisticIncrement();
-    const result = await gamification.recordUpload();
-    if (result?.bonusEarned) {
-      toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
-    }
-
     fetchData();
     if (doc) {
       try {
         const { error: fnError } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
         if (fnError) throw fnError;
+        gamification.optimisticIncrement();
+        const result = await gamification.recordUpload();
+        if (result?.bonusEarned) {
+          toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
+        }
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your text has been processed." });
