@@ -359,7 +359,7 @@ const UploadModal = ({ onClose, onFileUpload, onTextUpload, onImageUpload }: { o
         <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6">
           {(["file", "text", "image"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              {t === "file" ? "Upload PDF" : t === "text" ? "Paste Text" : "Upload Image"}
+              {t === "file" ? "Upload File" : t === "text" ? "Paste Text" : "Upload Image"}
             </button>
           ))}
         </div>
