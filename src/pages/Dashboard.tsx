@@ -66,8 +66,21 @@ const Dashboard = () => {
     const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
     if (uploadError) { setUploading(null); toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
     setUploading("Creating document...");
+    // Classify file type correctly
+    const ext = fileExt?.toLowerCase() || "";
+    const imageExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
+    let sourceType = "text";
+    if (ext === "pdf") sourceType = "pdf";
+    else if (ext === "docx") sourceType = "docx";
+    else if (imageExts.includes(ext)) sourceType = "image";
+    else if (ext === "doc") {
+      setUploading(null);
+      toast({ title: "Unsupported format", description: "Legacy .doc files are not supported. Please convert to .docx or PDF first.", variant: "destructive" });
+      return;
+    }
+
     const { data: doc, error: docError } = await supabase.from("documents").insert({
-      user_id: user.id, title: file.name.replace(`.${fileExt}`, ""), source_type: fileExt === "pdf" ? "pdf" : "text", storage_path: filePath, status: "pending",
+      user_id: user.id, title: file.name.replace(`.${fileExt}`, ""), source_type: sourceType, storage_path: filePath, status: "pending",
     }).select().single();
     if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
     setUploading("Processing with AI... This may take a moment.");
