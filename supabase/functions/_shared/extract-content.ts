@@ -253,7 +253,7 @@ async function extractZipEntryAsync(data: Uint8Array, entry: ZipEntry): Promise<
     try {
       const compressed = data.subarray(entry.dataOffset, entry.dataOffset + entry.compressedSize);
       // Wrap raw deflate in a proper stream
-      const ds = new DecompressionStream("raw");
+      const ds = new DecompressionStream("deflate-raw");
       const writer = ds.writable.getWriter();
       writer.write(compressed);
       writer.close();
