@@ -350,11 +350,11 @@ async function extractWithOpenAI(uint8Array: Uint8Array, title: string, openaiKe
     method: "POST",
     headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [{
         role: "user",
         content: [
-          { type: "text", text: "Extract ALL text content from this PDF document. Include every word, heading, paragraph, bullet point, and piece of text. Preserve the structure. Do NOT summarize - extract the raw text. If you truly cannot read any text from the document, respond with exactly: EXTRACTION_FAILED" },
+          { type: "text", text: "Extract ALL text content from this PDF document. Return every word, heading, paragraph, bullet point, table entry, and piece of text exactly as it appears. Preserve the document structure with headings and paragraphs. Do NOT add commentary, do NOT describe the document, do NOT summarize - just output the raw text content. If the document is completely blank or unreadable, respond with exactly one word: EXTRACTION_FAILED" },
           { type: "file", file: { filename: `${title}.pdf`, file_data: `data:application/pdf;base64,${pdfBase64}` } },
         ],
       }],
