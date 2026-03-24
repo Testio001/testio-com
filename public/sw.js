@@ -17,8 +17,6 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
-  // Never cache OAuth callbacks
-  if (new URL(e.request.url).pathname.startsWith('/~oauth')) return;
   e.respondWith(
     fetch(e.request)
       .then((res) => {
