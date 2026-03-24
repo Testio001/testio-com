@@ -26,36 +26,51 @@
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
   "screenshots": [
     {
-      "src": "/screenshots/screenshot-1.png",
+      "src": "/screenshots/screenshot-1.jpg",
       "sizes": "1080x1920",
-      "type": "image/png",
+      "type": "image/jpeg",
       "form_factor": "narrow",
-      "label": "Dashboard - View all your uploaded documents"
+      "label": "Dashboard - View and manage your uploaded documents"
     },
     {
-      "src": "/screenshots/screenshot-2.png",
+      "src": "/screenshots/screenshot-2.jpg",
       "sizes": "1080x1920",
-      "type": "image/png",
+      "type": "image/jpeg",
       "form_factor": "narrow",
-      "label": "AI-generated study notes from your documents"
+      "label": "Gamification - Earn badges and compete on the leaderboard"
     },
     {
-      "src": "/screenshots/screenshot-3.png",
+      "src": "/screenshots/screenshot-3.jpg",
       "sizes": "1080x1920",
-      "type": "image/png",
+      "type": "image/jpeg",
       "form_factor": "narrow",
-      "label": "Interactive flashcards for effective studying"
+      "label": "Settings - Customize theme, language and account"
+    },
+    {
+      "src": "/screenshots/screenshot-1.jpg",
+      "sizes": "1080x1920",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Dashboard - View and manage your uploaded documents"
+    },
+    {
+      "src": "/screenshots/screenshot-2.jpg",
+      "sizes": "1080x1920",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Gamification - Earn badges and compete on the leaderboard"
+    },
+    {
+      "src": "/screenshots/screenshot-3.jpg",
+      "sizes": "1080x1920",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Settings - Customize theme, language and account"
     }
   ],
   "categories": ["education", "productivity"],

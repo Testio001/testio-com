@@ -85,20 +85,19 @@ const Dashboard = () => {
     if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
     setUploading("Processing with AI... This may take a moment.");
 
-    // Optimistic update + record upload on backend
-    gamification.optimisticIncrement();
-    const result = await gamification.recordUpload();
-    if (result?.bonusEarned) {
-      toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak! You earned 1 bonus upload.` });
-    } else if (result?.isNewDay) {
-      toast({ title: `🔥 ${result.newStreak}-day streak!`, description: "Keep uploading daily to earn bonus uploads!" });
-    }
-
     fetchData();
     if (doc) {
       try {
         const { error: fnError } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
         if (fnError) throw fnError;
+        // Only count upload after successful processing
+        gamification.optimisticIncrement();
+        const result = await gamification.recordUpload();
+        if (result?.bonusEarned) {
+          toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak! You earned 1 bonus upload.` });
+        } else if (result?.isNewDay) {
+          toast({ title: `🔥 ${result.newStreak}-day streak!`, description: "Keep uploading daily to earn bonus uploads!" });
+        }
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your document has been processed." });
