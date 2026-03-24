@@ -32,42 +32,42 @@
   "screenshots": [
     {
       "src": "/screenshots/screenshot-1.jpg",
-      "sizes": "1080x1920",
+      "sizes": "1812x1668",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Dashboard - View and manage your uploaded documents"
     },
     {
       "src": "/screenshots/screenshot-2.jpg",
-      "sizes": "1080x1920",
+      "sizes": "1812x1688",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Gamification - Earn badges and compete on the leaderboard"
     },
     {
       "src": "/screenshots/screenshot-3.jpg",
-      "sizes": "1080x1920",
+      "sizes": "1812x1716",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Settings - Customize theme, language and account"
     },
     {
       "src": "/screenshots/screenshot-1.jpg",
-      "sizes": "1080x1920",
+      "sizes": "1812x1668",
       "type": "image/jpeg",
       "form_factor": "wide",
       "label": "Dashboard - View and manage your uploaded documents"
     },
     {
       "src": "/screenshots/screenshot-2.jpg",
-      "sizes": "1080x1920",
+      "sizes": "1812x1688",
       "type": "image/jpeg",
       "form_factor": "wide",
       "label": "Gamification - Earn badges and compete on the leaderboard"
     },
     {
       "src": "/screenshots/screenshot-3.jpg",
-      "sizes": "1080x1920",
+      "sizes": "1812x1716",
       "type": "image/jpeg",
       "form_factor": "wide",
       "label": "Settings - Customize theme, language and account"

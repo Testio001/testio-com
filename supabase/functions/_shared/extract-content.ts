@@ -33,6 +33,15 @@ const AI_REFUSAL_PATTERNS = [
   /xml \(extensible markup language\)/i,
   /word processing file/i,
   /encapsulation of content types/i,
+  /limitations of extracting text/i,
+  /PDF Document Interpretation/i,
+  /direct text extraction is not always possible/i,
+  /assistance cannot be provided in the form of direct content extraction/i,
+  /extracting text from a PDF can be challenging/i,
+  /I (?:can't|cannot|am unable to) (?:directly )?(?:extract|read|access|view|parse) (?:the )?(?:text|content|data)/i,
+  /this (?:PDF|document|file) (?:appears to )?(?:contain|is) (?:mostly )?(image|scan|unreadable)/i,
+  /unfortunately,? I (?:can't|cannot|don't have|am not able)/i,
+  /I don't have the ability to (?:read|extract|parse|process)/i,
 ];
 
 /**
@@ -345,7 +354,7 @@ async function extractWithOpenAI(uint8Array: Uint8Array, title: string, openaiKe
       messages: [{
         role: "user",
         content: [
-          { type: "text", text: "Extract ALL text content from this PDF document. Include every word, heading, paragraph, bullet point, and piece of text. Preserve the structure. Do NOT summarize - extract the raw text." },
+          { type: "text", text: "Extract ALL text content from this PDF document. Include every word, heading, paragraph, bullet point, and piece of text. Preserve the structure. Do NOT summarize - extract the raw text. If you truly cannot read any text from the document, respond with exactly: EXTRACTION_FAILED" },
           { type: "file", file: { filename: `${title}.pdf`, file_data: `data:application/pdf;base64,${pdfBase64}` } },
         ],
       }],
