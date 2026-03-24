@@ -442,14 +442,53 @@ async function extractFromImage(uint8Array: Uint8Array, mimeType: string, openai
 
 /**
  * Use OpenAI to extract text from a DOCX when local parsing fails.
+ * Extracts all ZIP text entries and sends as a text prompt since OpenAI doesn't support DOCX file uploads.
  */
 async function extractDocxWithOpenAI(uint8Array: Uint8Array, title: string, openaiKey: string): Promise<string> {
-  let binary = "";
-  const chunkSize = 8192;
-  for (let i = 0; i < uint8Array.length; i += chunkSize) {
-    binary += String.fromCharCode(...uint8Array.subarray(i, i + chunkSize));
+  // Extract all readable XML text entries from the ZIP to send as context
+  const entries = findZipEntries(uint8Array);
+  const decoder = new TextDecoder("utf-8", { fatal: false });
+  const xmlParts: string[] = [];
+
+  for (const entry of entries) {
+    if (entry.name.startsWith("word/") && entry.name.endsWith(".xml")) {
+      try {
+        const rawData = entry.compressionMethod === 0
+          ? uint8Array.subarray(entry.dataOffset, entry.dataOffset + entry.uncompressedSize)
+          : await (async () => {
+              const compressed = uint8Array.subarray(entry.dataOffset, entry.dataOffset + entry.compressedSize);
+              const ds = new DecompressionStream("deflate-raw");
+              const writer = ds.writable.getWriter();
+              writer.write(compressed);
+              writer.close();
+              const reader = ds.readable.getReader();
+              const chunks: Uint8Array[] = [];
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+              }
+              const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+              const result = new Uint8Array(totalLen);
+              let off = 0;
+              for (const c of chunks) { result.set(c, off); off += c.length; }
+              return result;
+            })();
+        if (rawData) {
+          const xmlText = decoder.decode(rawData);
+          // Strip XML tags to get raw text
+          let stripped = xmlText.replace(/<\/w:p>/gi, "\n").replace(/<\/w:r>/gi, " ").replace(/<[^>]+>/g, "");
+          stripped = stripped.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+          stripped = stripped.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+          if (stripped.length > 20) xmlParts.push(stripped);
+        }
+      } catch { /* skip unreadable entries */ }
+    }
   }
-  const docxBase64 = btoa(binary);
+
+  if (xmlParts.length === 0) return "";
+
+  const rawContent = xmlParts.join("\n\n").substring(0, 30000);
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -457,18 +496,18 @@ async function extractDocxWithOpenAI(uint8Array: Uint8Array, title: string, open
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [{
+        role: "system",
+        content: "You are a document text extractor. The user will provide raw text extracted from a Word document's XML. Clean it up into well-structured, readable text. Preserve all content, headings, lists, and structure. Do NOT summarize or add commentary."
+      }, {
         role: "user",
-        content: [
-          { type: "text", text: "Extract ALL text content from this Word document (.docx). Include every word, heading, paragraph, bullet point, and piece of text. Preserve the structure. Do NOT summarize or describe the file format - extract only the actual document text content." },
-          { type: "file", file: { filename: `${title}.docx`, file_data: `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${docxBase64}` } },
-        ],
+        content: `Document title: "${title}"\n\nRaw extracted text:\n${rawContent}`
       }],
       max_tokens: 16000,
     }),
   });
 
   if (!res.ok) {
-    console.error("OpenAI DOCX extraction failed:", res.status, await res.text());
+    console.error("OpenAI DOCX cleanup failed:", res.status, await res.text());
     return "";
   }
 
