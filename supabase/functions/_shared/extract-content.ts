@@ -1,5 +1,6 @@
 // Shared content extraction helper for all edge functions
 // Provides quality gating, sanitization, DOCX support, and OCR fallback
+import { inflateRawSync } from "node:zlib";
 
 const PDF_JUNK_PATTERNS = [
   /\bobj\b/g, /\bendobj\b/g, /\/Type\b/g, /\/Filter\b/g, /\/Catalog\b/g,
