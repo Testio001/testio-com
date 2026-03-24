@@ -224,57 +224,14 @@ function findZipEntries(data: Uint8Array): ZipEntry[] {
 
 function extractZipEntry(data: Uint8Array, entry: ZipEntry): Uint8Array | null {
   if (entry.compressionMethod === 0) {
-    // Stored (no compression)
-    return data.subarray(entry.dataOffset, entry.dataOffset + entry.uncompressedSize);
-  } else if (entry.compressionMethod === 8) {
-    // Deflate - use DecompressionStream
-    try {
-      return decompressDeflateSync(data.subarray(entry.dataOffset, entry.dataOffset + entry.compressedSize));
-    } catch (e) {
-      console.error("Deflate decompression failed:", e);
-      return null;
-    }
-  }
-  return null;
-}
-
-function decompressDeflateSync(compressed: Uint8Array): Uint8Array {
-  // Use a simple approach: try to use the raw deflate data
-  // In Deno, we can use DecompressionStream
-  // But since we need sync, we'll use a manual approach for the edge function
-  // Actually, Deno supports DecompressionStream but it's async
-  // For edge functions, let's use a workaround with Response + DecompressionStream
-  throw new Error("DEFLATE_NEEDS_ASYNC");
-}
-
-async function extractZipEntryAsync(data: Uint8Array, entry: ZipEntry): Promise<Uint8Array | null> {
-  if (entry.compressionMethod === 0) {
     return data.subarray(entry.dataOffset, entry.dataOffset + entry.uncompressedSize);
   } else if (entry.compressionMethod === 8) {
     try {
       const compressed = data.subarray(entry.dataOffset, entry.dataOffset + entry.compressedSize);
-      // Wrap raw deflate in a proper stream
-      const ds = new DecompressionStream("deflate-raw");
-      const writer = ds.writable.getWriter();
-      writer.write(compressed);
-      writer.close();
-      const reader = ds.readable.getReader();
-      const chunks: Uint8Array[] = [];
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-      }
-      const totalLen = chunks.reduce((s, c) => s + c.length, 0);
-      const result = new Uint8Array(totalLen);
-      let off = 0;
-      for (const c of chunks) {
-        result.set(c, off);
-        off += c.length;
-      }
-      return result;
+      const result = inflateRawSync(compressed);
+      return new Uint8Array(result.buffer, result.byteOffset, result.byteLength);
     } catch (e) {
-      console.error("Async deflate decompression failed:", e);
+      console.error("Deflate decompression failed:", e);
       return null;
     }
   }
