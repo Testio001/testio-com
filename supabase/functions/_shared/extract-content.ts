@@ -258,7 +258,7 @@ async function extractDocxTextAsync(fileData: Blob): Promise<string> {
 
     for (const entry of entries) {
       if (entry.name === "word/document.xml" || entry.name === "word\\document.xml") {
-        const rawData = await extractZipEntryAsync(uint8, entry);
+        const rawData = extractZipEntry(uint8, entry);
         if (rawData) {
           documentXml = decoder.decode(rawData);
         }
@@ -289,7 +289,7 @@ async function extractDocxTextAsync(fileData: Blob): Promise<string> {
 
     return text.trim();
   } catch (e) {
-    console.error("DOCX async extraction error:", e);
+    console.error("DOCX extraction error:", e);
     return "";
   }
 }
