@@ -160,17 +160,16 @@ const Dashboard = () => {
     if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
     setUploading("Extracting text from image with AI... This may take a moment.");
 
-    gamification.optimisticIncrement();
-    const result = await gamification.recordUpload();
-    if (result?.bonusEarned) {
-      toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
-    }
-
     fetchData();
     if (doc) {
       try {
         const { error: fnError } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
         if (fnError) throw fnError;
+        gamification.optimisticIncrement();
+        const result = await gamification.recordUpload();
+        if (result?.bonusEarned) {
+          toast({ title: "🎉 Bonus Upload Earned!", description: `${result.newStreak}-day streak!` });
+        }
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your image has been processed." });
