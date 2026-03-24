@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getValidatedContent } from "../_shared/extract-content.ts";
+import { getValidatedContent, isCorruptedNotes } from "../_shared/extract-content.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,17 +18,15 @@ serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Get validated content
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
 
-    // Also use notes if available
+    // Use notes only if not corrupted
     const { data: notes } = await supabase.from("notes").select("content").eq("document_id", documentId);
-    const noteContent = notes?.map((n: any) => n.content).join("\n\n");
+    const noteContent = notes?.map((n: any) => n.content).filter((c: string) => !isCorruptedNotes(c)).join("\n\n");
     const sourceContent = (noteContent && noteContent.length > 0) ? noteContent : content;
 
     if (!sourceContent.trim()) throw new Error("No content available to generate podcast. Generate notes first.");
 
-    // Step 1: Generate podcast script
     const scriptResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
@@ -51,10 +49,7 @@ Rules:
 - Output ONLY valid JSON array of objects with "speaker" (either "Alex" or "Sam") and "text" fields
 - No markdown, no code blocks, just the raw JSON array`,
           },
-          {
-            role: "user",
-            content: `Create a podcast script about the following study material:\n\n${sourceContent.substring(0, 12000)}`,
-          },
+          { role: "user", content: `Create a podcast script about the following study material:\n\n${sourceContent.substring(0, 12000)}` },
         ],
         temperature: 0.8,
       }),
@@ -67,80 +62,41 @@ Rules:
     scriptText = scriptText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
 
     let script: Array<{ speaker: string; text: string }>;
-    try {
-      script = JSON.parse(scriptText);
-    } catch {
-      throw new Error("Failed to parse podcast script. Please try again.");
-    }
+    try { script = JSON.parse(scriptText); } catch { throw new Error("Failed to parse podcast script. Please try again."); }
 
-    // Step 2: Generate audio
     const audioChunks: Uint8Array[] = [];
-
     for (const segment of script) {
       const voice = segment.speaker === "Alex" ? "onyx" : "nova";
-
       const ttsResponse = await fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "tts-1",
-          input: segment.text,
-          voice: voice,
-          response_format: "mp3",
-        }),
+        body: JSON.stringify({ model: "tts-1", input: segment.text, voice, response_format: "mp3" }),
       });
-
-      if (!ttsResponse.ok) {
-        console.error(`TTS failed for segment: ${ttsResponse.status}`);
-        continue;
-      }
-
-      const audioBuffer = await ttsResponse.arrayBuffer();
-      audioChunks.push(new Uint8Array(audioBuffer));
+      if (!ttsResponse.ok) { console.error(`TTS failed: ${ttsResponse.status}`); continue; }
+      audioChunks.push(new Uint8Array(await ttsResponse.arrayBuffer()));
     }
 
-    // Combine audio
     const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
     const combinedAudio = new Uint8Array(totalLength);
     let offset = 0;
-    for (const chunk of audioChunks) {
-      combinedAudio.set(chunk, offset);
-      offset += chunk.length;
-    }
+    for (const chunk of audioChunks) { combinedAudio.set(chunk, offset); offset += chunk.length; }
 
-    // Upload to storage
     const fileName = `${doc.user_id}/podcast_${documentId}_${Date.now()}.mp3`;
-    const { error: uploadError } = await supabase.storage
-      .from("documents")
-      .upload(fileName, combinedAudio.buffer, { contentType: "audio/mpeg", upsert: true });
-
+    const { error: uploadError } = await supabase.storage.from("documents").upload(fileName, combinedAudio.buffer, { contentType: "audio/mpeg", upsert: true });
     if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
+    const { data: signedUrlData } = await supabase.storage.from("documents").createSignedUrl(fileName, 60 * 60 * 24 * 7);
     const { data: urlData } = supabase.storage.from("documents").getPublicUrl(fileName);
-    const { data: signedUrlData } = await supabase.storage
-      .from("documents")
-      .createSignedUrl(fileName, 60 * 60 * 24 * 7);
-
     const audioUrl = signedUrlData?.signedUrl || urlData?.publicUrl || "";
 
     await supabase.from("podcasts").insert({
-      document_id: documentId,
-      user_id: doc.user_id,
-      title: `Podcast: ${doc.title}`,
-      script: JSON.stringify(script),
-      audio_url: audioUrl,
-      status: "completed",
+      document_id: documentId, user_id: doc.user_id, title: `Podcast: ${doc.title}`,
+      script: JSON.stringify(script), audio_url: audioUrl, status: "completed",
     });
 
-    return new Response(
-      JSON.stringify({ success: true, audioUrl, script }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: true, audioUrl, script }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("Podcast error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Podcast generation failed. Please try again." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Podcast generation failed. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

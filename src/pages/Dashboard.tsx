@@ -369,8 +369,8 @@ const UploadModal = ({ onClose, onFileUpload, onTextUpload, onImageUpload }: { o
         {tab === "file" && (
           <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
             <Upload className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm mb-3">Drop a PDF or click to browse</p>
-            <label className="btn-testio-primary text-sm !py-2 !px-6 cursor-pointer">Choose File<input type="file" accept=".pdf,.txt,.doc,.docx" onChange={onFileUpload} className="hidden" /></label>
+            <p className="text-muted-foreground text-sm mb-3">Upload a PDF, DOCX, or text file</p>
+            <label className="btn-testio-primary text-sm !py-2 !px-6 cursor-pointer">Choose File<input type="file" accept=".pdf,.txt,.docx,.md" onChange={onFileUpload} className="hidden" /></label>
           </div>
         )}
         {tab === "text" && (

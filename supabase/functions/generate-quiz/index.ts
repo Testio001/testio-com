@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getValidatedContent } from "../_shared/extract-content.ts";
+import { getValidatedContent, isCorruptedNotes } from "../_shared/extract-content.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,15 +18,13 @@ serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Get validated content - NO title fallback
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
 
-    // Also check notes for richer content
+    // Use notes only if not corrupted
     const { data: notes } = await supabase.from("notes").select("content").eq("document_id", documentId);
-    const noteContent = notes?.map((n: any) => n.content).join("\n");
+    const noteContent = notes?.map((n: any) => n.content).filter((c: string) => !isCorruptedNotes(c)).join("\n");
     const sourceContent = (noteContent && noteContent.length > content.length) ? noteContent : content;
 
-    // Get existing questions to avoid duplicates
     const { data: existingQuizzes } = await supabase.from("quizzes").select("id").eq("document_id", documentId);
     let existingQuestions: string[] = [];
     if (existingQuizzes && existingQuizzes.length > 0) {
