@@ -411,27 +411,7 @@ async function extractDocxWithOpenAI(uint8Array: Uint8Array, title: string, open
   for (const entry of entries) {
     if (entry.name.startsWith("word/") && entry.name.endsWith(".xml")) {
       try {
-        const rawData = entry.compressionMethod === 0
-          ? uint8Array.subarray(entry.dataOffset, entry.dataOffset + entry.uncompressedSize)
-          : await (async () => {
-              const compressed = uint8Array.subarray(entry.dataOffset, entry.dataOffset + entry.compressedSize);
-              const ds = new DecompressionStream("deflate-raw");
-              const writer = ds.writable.getWriter();
-              writer.write(compressed);
-              writer.close();
-              const reader = ds.readable.getReader();
-              const chunks: Uint8Array[] = [];
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                chunks.push(value);
-              }
-              const totalLen = chunks.reduce((s, c) => s + c.length, 0);
-              const result = new Uint8Array(totalLen);
-              let off = 0;
-              for (const c of chunks) { result.set(c, off); off += c.length; }
-              return result;
-            })();
+        const rawData = extractZipEntry(uint8Array, entry);
         if (rawData) {
           const xmlText = decoder.decode(rawData);
           // Strip XML tags to get raw text
