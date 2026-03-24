@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "online.testio.twa",
+        "sha256_cert_fingerprints": ["96:A1:AD:EB:11:92:F1:A2:19:1E:CD:82:B4:A7:F0:10:1F:FA:E1:B5:A4:9A:E4:04:0C:69:DB:FC:F4:DC:62:C3"]
+      }
+    }]
