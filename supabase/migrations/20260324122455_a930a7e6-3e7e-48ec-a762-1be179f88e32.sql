@@ -1,0 +1,1 @@
+UPDATE documents SET status = 'completed' WHERE id = '62855bd1-3967-4ed1-9b17-dd758fbfbb80' AND status = 'failed';
