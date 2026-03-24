@@ -66,8 +66,21 @@ const Dashboard = () => {
     const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
     if (uploadError) { setUploading(null); toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
     setUploading("Creating document...");
+    // Classify file type correctly
+    const ext = fileExt?.toLowerCase() || "";
+    const imageExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
+    let sourceType = "text";
+    if (ext === "pdf") sourceType = "pdf";
+    else if (ext === "docx") sourceType = "docx";
+    else if (imageExts.includes(ext)) sourceType = "image";
+    else if (ext === "doc") {
+      setUploading(null);
+      toast({ title: "Unsupported format", description: "Legacy .doc files are not supported. Please convert to .docx or PDF first.", variant: "destructive" });
+      return;
+    }
+
     const { data: doc, error: docError } = await supabase.from("documents").insert({
-      user_id: user.id, title: file.name.replace(`.${fileExt}`, ""), source_type: fileExt === "pdf" ? "pdf" : "text", storage_path: filePath, status: "pending",
+      user_id: user.id, title: file.name.replace(`.${fileExt}`, ""), source_type: sourceType, storage_path: filePath, status: "pending",
     }).select().single();
     if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
     setUploading("Processing with AI... This may take a moment.");
@@ -356,8 +369,8 @@ const UploadModal = ({ onClose, onFileUpload, onTextUpload, onImageUpload }: { o
         {tab === "file" && (
           <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
             <Upload className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm mb-3">Drop a PDF or click to browse</p>
-            <label className="btn-testio-primary text-sm !py-2 !px-6 cursor-pointer">Choose File<input type="file" accept=".pdf,.txt,.doc,.docx" onChange={onFileUpload} className="hidden" /></label>
+            <p className="text-muted-foreground text-sm mb-3">Upload a PDF, DOCX, or text file</p>
+            <label className="btn-testio-primary text-sm !py-2 !px-6 cursor-pointer">Choose File<input type="file" accept=".pdf,.txt,.docx,.md" onChange={onFileUpload} className="hidden" /></label>
           </div>
         )}
         {tab === "text" && (

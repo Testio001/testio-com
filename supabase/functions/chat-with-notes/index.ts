@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getValidatedContent } from "../_shared/extract-content.ts";
+import { getValidatedContent, isCorruptedNotes } from "../_shared/extract-content.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,13 +17,12 @@ serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Get validated content
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
 
-    // Also use notes for richer context
+    // Use notes only if not corrupted
     const { data: notes } = await supabase.from("notes").select("content").eq("document_id", documentId);
-    const noteContent = notes?.map((n: any) => n.content).join("\n\n") || "";
-    const contextContent = noteContent || content;
+    const validNotes = notes?.map((n: any) => n.content).filter((c: string) => !isCorruptedNotes(c)).join("\n\n") || "";
+    const contextContent = validNotes || content;
 
     const messages = [
       {
@@ -48,13 +47,9 @@ serve(async (req) => {
     const aiData = await aiResponse.json();
     const reply = aiData.choices?.[0]?.message?.content || "I couldn't generate a response.";
 
-    return new Response(JSON.stringify({ reply }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ reply }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("Error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Something went wrong. Please try again." }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Something went wrong. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

@@ -37,16 +37,21 @@ serve(async (req) => {
 
     console.log(`Extraction succeeded via ${result.method}: ${result.content.length} chars`);
 
-    // Save sanitized content - this is the critical step
+    // Save sanitized content
     const contentToSave = result.content.substring(0, 50000);
-    const { error: updateError } = await supabase.from("documents").update({
+    const updateData: any = {
       status: "completed",
       original_content: contentToSave,
-    }).eq("id", documentId);
+    };
+    // Fix source_type if we detected a misclassified DOCX
+    if (result.method.startsWith("docx") && doc.source_type !== "docx") {
+      updateData.source_type = "docx";
+    }
+
+    const { error: updateError } = await supabase.from("documents").update(updateData).eq("id", documentId);
 
     if (updateError) {
       console.error("Failed to save content:", updateError.message);
-      // Mark as failed - do NOT mark completed without content
       await supabase.from("documents").update({ status: "failed" }).eq("id", documentId);
       return new Response(
         JSON.stringify({ error: "Document was processed but couldn't be saved. Please try re-uploading." }),
