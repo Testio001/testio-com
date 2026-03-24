@@ -1,5 +1,6 @@
 // Shared content extraction helper for all edge functions
 // Provides quality gating, sanitization, DOCX support, and OCR fallback
+import { inflateRawSync } from "node:zlib";
 
 const PDF_JUNK_PATTERNS = [
   /\bobj\b/g, /\bendobj\b/g, /\/Type\b/g, /\/Filter\b/g, /\/Catalog\b/g,
@@ -223,57 +224,14 @@ function findZipEntries(data: Uint8Array): ZipEntry[] {
 
 function extractZipEntry(data: Uint8Array, entry: ZipEntry): Uint8Array | null {
   if (entry.compressionMethod === 0) {
-    // Stored (no compression)
-    return data.subarray(entry.dataOffset, entry.dataOffset + entry.uncompressedSize);
-  } else if (entry.compressionMethod === 8) {
-    // Deflate - use DecompressionStream
-    try {
-      return decompressDeflateSync(data.subarray(entry.dataOffset, entry.dataOffset + entry.compressedSize));
-    } catch (e) {
-      console.error("Deflate decompression failed:", e);
-      return null;
-    }
-  }
-  return null;
-}
-
-function decompressDeflateSync(compressed: Uint8Array): Uint8Array {
-  // Use a simple approach: try to use the raw deflate data
-  // In Deno, we can use DecompressionStream
-  // But since we need sync, we'll use a manual approach for the edge function
-  // Actually, Deno supports DecompressionStream but it's async
-  // For edge functions, let's use a workaround with Response + DecompressionStream
-  throw new Error("DEFLATE_NEEDS_ASYNC");
-}
-
-async function extractZipEntryAsync(data: Uint8Array, entry: ZipEntry): Promise<Uint8Array | null> {
-  if (entry.compressionMethod === 0) {
     return data.subarray(entry.dataOffset, entry.dataOffset + entry.uncompressedSize);
   } else if (entry.compressionMethod === 8) {
     try {
       const compressed = data.subarray(entry.dataOffset, entry.dataOffset + entry.compressedSize);
-      // Wrap raw deflate in a proper stream
-      const ds = new DecompressionStream("raw");
-      const writer = ds.writable.getWriter();
-      writer.write(compressed);
-      writer.close();
-      const reader = ds.readable.getReader();
-      const chunks: Uint8Array[] = [];
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-      }
-      const totalLen = chunks.reduce((s, c) => s + c.length, 0);
-      const result = new Uint8Array(totalLen);
-      let off = 0;
-      for (const c of chunks) {
-        result.set(c, off);
-        off += c.length;
-      }
-      return result;
+      const result = inflateRawSync(compressed);
+      return new Uint8Array(result.buffer, result.byteOffset, result.byteLength);
     } catch (e) {
-      console.error("Async deflate decompression failed:", e);
+      console.error("Deflate decompression failed:", e);
       return null;
     }
   }
@@ -300,7 +258,7 @@ async function extractDocxTextAsync(fileData: Blob): Promise<string> {
 
     for (const entry of entries) {
       if (entry.name === "word/document.xml" || entry.name === "word\\document.xml") {
-        const rawData = await extractZipEntryAsync(uint8, entry);
+        const rawData = extractZipEntry(uint8, entry);
         if (rawData) {
           documentXml = decoder.decode(rawData);
         }
@@ -331,7 +289,7 @@ async function extractDocxTextAsync(fileData: Blob): Promise<string> {
 
     return text.trim();
   } catch (e) {
-    console.error("DOCX async extraction error:", e);
+    console.error("DOCX extraction error:", e);
     return "";
   }
 }
@@ -442,14 +400,33 @@ async function extractFromImage(uint8Array: Uint8Array, mimeType: string, openai
 
 /**
  * Use OpenAI to extract text from a DOCX when local parsing fails.
+ * Extracts all ZIP text entries and sends as a text prompt since OpenAI doesn't support DOCX file uploads.
  */
 async function extractDocxWithOpenAI(uint8Array: Uint8Array, title: string, openaiKey: string): Promise<string> {
-  let binary = "";
-  const chunkSize = 8192;
-  for (let i = 0; i < uint8Array.length; i += chunkSize) {
-    binary += String.fromCharCode(...uint8Array.subarray(i, i + chunkSize));
+  // Extract all readable XML text entries from the ZIP to send as context
+  const entries = findZipEntries(uint8Array);
+  const decoder = new TextDecoder("utf-8", { fatal: false });
+  const xmlParts: string[] = [];
+
+  for (const entry of entries) {
+    if (entry.name.startsWith("word/") && entry.name.endsWith(".xml")) {
+      try {
+        const rawData = extractZipEntry(uint8Array, entry);
+        if (rawData) {
+          const xmlText = decoder.decode(rawData);
+          // Strip XML tags to get raw text
+          let stripped = xmlText.replace(/<\/w:p>/gi, "\n").replace(/<\/w:r>/gi, " ").replace(/<[^>]+>/g, "");
+          stripped = stripped.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+          stripped = stripped.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+          if (stripped.length > 20) xmlParts.push(stripped);
+        }
+      } catch { /* skip unreadable entries */ }
+    }
   }
-  const docxBase64 = btoa(binary);
+
+  if (xmlParts.length === 0) return "";
+
+  const rawContent = xmlParts.join("\n\n").substring(0, 30000);
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -457,18 +434,18 @@ async function extractDocxWithOpenAI(uint8Array: Uint8Array, title: string, open
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [{
+        role: "system",
+        content: "You are a document text extractor. The user will provide raw text extracted from a Word document's XML. Clean it up into well-structured, readable text. Preserve all content, headings, lists, and structure. Do NOT summarize or add commentary."
+      }, {
         role: "user",
-        content: [
-          { type: "text", text: "Extract ALL text content from this Word document (.docx). Include every word, heading, paragraph, bullet point, and piece of text. Preserve the structure. Do NOT summarize or describe the file format - extract only the actual document text content." },
-          { type: "file", file: { filename: `${title}.docx`, file_data: `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${docxBase64}` } },
-        ],
+        content: `Document title: "${title}"\n\nRaw extracted text:\n${rawContent}`
       }],
       max_tokens: 16000,
     }),
   });
 
   if (!res.ok) {
-    console.error("OpenAI DOCX extraction failed:", res.status, await res.text());
+    console.error("OpenAI DOCX cleanup failed:", res.status, await res.text());
     return "";
   }
 
