@@ -1,120 +1,125 @@
 
-Goal: fix the document-to-notes pipeline so Testio always uses the uploaded file content, not PDF internals, titles, or hallucinated fallback text.
+## Permanent Fix Plan for the Upload/Text Extraction Problem
 
-What I checked
-- The problem is real and is mainly backend, not CSS/UI.
-- Recent broken PDFs are marked `completed` while `original_content` is still `NULL`.
-- Edge logs show the same root error repeatedly:
-  - `Failed to update document with content: unsupported Unicode escape sequence`
-- The current PDF extractor often treats raw PDF internals as “successful” text because it only checks length, so nonsense gets passed into note generation.
-- `generate-flashcards` and `generate-quiz` still have dangerous fallbacks to `doc.title`, so the same class of bug can affect more than notes.
-- `chat-with-notes` and `generate-podcast` depend on notes/content, so bad extraction contaminates those too.
+### What I found
+This is not mainly an OCR problem. The biggest bug is **file-type handling**.
 
-Root causes
-1. PDF extraction quality check is too weak  
-   A long blob of PDF object/encoding text is accepted as valid content.
-2. Saving extracted text is failing  
-   The extracted string contains invalid characters/escape sequences, so DB writes fail.
-3. Status handling is wrong  
-   Documents can be marked `completed` even when extracted content was never saved.
-4. Logic is duplicated across functions  
-   `process-document` and `generate-notes` each do their own extraction/fallback, which makes bugs inconsistent.
-5. Unsafe content fallbacks still exist  
-   Quiz/flashcards can fall back to the document title and generate nonsense.
+- Your recent entrepreneurship upload (`ENT 211- ENTERPRISE FORMATION`) is stored as a **`.docx` file**, but the app saved it as `source_type = "text"`.
+- The backend then reads the `.docx` file like a plain text file, so it saves raw ZIP/XML package data such as:
+  - `PK...`
+  - `[Content_Types].xml`
+  - `word/document.xml`
+- That garbage is then treated as valid document text, which is why the AI generates summaries about **Word/XML document structure** instead of the actual entrepreneurship notes.
+- I also confirmed that some old bad notes are already saved in the database, so other features can keep reusing polluted content even after upload succeeds.
 
-Implementation plan
+### Root cause summary
+1. **DOCX uploads are misclassified in the frontend**
+   - `Dashboard.tsx` currently treats anything that isn’t PDF as `"text"`.
+2. **DOCX extraction is missing in the backend**
+   - `.docx` is being read as raw bytes instead of unpacked OOXML text.
+3. **Quality checks are too weak for non-PDF files**
+   - raw package/XML text can still pass and get saved.
+4. **Bad notes contaminate later features**
+   - flashcards, quiz, podcast, and chat may prefer existing notes, even when those notes were generated from corrupted source text.
 
-1. Harden extraction at the source
-- Refactor document extraction into a shared backend helper used by:
-  - `process-document`
-  - `generate-notes`
-  - `generate-flashcards`
-  - `generate-quiz`
-  - `chat-with-notes`
-  - `generate-podcast`
-- Use a two-stage extraction flow:
-  - Stage A: direct text extraction for real text PDFs/text files
-  - Stage B: OCR/vision fallback when Stage A looks low-quality
-- Replace the current “length > threshold” rule with a quality gate that rejects content dominated by:
-  - PDF syntax (`obj`, `endobj`, `/Type`, `/Filter`, `/Catalog`, etc.)
-  - unreadable symbol density
-  - low word density / low natural-language score
-  - repeated binary/encoding fragments
+---
 
-2. Sanitize extracted content before saving
-- Add a backend sanitization step before every DB write:
-  - strip null bytes
-  - remove unsupported control characters
-  - normalize Unicode
-  - remove malformed escape patterns that break JSON/PostgREST payloads
-- Save only sanitized content to `documents.original_content`.
-- If sanitization leaves the content unusable, treat extraction as failed instead of pretending success.
+## What I will implement
 
-3. Fix document status lifecycle
-- `process-document` should only mark a document `completed` after content is successfully persisted.
-- If extraction succeeds in memory but DB save fails, mark the document `failed` and store a user-safe error message.
-- Avoid silent “completed + NULL content” states entirely.
+### 1. Fix upload classification at the source
+Update the upload flow in `src/pages/Dashboard.tsx` so files are classified correctly:
 
-4. Remove unsafe fallbacks across the study pipeline
-- Remove `doc.title` fallback from:
-  - `generate-flashcards`
-  - `generate-quiz`
-- Ensure all generators require one of:
-  - validated `original_content`, or
-  - validated notes content
-- If no reliable content exists, return a friendly error instead of generating fake study material.
+- `pdf` → PDF pipeline
+- `docx` → DOCX pipeline
+- `txt/md` → plain text pipeline
+- images → OCR/image pipeline
+- `doc` → reject with a clear message instead of pretending it is supported
 
-5. Make note generation use validated source content only
-- Update `generate-notes` so it only proceeds with content that passed the shared extractor/quality gate.
-- If extraction falls back to OCR, use the OCR result directly and persist it once.
-- Prevent note generation from producing “data encoding / corrupted document” summaries unless the document truly is unreadable.
+This removes the main cause of the corruption.
 
-6. Improve error handling in the app
-- Replace generic “edge function returned a non-2xx status code” messaging with clean, student-friendly errors such as:
-  - “We couldn’t read the text from this file yet. Please try again or upload a clearer PDF/image.”
-  - “This file uploaded successfully, but we couldn’t extract readable study content from it.”
-- Surface processing failure clearly in the document status so users know whether the problem is upload, extraction, or generation.
+### 2. Add real DOCX extraction in the backend
+Update `supabase/functions/_shared/extract-content.ts` to support Word documents properly by:
 
-7. Repair already-broken documents
-- Add a recovery path for existing documents where:
-  - `status = completed`
-  - `original_content IS NULL`
-- On next generation attempt, automatically re-run extraction with the new shared pipeline.
-- Optionally backfill recent broken documents so users don’t need to re-upload.
+- detecting `.docx` from extension/storage path
+- extracting text from the OOXML package (`word/document.xml`, and relevant supporting parts if needed)
+- stripping XML tags/entities cleanly
+- producing actual readable study content before saving
 
-8. QA all related flows, not just notes
-- Test with:
-  - a normal text PDF
-  - a scanned/image PDF
-  - a plain text upload
-  - an image upload
-  - a previously broken PDF
-- Verify:
-  - extracted content is saved
-  - notes use actual file content
-  - flashcards/quiz no longer use the title as source
-  - chat/podcast use valid study content
-  - failed files show clear status/messages
+This is the permanent fix for the entrepreneurship file issue.
 
-Files I would target
+### 3. Harden the extraction quality gate
+Expand validation so extracted content is rejected if it looks like:
+
+- ZIP/package content (`PK...`)
+- Office/XML internals (`[Content_Types].xml`, `_rels`, `word/document.xml`, `theme1.xml`)
+- model apology/refusal text like “I’m unable to extract...”
+- document-structure/meta summaries instead of source text
+
+If content fails validation, the file should be marked `failed` with a clear error instead of being saved as `completed`.
+
+### 4. Stop downstream features from reusing corrupted notes
+Update these backend functions so they only use **validated** source material:
+
+- `generate-notes`
+- `generate-flashcards`
+- `generate-quiz`
+- `generate-podcast`
+- `chat-with-notes`
+
+Plan:
+- prefer validated `original_content`
+- ignore existing notes if those notes match the known corruption patterns
+- regenerate from clean source instead of amplifying bad notes
+
+### 5. Repair already-broken uploads automatically
+Add a recovery path for existing bad records:
+
+- detect documents whose saved content starts with ZIP/XML/package markers
+- re-extract them from the original uploaded file
+- overwrite bad `original_content`
+- prevent old corrupted notes from being reused
+- where needed, regenerate notes/derived content from the repaired source
+
+This means you should not need to manually re-upload most affected `.docx` files.
+
+### 6. Improve user-facing errors
+Replace vague failures with clear messages such as:
+
+- “This Word file format isn’t supported yet. Please upload a DOCX or PDF.”
+- “We uploaded your file, but couldn’t extract readable study text from it.”
+- “This document was repaired and is ready to generate notes again.”
+
+---
+
+## Files I would update
+- `src/pages/Dashboard.tsx`
+- `supabase/functions/_shared/extract-content.ts`
 - `supabase/functions/process-document/index.ts`
 - `supabase/functions/generate-notes/index.ts`
 - `supabase/functions/generate-flashcards/index.ts`
 - `supabase/functions/generate-quiz/index.ts`
 - `supabase/functions/generate-podcast/index.ts`
 - `supabase/functions/chat-with-notes/index.ts`
-- new shared backend helper under `supabase/functions/_shared/`
-- `src/pages/DocumentView.tsx`
-- `src/pages/Dashboard.tsx`
 
-Technical details
-- Main confirmed backend bug: extracted text save fails with `unsupported Unicode escape sequence`.
-- Main logic bug: the extractor currently accepts long garbage output as “good enough”, so OCR fallback is skipped when it should run.
-- Main data integrity bug: documents can be `completed` while `original_content` is empty.
-- Main cross-feature bug: quiz/flashcards still fall back to the document title, which spreads nonsense generation beyond notes.
+---
 
-Expected result
-- Uploaded files become the single true source of generated study content.
-- Broken PDFs either extract correctly through OCR or fail clearly.
-- No more title-based or PDF-internals-based notes.
-- Notes, flashcards, quiz, podcast, and chat all behave consistently because they share the same validated content pipeline.
+## What you need to do
+For normal **PDF, DOCX, TXT, and image** uploads: **nothing** once this fix is implemented.
+
+Only one case may still require your action:
+- If your file is an old **`.doc`** Word file, please convert it to **`.docx` or PDF** before uploading. Legacy `.doc` is not reliable for this architecture.
+
+For already broken uploads:
+- I can plan the fix so the app **auto-repairs existing bad documents** from the original file in storage.
+- You should only need to re-upload if the original file itself is unreadable or is a legacy `.doc`.
+
+---
+
+## Expected outcome
+After this fix:
+
+- DOCX files will use their **real document text**, not raw XML/package data
+- notes will stop generating “Document Structure Overview” nonsense
+- quiz/flashcards/podcast/chat will stop inheriting corrupted notes
+- broken existing uploads can be repaired instead of starting over
+- the feature becomes reliable enough to keep as a core part of the app
