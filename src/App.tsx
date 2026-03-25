@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import DocumentView from "./pages/DocumentView";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import LeaderboardPage from "./pages/LeaderboardPage";
 import VerifyEmail from "./pages/VerifyEmail";
 import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/document/:id" element={<ProtectedRoute><DocumentView /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <PWAInstallBanner />

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2 } from "lucide-react";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import GamificationSidebar from "@/components/app/GamificationSidebar";
 import UpgradePrompt from "@/components/app/UpgradePrompt";
@@ -226,6 +226,24 @@ const Dashboard = () => {
         </div>
         <div className="flex items-center gap-3">
           <StreakDisplay stats={gamification.stats} compact />
+          <button
+            onClick={() => {
+              const link = gamification.getReferralLink();
+              if (navigator.share) {
+                navigator.share({ title: "Join Testio!", text: "Study smarter with AI-powered notes. Use my link to get a bonus upload!", url: link });
+              } else {
+                navigator.clipboard.writeText(link);
+                toast({ title: "Link copied!", description: "Share it with friends to earn uploads." });
+              }
+            }}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title="Share referral link"
+          >
+            <Gift className="w-5 h-5" />
+          </button>
+          <button onClick={() => navigate("/leaderboard")} className="text-muted-foreground hover:text-foreground transition-colors" title="Leaderboard">
+            <Trophy className="w-5 h-5" />
+          </button>
           <button onClick={() => navigate("/profile")} className="text-muted-foreground hover:text-foreground transition-colors" title="Profile">
             <UserCircle className="w-5 h-5" />
           </button>

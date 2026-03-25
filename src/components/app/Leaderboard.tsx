@@ -8,6 +8,7 @@ interface LeaderboardEntry {
   current_streak: number;
   longest_streak: number;
   display_name: string | null;
+  email: string | null;
 }
 
 const Leaderboard = () => {
@@ -33,14 +34,22 @@ const Leaderboard = () => {
       const userIds = statsData.map(s => s.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name")
+        .select("user_id, display_name, email")
         .in("user_id", userIds);
 
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p.display_name]) || []);
+      const profileMap = new Map(profiles?.map(p => [p.user_id, { display_name: p.display_name, email: p.email }]) || []);
+
+      const getDisplayName = (userId: string) => {
+        const profile = profileMap.get(userId);
+        if (profile?.display_name) return profile.display_name;
+        if (profile?.email) return profile.email.split("@")[0];
+        return "Student";
+      };
 
       setEntries(statsData.map(s => ({
         ...s,
-        display_name: profileMap.get(s.user_id) || "Student",
+        display_name: getDisplayName(s.user_id),
+        email: profileMap.get(s.user_id)?.email || null,
       })));
     }
     setLoading(false);
