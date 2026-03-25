@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import DocumentView from "./pages/DocumentView";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import LeaderboardPage from "./pages/LeaderboardPage";
 import VerifyEmail from "./pages/VerifyEmail";
 import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
