@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2 } from "lucide-react";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import GamificationSidebar from "@/components/app/GamificationSidebar";
 import UpgradePrompt from "@/components/app/UpgradePrompt";

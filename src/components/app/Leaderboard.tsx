@@ -8,6 +8,7 @@ interface LeaderboardEntry {
   current_streak: number;
   longest_streak: number;
   display_name: string | null;
+  email: string | null;
 }
 
 const Leaderboard = () => {
