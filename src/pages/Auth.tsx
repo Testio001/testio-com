@@ -26,10 +26,6 @@ const Auth = () => {
 
   useEffect(() => {
     if (!authLoading && user) {
-      // Process referral if present
-      if (referralCode) {
-        processReferral(referralCode);
-      }
       navigate("/dashboard", { replace: true });
     }
   }, [user, authLoading, navigate]);
