@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
 import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Mic, Loader2, Sparkles, Crown } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import NoteViewer from "@/components/app/NoteViewer";
 import FlashcardViewer from "@/components/app/FlashcardViewer";
@@ -30,16 +31,19 @@ const DocumentView = () => {
   const [flashcardKey, setFlashcardKey] = useState(0);
   const [quizKey, setQuizKey] = useState(0);
   const [podcastKey, setPodcastKey] = useState(0);
+  const [loadingContent, setLoadingContent] = useState(true);
 
   useEffect(() => {
     if (id && user) fetchDocument();
   }, [id, user]);
 
   const fetchDocument = async () => {
+    setLoadingContent(true);
     const { data: docData } = await supabase.from("documents").select("*").eq("id", id!).single();
     if (docData) setDoc(docData);
     const { data: notesData } = await supabase.from("notes").select("*").eq("document_id", id!).order("created_at");
     if (notesData) setNotes(notesData);
+    setLoadingContent(false);
   };
 
   const generateNotes = async () => {
@@ -180,8 +184,8 @@ const DocumentView = () => {
           ))}
         </div>
 
-        {/* Action buttons */}
-        {activeTab === "notes" && notes.length === 0 && (
+        {/* Action buttons — hidden while content is loading */}
+        {!loadingContent && activeTab === "notes" && notes.length === 0 && (
           <div className="mb-6">
             <button onClick={generateNotes} disabled={generating === "notes"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
               {generating === "notes" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
@@ -230,13 +234,23 @@ const DocumentView = () => {
         )}
 
         {/* Content */}
-        <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          {activeTab === "notes" && <NoteViewer documentId={id!} notes={notes} onRefresh={fetchDocument} />}
-          {activeTab === "flashcards" && <FlashcardViewer key={flashcardKey} documentId={id!} />}
-          {activeTab === "quiz" && <QuizViewer key={quizKey} documentId={id!} />}
-          {activeTab === "podcast" && <PodcastPlayer key={podcastKey} documentId={id!} />}
-          {activeTab === "chat" && <ChatPanel documentId={id!} />}
-        </motion.div>
+        {loadingContent ? (
+          <div className="py-12 space-y-4">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-4 h-4 text-primary animate-spin" />
+              <span className="text-sm text-muted-foreground">Loading your content...</span>
+            </div>
+            <Progress value={undefined} className="h-2 w-full max-w-xs animate-pulse" />
+          </div>
+        ) : (
+          <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            {activeTab === "notes" && <NoteViewer documentId={id!} notes={notes} onRefresh={fetchDocument} />}
+            {activeTab === "flashcards" && <FlashcardViewer key={flashcardKey} documentId={id!} />}
+            {activeTab === "quiz" && <QuizViewer key={quizKey} documentId={id!} />}
+            {activeTab === "podcast" && <PodcastPlayer key={podcastKey} documentId={id!} />}
+            {activeTab === "chat" && <ChatPanel documentId={id!} />}
+          </motion.div>
+        )}
       </div>
     </div>
   );
