@@ -23,6 +23,25 @@ function generateReferralCode(): string {
   return "testio-" + Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+async function getUserEmail(supabaseAdmin: any, userId: string) {
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("email, display_name")
+    .eq("user_id", userId)
+    .single();
+  return data;
+}
+
+async function sendEmail(supabaseAdmin: any, templateName: string, recipientEmail: string, idempotencyKey: string, templateData: Record<string, any> = {}) {
+  try {
+    await supabaseAdmin.functions.invoke("send-transactional-email", {
+      body: { templateName, recipientEmail, idempotencyKey, templateData },
+    });
+  } catch (e) {
+    console.error(`Failed to send ${templateName} email:`, e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -60,7 +79,6 @@ Deno.serve(async (req) => {
 
     const { action, ...params } = await req.json();
 
-    // Helper: get or create user stats
     async function getOrCreateStats() {
       let { data: stats } = await supabaseAdmin
         .from("user_stats")
@@ -80,7 +98,6 @@ Deno.serve(async (req) => {
       return stats;
     }
 
-    // Helper: reset monthly referrals if needed
     async function maybeResetMonthlyReferrals(stats: any) {
       const resetDate = new Date(stats.referrals_month_reset);
       const now = new Date();
@@ -100,7 +117,6 @@ Deno.serve(async (req) => {
       return stats;
     }
 
-    // Helper: check and handle streak break
     async function checkStreakBreak(stats: any) {
       if (stats.last_upload_date) {
         const lastUpload = new Date(stats.last_upload_date);
@@ -173,7 +189,6 @@ Deno.serve(async (req) => {
         stats = await maybeResetMonthlyReferrals(stats);
         stats = await checkStreakBreak(stats);
 
-        // Race condition prevention: re-read fresh stats
         const { data: freshStats } = await supabaseAdmin
           .from("user_stats")
           .select("*")
@@ -194,16 +209,28 @@ Deno.serve(async (req) => {
           bonusIncrease = 1;
         }
 
+        const newUploadsUsed = freshStats.uploads_used + 1;
+
         await supabaseAdmin
           .from("user_stats")
           .update({
-            uploads_used: freshStats.uploads_used + 1,
+            uploads_used: newUploadsUsed,
             current_streak: newStreak,
             longest_streak: newLongest,
             last_upload_date: today,
             bonus_uploads: freshStats.bonus_uploads + bonusIncrease,
           })
           .eq("user_id", userId);
+
+        // Credit alert: send when user has used 2 of 3 free uploads
+        if (newUploadsUsed === 2 && freshStats.bonus_uploads === 0) {
+          const profile = await getUserEmail(supabaseAdmin, userId);
+          if (profile?.email) {
+            await sendEmail(supabaseAdmin, "credit-alert", profile.email, `credit-alert-${userId}-${today}`, {
+              displayName: profile.display_name || profile.email.split("@")[0],
+            });
+          }
+        }
 
         // Award badges
         if (isNewDay) {
@@ -223,6 +250,15 @@ Deno.serve(async (req) => {
                 badge_type: badge.type,
                 badge_name: badge.name,
               });
+
+              // Send badge earned email
+              const profile = await getUserEmail(supabaseAdmin, userId);
+              if (profile?.email) {
+                await sendEmail(supabaseAdmin, "badge-earned", profile.email, `badge-${badge.type}-${userId}`, {
+                  displayName: profile.display_name || profile.email.split("@")[0],
+                  badgeName: badge.name,
+                });
+              }
             }
           }
         }
@@ -238,7 +274,6 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Check if already referred
         const { data: existing } = await supabaseAdmin
           .from("referrals")
           .select("id")
@@ -250,7 +285,6 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Find referrer
         const { data: referrer } = await supabaseAdmin
           .from("user_stats")
           .select("user_id, referrals_this_month, bonus_uploads, streak_freezes")
@@ -270,7 +304,6 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Check referrer monthly limit
         if (referrer.referrals_this_month >= MAX_REFERRALS_PER_MONTH) {
           result = {
             success: false,
@@ -279,13 +312,11 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Create referral
         await supabaseAdmin.from("referrals").insert({
           referrer_user_id: referrer.user_id,
           referred_user_id: userId,
         });
 
-        // Reward referrer atomically
         await supabaseAdmin
           .from("user_stats")
           .update({
@@ -295,13 +326,20 @@ Deno.serve(async (req) => {
           })
           .eq("user_id", referrer.user_id);
 
-        // Reward referred user
         const myStats = await getOrCreateStats();
         if (myStats) {
           await supabaseAdmin
             .from("user_stats")
             .update({ bonus_uploads: myStats.bonus_uploads + 1 })
             .eq("user_id", userId);
+        }
+
+        // Send referral success email to referrer
+        const referrerProfile = await getUserEmail(supabaseAdmin, referrer.user_id);
+        if (referrerProfile?.email) {
+          await sendEmail(supabaseAdmin, "referral-success", referrerProfile.email, `referral-success-${referrer.user_id}-${userId}`, {
+            displayName: referrerProfile.display_name || referrerProfile.email.split("@")[0],
+          });
         }
 
         result = {
