@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { motion } from "framer-motion";
-import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Gift } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Gift, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import testioLogo from "@/assets/testio-logo.png";
@@ -11,12 +11,15 @@ import testioLogo from "@/assets/testio-logo.png";
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const referralCode = searchParams.get("ref");
-  const [isLogin, setIsLogin] = useState(false); // Default to signup for new users
+  const [isLogin, setIsLogin] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
@@ -56,7 +59,7 @@ const Auth = () => {
         if (error) throw error;
         navigate("/dashboard");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -64,6 +67,17 @@ const Auth = () => {
           },
         });
         if (error) throw error;
+        // Send welcome email
+        if (signUpData?.user) {
+          supabase.functions.invoke("send-transactional-email", {
+            body: {
+              templateName: "welcome",
+              recipientEmail: email,
+              idempotencyKey: `welcome-${signUpData.user.id}`,
+              templateData: { displayName: displayName || email.split("@")[0] },
+            },
+          }).catch(console.error);
+        }
         navigate("/verify-email", { state: { email } });
       }
     } catch (error: any) {
