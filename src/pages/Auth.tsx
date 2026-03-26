@@ -26,10 +26,6 @@ const Auth = () => {
 
   useEffect(() => {
     if (!authLoading && user) {
-      // Process referral if present
-      if (referralCode) {
-        processReferral(referralCode);
-      }
       navigate("/dashboard", { replace: true });
     }
   }, [user, authLoading, navigate]);
@@ -67,17 +63,6 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        // Send welcome email
-        if (signUpData?.user) {
-          supabase.functions.invoke("send-transactional-email", {
-            body: {
-              templateName: "welcome",
-              recipientEmail: email,
-              idempotencyKey: `welcome-${signUpData.user.id}`,
-              templateData: { displayName: displayName || email.split("@")[0] },
-            },
-          }).catch(console.error);
-        }
         navigate("/verify-email", { state: { email } });
       }
     } catch (error: any) {
