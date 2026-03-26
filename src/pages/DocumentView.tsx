@@ -184,8 +184,8 @@ const DocumentView = () => {
           ))}
         </div>
 
-        {/* Action buttons */}
-        {activeTab === "notes" && notes.length === 0 && (
+        {/* Action buttons — hidden while content is loading */}
+        {!loadingContent && activeTab === "notes" && notes.length === 0 && (
           <div className="mb-6">
             <button onClick={generateNotes} disabled={generating === "notes"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
               {generating === "notes" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
