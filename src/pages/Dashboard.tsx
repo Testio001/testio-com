@@ -36,19 +36,20 @@ const [showReferral, setShowReferral] = useState(false);
       const pendingRef = localStorage.getItem("testio-referral");
       if (pendingRef) {
         localStorage.removeItem("testio-referral");
-        // Wait for stats to load so we can compare codes
-        const statsCheck = await supabase.functions.invoke("manage-gamification", {
-          body: { action: "get-stats" },
-        });
-        const ownCode = statsCheck?.data?.stats?.referral_code;
-        if (ownCode && ownCode === pendingRef) {
-          toast({ title: "Oops", description: "You can't use your own referral code!", variant: "destructive" });
-        } else {
-          const result = await gamification.processReferral(pendingRef);
-          if (result.success) {
-            toast({ title: "🎉 Referral applied!", description: result.message });
+        (async () => {
+          const statsCheck = await supabase.functions.invoke("manage-gamification", {
+            body: { action: "get-stats" },
+          });
+          const ownCode = statsCheck?.data?.stats?.referral_code;
+          if (ownCode && ownCode === pendingRef) {
+            toast({ title: "Oops", description: "You can't use your own referral code!", variant: "destructive" });
+          } else {
+            const result = await gamification.processReferral(pendingRef);
+            if (result.success) {
+              toast({ title: "🎉 Referral applied!", description: result.message });
+            }
           }
-        }
+        })();
       }
     }
   }, [user]);
