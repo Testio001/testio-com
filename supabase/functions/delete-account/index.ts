@@ -28,18 +28,17 @@ serve(async (req) => {
     if (userError || !user) throw new Error("Unauthorized");
 
     const userId = user.id;
+    const userEmail = user.email;
 
     // Delete all user data in order (respecting foreign keys)
     await supabase.from("chat_messages").delete().eq("user_id", userId);
     
-    // Get user's flashcard sets and delete cards first
     const { data: flashcardSets } = await supabase.from("flashcard_sets").select("id").eq("user_id", userId);
     if (flashcardSets && flashcardSets.length > 0) {
       await supabase.from("flashcard_cards").delete().in("flashcard_set_id", flashcardSets.map(s => s.id));
     }
     await supabase.from("flashcard_sets").delete().eq("user_id", userId);
 
-    // Get user's quizzes and delete questions first
     const { data: quizzes } = await supabase.from("quizzes").select("id").eq("user_id", userId);
     if (quizzes && quizzes.length > 0) {
       await supabase.from("quiz_questions").delete().in("quiz_id", quizzes.map(q => q.id));
@@ -48,12 +47,26 @@ serve(async (req) => {
 
     await supabase.from("notes").delete().eq("user_id", userId);
     await supabase.from("documents").delete().eq("user_id", userId);
-    
     await supabase.from("profiles").delete().eq("user_id", userId);
 
     // Delete auth user
     const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
     if (deleteError) throw deleteError;
+
+    // Send account deletion confirmation email
+    if (userEmail) {
+      try {
+        await supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "account-deleted",
+            recipientEmail: userEmail,
+            idempotencyKey: `account-deleted-${userId}`,
+          },
+        });
+      } catch (e) {
+        console.error("Failed to send account deletion email:", e);
+      }
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
