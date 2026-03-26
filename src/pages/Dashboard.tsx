@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy } from "lucide-react";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import GamificationSidebar from "@/components/app/GamificationSidebar";
 import UpgradePrompt from "@/components/app/UpgradePrompt";
@@ -24,7 +25,9 @@ const Dashboard = () => {
   const [showUpload, setShowUpload] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
-  const [showReferral, setShowReferral] = useState(false);
+const [showReferral, setShowReferral] = useState(false);
+  const [renamingDoc, setRenamingDoc] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -215,6 +218,25 @@ const Dashboard = () => {
     });
   };
 
+  const renameDocument = async (docId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    setDocuments(prev => prev.map(d => d.id === docId ? { ...d, title: newTitle.trim() } : d));
+    await supabase.from("documents").update({ title: newTitle.trim() }).eq("id", docId);
+    setRenamingDoc(null);
+    toast({ title: "Renamed", description: "Document has been renamed." });
+  };
+
+  const shareDocument = (doc: Document) => {
+    const text = `Check out my notes on "${doc.title}" on Testio!`;
+    const url = gamification.getReferralLink();
+    if (navigator.share) {
+      navigator.share({ title: doc.title, text, url });
+    } else {
+      navigator.clipboard.writeText(`${text}\n${url}`);
+      toast({ title: "Link copied!", description: "Share it with your friends." });
+    }
+  };
+
   const filteredDocs = documents.filter((d) => d.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -331,12 +353,39 @@ const Dashboard = () => {
                       <FileText className="w-8 h-8 text-primary/60" />
                       <div className="flex items-center gap-1">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${doc.status === "completed" ? "bg-testio-green/20 text-testio-green" : doc.status === "processing" ? "bg-yellow-500/20 text-yellow-400" : doc.status === "failed" ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>{doc.status}</span>
-                        <button onClick={(e) => { e.stopPropagation(); deleteDocument(doc.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <button className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-secondary">
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuItem onClick={() => { setRenamingDoc(doc.id); setRenameValue(doc.title); }}>
+                              <Pencil className="w-4 h-4 mr-2" /> Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => shareDocument(doc)}>
+                              <Share2 className="w-4 h-4 mr-2" /> Share
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => deleteDocument(doc.id)} className="text-destructive focus:text-destructive">
+                              <Trash2 className="w-4 h-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
-                    <h3 className="text-foreground font-semibold text-sm mb-1 truncate">{doc.title}</h3>
+                    {renamingDoc === doc.id ? (
+                      <input
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={() => renameDocument(doc.id, renameValue)}
+                        onKeyDown={(e) => { if (e.key === "Enter") renameDocument(doc.id, renameValue); if (e.key === "Escape") setRenamingDoc(null); }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full bg-background border border-primary/50 rounded px-2 py-1 text-foreground text-sm mb-1 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                    ) : (
+                      <h3 className="text-foreground font-semibold text-sm mb-1 truncate">{doc.title}</h3>
+                    )}
                     <p className="text-muted-foreground text-xs">{doc.source_type.toUpperCase()} · {new Date(doc.created_at).toLocaleDateString()}</p>
                   </motion.div>
                 ))}
