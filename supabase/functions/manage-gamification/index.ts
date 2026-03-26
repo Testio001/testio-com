@@ -94,6 +94,14 @@ Deno.serve(async (req) => {
           .select()
           .single();
         stats = newStats;
+
+        // Send welcome email for brand new user
+        const profile = await getUserEmail(supabaseAdmin, userId);
+        if (profile?.email) {
+          await sendEmail(supabaseAdmin, "welcome", profile.email, `welcome-${userId}`, {
+            displayName: profile.display_name || profile.email.split("@")[0],
+          });
+        }
       }
       return stats;
     }
