@@ -56,7 +56,7 @@ export interface GamificationData {
 
 const FREE_UPLOAD_LIMIT = 3;
 const MAX_REFERRALS_PER_MONTH = 5;
-const FREE_PODCAST_MAX_EXCHANGES = 8;
+const FREE_PODCAST_MAX_EXCHANGES = 14;
 const FREE_QUIZ_MAX_QUESTIONS = 20;
 const STREAK_BONUS_INTERVAL = 10;
 
