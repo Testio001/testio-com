@@ -15,7 +15,7 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken }: Up
     },
     podcast: {
       title: "Free podcast preview",
-      description: "Free plans include a 3-minute podcast preview. Upgrade for full-length podcasts with unlimited depth.",
+      description: "Free plans include a 5-minute podcast preview. Upgrade for full-length podcasts with unlimited depth.",
     },
     quiz: {
       title: "Quiz question limit",

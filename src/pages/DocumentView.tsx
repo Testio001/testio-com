@@ -115,7 +115,7 @@ const DocumentView = () => {
     if (!id) return;
     setGenerating("podcast");
     try {
-      // Free users get shortened podcast (8 exchanges ~3 mins)
+      // Free users get shortened podcast (14 exchanges ~5 mins)
       const { data, error } = await supabase.functions.invoke("generate-podcast", {
         body: { documentId: id, maxExchanges: FREE_PODCAST_MAX_EXCHANGES }
       });
@@ -222,7 +222,7 @@ const DocumentView = () => {
               Generate Podcast
             </button>
             <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
-              <Crown className="w-3 h-3" /> Free plan: ~3 minute preview. Upgrade for full-length podcasts.
+              <Crown className="w-3 h-3" /> Free plan: ~5 minute preview. Upgrade for full-length podcasts.
             </p>
             {generating === "podcast" && (
               <p className="text-muted-foreground text-xs mt-3 flex items-center gap-2">
