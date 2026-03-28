@@ -588,6 +588,15 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_leaderboard: {
+        Args: { limit_count?: number }
+        Returns: {
+          current_streak: number
+          longest_streak: number
+          uploads_used: number
+          user_id: string
+        }[]
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
