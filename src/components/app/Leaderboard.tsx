@@ -7,6 +7,7 @@ interface LeaderboardEntry {
   user_id: string;
   current_streak: number;
   longest_streak: number;
+  uploads_used: number;
   display_name: string | null;
   email: string | null;
 }
@@ -14,6 +15,7 @@ interface LeaderboardEntry {
 const Leaderboard = () => {
   const { user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [userRank, setUserRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,16 +23,11 @@ const Leaderboard = () => {
   }, []);
 
   const fetchLeaderboard = async () => {
-    // Fetch top users by current streak
-    const { data: statsData } = await supabase
-      .from("user_stats")
-      .select("user_id, current_streak, longest_streak")
-      .gt("current_streak", 0)
-      .order("current_streak", { ascending: false })
-      .limit(10);
+    // Use the security-definer function to get leaderboard data
+    const { data: statsData } = await supabase.rpc("get_leaderboard", { limit_count: 10 });
 
     if (statsData && statsData.length > 0) {
-      // Fetch display names
+      // Fetch display names for all leaderboard users
       const userIds = statsData.map(s => s.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
@@ -46,11 +43,26 @@ const Leaderboard = () => {
         return "Student";
       };
 
-      setEntries(statsData.map(s => ({
+      const mapped = statsData.map(s => ({
         ...s,
         display_name: getDisplayName(s.user_id),
         email: profileMap.get(s.user_id)?.email || null,
-      })));
+      }));
+
+      setEntries(mapped);
+
+      // Check if the current user is in the top 10
+      if (user) {
+        const inTop = mapped.findIndex(e => e.user_id === user.id);
+        if (inTop === -1) {
+          // User not in top 10 — fetch full leaderboard to find their rank
+          const { data: allData } = await supabase.rpc("get_leaderboard", { limit_count: 1000 });
+          if (allData) {
+            const rank = allData.findIndex(e => e.user_id === user.id);
+            setUserRank(rank === -1 ? null : rank + 1);
+          }
+        }
+      }
     }
     setLoading(false);
   };
@@ -109,6 +121,15 @@ const Leaderboard = () => {
           );
         })}
       </div>
+      {user && !entries.some(e => e.user_id === user.id) && (
+        <div className="mt-4 text-center py-3 px-4 rounded-lg bg-muted/50 border border-border/50">
+          <p className="text-sm text-muted-foreground">
+            {userRank
+              ? `You're #${userRank} — keep studying to break into the top 10! 🔥`
+              : "Start a streak to appear on the leaderboard! 📚"}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
