@@ -28,7 +28,7 @@ const Leaderboard = () => {
     // Filter to users with active streaks
     const filtered = statsData?.filter(s => s.current_streak > 0) || [];
 
-    if (statsData && statsData.length > 0) {
+    if (filtered.length > 0) {
       // Fetch display names
       const userIds = statsData.map(s => s.user_id);
       const { data: profiles } = await supabase
