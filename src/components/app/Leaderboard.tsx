@@ -21,13 +21,12 @@ const Leaderboard = () => {
   }, []);
 
   const fetchLeaderboard = async () => {
-    // Fetch top users by current streak
+    // Use secure RPC function for leaderboard data
     const { data: statsData } = await supabase
-      .from("user_stats")
-      .select("user_id, current_streak, longest_streak")
-      .gt("current_streak", 0)
-      .order("current_streak", { ascending: false })
-      .limit(10);
+      .rpc("get_leaderboard", { limit_count: 10 }) as { data: { user_id: string; current_streak: number; longest_streak: number; uploads_used: number }[] | null };
+
+    // Filter to users with active streaks
+    const filtered = statsData?.filter(s => s.current_streak > 0) || [];
 
     if (statsData && statsData.length > 0) {
       // Fetch display names
