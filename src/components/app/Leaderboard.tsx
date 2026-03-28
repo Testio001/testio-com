@@ -21,17 +21,16 @@ const Leaderboard = () => {
   }, []);
 
   const fetchLeaderboard = async () => {
-    // Fetch top users by current streak
+    // Use secure RPC function for leaderboard data
     const { data: statsData } = await supabase
-      .from("user_stats")
-      .select("user_id, current_streak, longest_streak")
-      .gt("current_streak", 0)
-      .order("current_streak", { ascending: false })
-      .limit(10);
+      .rpc("get_leaderboard", { limit_count: 10 }) as { data: { user_id: string; current_streak: number; longest_streak: number; uploads_used: number }[] | null };
 
-    if (statsData && statsData.length > 0) {
+    // Filter to users with active streaks
+    const filtered = statsData?.filter(s => s.current_streak > 0) || [];
+
+    if (filtered.length > 0) {
       // Fetch display names
-      const userIds = statsData.map(s => s.user_id);
+      const userIds = filtered.map(s => s.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, display_name, email")
@@ -46,7 +45,7 @@ const Leaderboard = () => {
         return "Student";
       };
 
-      setEntries(statsData.map(s => ({
+      setEntries(filtered.map(s => ({
         ...s,
         display_name: getDisplayName(s.user_id),
         email: profileMap.get(s.user_id)?.email || null,
