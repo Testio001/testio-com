@@ -30,7 +30,7 @@ const Leaderboard = () => {
 
     if (filtered.length > 0) {
       // Fetch display names
-      const userIds = statsData.map(s => s.user_id);
+      const userIds = filtered.map(s => s.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, display_name, email")
