@@ -45,7 +45,7 @@ const Leaderboard = () => {
         return "Student";
       };
 
-      setEntries(statsData.map(s => ({
+      setEntries(filtered.map(s => ({
         ...s,
         display_name: getDisplayName(s.user_id),
         email: profileMap.get(s.user_id)?.email || null,
