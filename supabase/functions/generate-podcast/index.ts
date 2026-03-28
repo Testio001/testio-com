@@ -11,19 +11,6 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Auth check
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    const anonClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    const userId = claimsData.claims.sub as string;
-
     const { documentId, maxExchanges } = await req.json();
     const exchangeLimit = maxExchanges || 20;
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
@@ -32,11 +19,6 @@ serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
-
-    // Verify ownership
-    if (doc.user_id !== userId) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
 
     // Use notes only if not corrupted
     const { data: notes } = await supabase.from("notes").select("content").eq("document_id", documentId);
@@ -101,7 +83,7 @@ Rules:
 
     const fileName = `${doc.user_id}/podcast_${documentId}_${Date.now()}.mp3`;
     const { error: uploadError } = await supabase.storage.from("documents").upload(fileName, combinedAudio.buffer, { contentType: "audio/mpeg", upsert: true });
-    if (uploadError) throw new Error("Podcast upload failed. Please try again.");
+    if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
     const { data: signedUrlData } = await supabase.storage.from("documents").createSignedUrl(fileName, 60 * 60 * 24 * 7);
     const { data: urlData } = supabase.storage.from("documents").getPublicUrl(fileName);
