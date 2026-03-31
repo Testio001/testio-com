@@ -414,7 +414,7 @@ const [showReferral, setShowReferral] = useState(false);
         {/* Mobile gamification - shown only on mobile */}
         <div className="lg:hidden mt-8">
           <GamificationSidebar
-            onUpgrade={() => toast({ title: "Coming soon!", description: "Premium plans are launching soon." })}
+            onUpgrade={() => navigate("/pricing")}
             gamification={gamification}
           />
         </div>
