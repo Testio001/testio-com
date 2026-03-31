@@ -263,6 +263,9 @@ const Dashboard = () => {
         <div className="flex items-center gap-2">
           <img src={testioLogo} alt="Testio" className="w-7 h-7" />
           <span className="text-foreground font-bold text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
+          <Badge variant={userPlan === "pro" ? "default" : userPlan === "basic" ? "secondary" : "outline"} className="text-[10px] uppercase ml-1">
+            {userPlan}
+          </Badge>
         </div>
         <div className="flex items-center gap-3">
           <StreakDisplay stats={gamification.stats} compact />
