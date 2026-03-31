@@ -49,12 +49,14 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken }: Up
       )}
 
       <div className="flex gap-2">
-        <button
-          onClick={onUpgrade}
-          className="flex-1 btn-testio-primary text-xs !py-2.5 flex items-center justify-center gap-1.5"
-        >
-          <Crown className="w-3.5 h-3.5" /> Upgrade
-        </button>
+        {!isAndroidApp && (
+          <button
+            onClick={() => navigate("/pricing")}
+            className="flex-1 btn-testio-primary text-xs !py-2.5 flex items-center justify-center gap-1.5"
+          >
+            <Crown className="w-3.5 h-3.5" /> Upgrade
+          </button>
+        )}
         <button
           onClick={onRefer}
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-secondary hover:bg-secondary/80 rounded-full text-xs font-medium text-foreground transition-colors"
