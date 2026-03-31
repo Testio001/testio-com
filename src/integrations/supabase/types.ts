@@ -370,6 +370,8 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          subscription_expires_at: string | null
+          subscription_plan: string
           user_id: string
         }
         Insert: {
@@ -377,6 +379,8 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          subscription_expires_at?: string | null
+          subscription_plan?: string
           user_id: string
         }
         Update: {
@@ -384,6 +388,8 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          subscription_expires_at?: string | null
+          subscription_plan?: string
           user_id?: string
         }
         Relationships: []
