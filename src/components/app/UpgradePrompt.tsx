@@ -10,6 +10,8 @@ interface UpgradePromptProps {
 }
 
 const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken }: UpgradePromptProps) => {
+  const navigate = useNavigate();
+  const isAndroidApp = useIsAndroidApp();
   const messages = {
     upload: {
       title: "Upload limit reached",
