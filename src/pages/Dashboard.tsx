@@ -327,7 +327,7 @@ const [showReferral, setShowReferral] = useState(false);
               <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowReferral(false)}>
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm">
                   <UpgradePrompt
-                    onUpgrade={() => { toast({ title: "Coming soon!", description: "Premium plans are launching soon." }); setShowReferral(false); }}
+                    onUpgrade={() => navigate("/pricing")}
                     onRefer={() => {
                       const link = gamification.getReferralLink();
                       if (navigator.share) {
@@ -405,7 +405,7 @@ const [showReferral, setShowReferral] = useState(false);
           {/* Gamification sidebar - hidden on mobile, shown on lg+ */}
           <div className="hidden lg:block w-80 shrink-0">
             <GamificationSidebar
-              onUpgrade={() => toast({ title: "Coming soon!", description: "Premium plans are launching soon." })}
+              onUpgrade={() => navigate("/pricing")}
               gamification={gamification}
             />
           </div>
@@ -414,7 +414,7 @@ const [showReferral, setShowReferral] = useState(false);
         {/* Mobile gamification - shown only on mobile */}
         <div className="lg:hidden mt-8">
           <GamificationSidebar
-            onUpgrade={() => toast({ title: "Coming soon!", description: "Premium plans are launching soon." })}
+            onUpgrade={() => navigate("/pricing")}
             gamification={gamification}
           />
         </div>

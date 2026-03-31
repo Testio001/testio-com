@@ -1,13 +1,17 @@
 import { Crown, Gift, Share2, Flame } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 
 interface UpgradePromptProps {
   onRefer: () => void;
-  onUpgrade: () => void;
+  onUpgrade?: () => void;
   type?: "upload" | "podcast" | "quiz";
   streakBroken?: boolean;
 }
 
 const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken }: UpgradePromptProps) => {
+  const navigate = useNavigate();
+  const isAndroidApp = useIsAndroidApp();
   const messages = {
     upload: {
       title: "Upload limit reached",
@@ -45,12 +49,14 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken }: Up
       )}
 
       <div className="flex gap-2">
-        <button
-          onClick={onUpgrade}
-          className="flex-1 btn-testio-primary text-xs !py-2.5 flex items-center justify-center gap-1.5"
-        >
-          <Crown className="w-3.5 h-3.5" /> Upgrade
-        </button>
+        {!isAndroidApp && (
+          <button
+            onClick={() => navigate("/pricing")}
+            className="flex-1 btn-testio-primary text-xs !py-2.5 flex items-center justify-center gap-1.5"
+          >
+            <Crown className="w-3.5 h-3.5" /> Upgrade
+          </button>
+        )}
         <button
           onClick={onRefer}
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-secondary hover:bg-secondary/80 rounded-full text-xs font-medium text-foreground transition-colors"
