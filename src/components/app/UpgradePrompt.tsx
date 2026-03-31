@@ -1,8 +1,10 @@
 import { Crown, Gift, Share2, Flame } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 
 interface UpgradePromptProps {
   onRefer: () => void;
-  onUpgrade: () => void;
+  onUpgrade?: () => void;
   type?: "upload" | "podcast" | "quiz";
   streakBroken?: boolean;
 }
