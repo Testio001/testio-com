@@ -6,8 +6,8 @@ const corsHeaders = {
 };
 
 const PLAN_AMOUNTS: Record<string, number> = {
-  basic: 499, // $4.99 in cents
-  pro: 999,   // $9.99 in cents
+  basic: 499,  // $4.99 in cents
+  pro: 999,    // $9.99 in cents
 };
 
 Deno.serve(async (req) => {
@@ -27,14 +27,10 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     }
-
-    const userId = claimsData.claims.sub;
-    const email = claimsData.claims.email;
 
     const { plan } = await req.json();
     if (!plan || !PLAN_AMOUNTS[plan]) {
@@ -42,7 +38,7 @@ Deno.serve(async (req) => {
     }
 
     const amount = PLAN_AMOUNTS[plan] * 100; // Paystack uses smallest currency unit (kobo for NGN, cents for USD)
-    const reference = `testio_${plan}_${userId.substring(0, 8)}_${Date.now()}`;
+    const reference = `testio_${plan}_${user.id.substring(0, 8)}_${Date.now()}`;
 
     const paystackKey = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!paystackKey) {
@@ -56,12 +52,12 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email,
+        email: user.email,
         amount,
         reference,
         currency: "USD",
         metadata: {
-          user_id: userId,
+          user_id: user.id,
           plan,
         },
       }),

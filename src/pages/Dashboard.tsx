@@ -12,6 +12,7 @@ import UpgradePrompt from "@/components/app/UpgradePrompt";
 import StreakDisplay from "@/components/app/StreakDisplay";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
+import { Badge } from "@/components/ui/badge";
 
 type Document = Tables<"documents">;
 
@@ -25,13 +26,15 @@ const Dashboard = () => {
   const [showUpload, setShowUpload] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
-const [showReferral, setShowReferral] = useState(false);
+  const [showReferral, setShowReferral] = useState(false);
   const [renamingDoc, setRenamingDoc] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [userPlan, setUserPlan] = useState("free");
 
   useEffect(() => {
     if (user) {
       fetchData();
+      fetchPlan();
       // Process pending referral — but only if it's not the user's own code
       const pendingRef = localStorage.getItem("testio-referral");
       if (pendingRef) {
@@ -53,6 +56,12 @@ const [showReferral, setShowReferral] = useState(false);
       }
     }
   }, [user]);
+
+  const fetchPlan = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("profiles").select("subscription_plan").eq("user_id", user.id).single();
+    if (data?.subscription_plan) setUserPlan(data.subscription_plan);
+  };
 
   const fetchData = async () => {
     const docsRes = await supabase.from("documents").select("*").order("created_at", { ascending: false });
@@ -254,6 +263,9 @@ const [showReferral, setShowReferral] = useState(false);
         <div className="flex items-center gap-2">
           <img src={testioLogo} alt="Testio" className="w-7 h-7" />
           <span className="text-foreground font-bold text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
+          <Badge variant={userPlan === "pro" ? "default" : userPlan === "basic" ? "secondary" : "outline"} className="text-[10px] uppercase ml-1">
+            {userPlan}
+          </Badge>
         </div>
         <div className="flex items-center gap-3">
           <StreakDisplay stats={gamification.stats} compact />
