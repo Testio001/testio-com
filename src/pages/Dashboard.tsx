@@ -327,7 +327,7 @@ const [showReferral, setShowReferral] = useState(false);
               <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowReferral(false)}>
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm">
                   <UpgradePrompt
-                    onUpgrade={() => { toast({ title: "Coming soon!", description: "Premium plans are launching soon." }); setShowReferral(false); }}
+                    onUpgrade={() => navigate("/pricing")}
                     onRefer={() => {
                       const link = gamification.getReferralLink();
                       if (navigator.share) {
