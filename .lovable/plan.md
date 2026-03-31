@@ -1,76 +1,104 @@
+## Plan: Pricing & Subscription System with Paystack + TWA Detection
 
+### Overview
 
-## Plan: Add Forgot Password + Email Notification System
-
-### Part 1 — Forgot Password
-
-**Problem:** No way to reset password from the sign-in page.
-
-**Changes:**
-
-1. **`src/pages/Auth.tsx`** — Add a "Forgot password?" link below the password field (visible only in login mode). On click, show an inline input that calls `supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password' })` and shows a toast confirmation.
-
-2. **`src/pages/ResetPassword.tsx`** (new) — A public page at `/reset-password` that:
-   - Detects `type=recovery` in the URL hash
-   - Shows a "Set new password" form
-   - Calls `supabase.auth.updateUser({ password })` on submit
-   - Redirects to `/dashboard` on success
-
-3. **`src/App.tsx`** — Add `/reset-password` route (public, not behind ProtectedRoute).
+Add a pricing page with two plans (Basic $4.99/mo, Pro $9.99/mo), integrate Paystack for payments, detect Android TWA to hide monetization UI, and track subscription status in the database.
 
 ---
 
-### Part 2 — Email Notification System
+### Step 1: Database Migration
 
-**Approach:** Use Lovable's built-in email infrastructure (domain `notify.testio.online` is already verified). Set up transactional email templates for event-triggered emails, and extend the existing `streak-reminder` pattern for the idle reminder.
+Add `subscription_plan` and `subscription_expires_at` columns to the `profiles` table:
 
-**Infrastructure setup:**
-- Call `setup_email_infra` to create database queue infrastructure
-- Call `scaffold_transactional_email` to create the send Edge Function
-- Create 6 email templates + register them
+```sql
+ALTER TABLE public.profiles
+  ADD COLUMN subscription_plan text NOT NULL DEFAULT 'free',
+  ADD COLUMN subscription_expires_at timestamptz;
+```
 
-**Templates** (in `supabase/functions/_shared/transactional-email-templates/`):
-
-| Template | Trigger | Deep-link |
-|---|---|---|
-| `welcome` | After signup (in Auth.tsx) | `/dashboard` |
-| `idle-reminder` | Scheduled check (3 days no upload) | `/dashboard` |
-| `badge-earned` | Badge awarded (manage-gamification) | `/dashboard` |
-| `account-deleted` | After account deletion (delete-account) | `/` |
-| `referral-success` | Referral processed (manage-gamification) | `/dashboard` |
-| `credit-alert` | 2 of 3 uploads used (manage-gamification) | `/dashboard` |
-
-**Styling:** Testio brand — white background, teal (#22c9a0) accent for buttons/headings, Space Grotesk font, matching existing auth email templates.
-
-**Trigger wiring:**
-
-1. **Welcome email** — In `Auth.tsx`, after successful signup, invoke `send-transactional-email` with `welcome` template.
-
-2. **Idle reminder** — Modify existing `streak-reminder/index.ts` to also check for users with no upload in 3+ days and send the idle reminder via the transactional email system.
-
-3. **Badge earned** — In `manage-gamification/index.ts`, after inserting a new badge, invoke `send-transactional-email` with `badge-earned` template.
-
-4. **Account deleted** — In `delete-account/index.ts`, before deleting the user, capture their email, then after deletion send the confirmation email.
-
-5. **Referral success** — In `manage-gamification/index.ts` `process-referral` case, after rewarding the referrer, send them a `referral-success` email.
-
-6. **Credit alert** — In `manage-gamification/index.ts` `record-upload` case, after incrementing `uploads_used`, if `uploads_used === 2` (2 of 3 free used), send `credit-alert` email.
-
-**Unsubscribe page** — Create `/unsubscribe` page as required by the transactional email system.
+This lets us check a user's plan everywhere in the app.
 
 ---
 
-### Files Created/Modified
+### Step 2: TWA Detection Utility
 
-| File | Action |
-|---|---|
-| `src/pages/Auth.tsx` | Add forgot password link + welcome email trigger |
-| `src/pages/ResetPassword.tsx` | New reset password page |
-| `src/pages/Unsubscribe.tsx` | New unsubscribe page |
-| `src/App.tsx` | Add `/reset-password` and `/unsubscribe` routes |
-| `supabase/functions/_shared/transactional-email-templates/*.tsx` | 6 email templates |
-| `supabase/functions/_shared/transactional-email-templates/registry.ts` | Template registry |
-| `supabase/functions/manage-gamification/index.ts` | Add email triggers for badge, referral, credit |
-| `supabase/functions/delete-account/index.ts` | Add deletion confirmation email |
-| `supabase/functions/streak-reminder/index.ts` | Add 3-day idle reminder |
+Create `src/hooks/useIsAndroidApp.ts` — a small hook that checks `document.referrer.includes('android-app://online.testio.twa')` and returns a boolean. All upgrade/pricing UI will be conditionally hidden when this returns `true`.
 
+---
+
+### Step 3: Pricing Page
+
+Create `src/pages/Pricing.tsx` with two plan cards:
+
+
+| Feature               | Testio Basic — $4.99/mo | Testio Pro — $9.99/mo    |
+| --------------------- | ----------------------- | ------------------------ |
+| Uploads               | 25/month                | Unlimited (100 soft cap) |
+| Notes/Quiz/Flashcards | Yes                     | Yes                      |
+| AI Tutor              | Standard                | Unlimited                |
+| Podcast               | 5 min, 5/month          | Full length, 30/month    |
+
+
+Each card has a "Subscribe Now" button that opens Paystack checkout popup. A note under Pro says "*Fair usage policy applies."
+
+Add route `/pricing` to `App.tsx`.
+
+---
+
+### Step 4: Paystack Integration (Edge Function)
+
+**Secret needed:** `PAYSTACK_SECRET_KEY` — will request from user via the secrets tool.
+
+Create `supabase/functions/initialize-payment/index.ts`:
+
+- Accepts `{ plan: 'basic' | 'pro' }` + JWT auth
+- Calls Paystack Initialize Transaction API with the user's email and the correct amount (49900 or 99900 kobo — Paystack uses smallest currency unit)
+- Returns the `authorization_url` for the popup
+
+Create `supabase/functions/verify-payment/index.ts`:
+
+- Called after Paystack popup closes with a reference
+- Calls Paystack Verify Transaction API
+- On success, updates `profiles.subscription_plan` and `subscription_expires_at` (30 days from now)
+
+On the frontend, load Paystack inline JS and use the popup flow — no redirect needed.
+
+---
+
+### Step 5: Hide Monetization in TWA
+
+Wrap the following in `{!isAndroidApp && ...}`:
+
+- Upgrade buttons in `UpgradePrompt.tsx`
+- Pricing link in navbar/settings
+- Any "Subscribe" CTAs
+
+---
+
+### Step 6: Use Subscription Plan in App Logic
+
+Update `Dashboard.tsx` upload limit logic: free = 3, basic = 25, pro = 100.
+Update podcast generation to check plan for duration/count limits.
+
+---
+
+### Files Changed
+
+
+| File                                             | Change                                                         |
+| ------------------------------------------------ | -------------------------------------------------------------- |
+| **Migration**                                    | Add `subscription_plan`, `subscription_expires_at` to profiles |
+| `src/hooks/useIsAndroidApp.ts`                   | New — TWA detection hook                                       |
+| `src/pages/Pricing.tsx`                          | New — pricing page with two plan cards                         |
+| `src/App.tsx`                                    | Add `/pricing` route                                           |
+| `supabase/functions/initialize-payment/index.ts` | New — Paystack init                                            |
+| `supabase/functions/verify-payment/index.ts`     | New — Paystack verify + DB update                              |
+| `src/components/app/UpgradePrompt.tsx`           | Hide when TWA, link upgrade to `/pricing`                      |
+| `src/pages/Dashboard.tsx`                        | Adjust upload limits based on plan                             |
+
+
+### Prerequisite
+
+Will need the **Paystack Secret Key** added as a secret before the edge functions can work.
+
+Also add a congratulations message when payment is successful and a message when payment is not 
