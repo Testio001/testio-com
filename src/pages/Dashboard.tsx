@@ -34,6 +34,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (user) {
       fetchData();
+      fetchPlan();
       // Process pending referral — but only if it's not the user's own code
       const pendingRef = localStorage.getItem("testio-referral");
       if (pendingRef) {
@@ -55,6 +56,12 @@ const Dashboard = () => {
       }
     }
   }, [user]);
+
+  const fetchPlan = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("profiles").select("subscription_plan").eq("user_id", user.id).single();
+    if (data?.subscription_plan) setUserPlan(data.subscription_plan);
+  };
 
   const fetchData = async () => {
     const docsRes = await supabase.from("documents").select("*").order("created_at", { ascending: false });
