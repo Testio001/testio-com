@@ -30,7 +30,7 @@ const plans = [
     period: "/month",
     amount: 999,
     features: [
-      "Unlimited uploads* (100/month soft cap)",
+      "Unlimited uploads*",
       "Full Podcast access (30/month)",
       "Unlimited AI Tutor",
       "Priority processing",

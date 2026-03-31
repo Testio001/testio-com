@@ -12,6 +12,7 @@ import UpgradePrompt from "@/components/app/UpgradePrompt";
 import StreakDisplay from "@/components/app/StreakDisplay";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
+import { Badge } from "@/components/ui/badge";
 
 type Document = Tables<"documents">;
 
@@ -25,9 +26,10 @@ const Dashboard = () => {
   const [showUpload, setShowUpload] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
-const [showReferral, setShowReferral] = useState(false);
+  const [showReferral, setShowReferral] = useState(false);
   const [renamingDoc, setRenamingDoc] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [userPlan, setUserPlan] = useState("free");
 
   useEffect(() => {
     if (user) {
