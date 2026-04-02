@@ -7,6 +7,8 @@ const corsHeaders = {
 };
 
 const FREE_UPLOAD_LIMIT = 3;
+const BASIC_UPLOAD_LIMIT = 25;
+const PRO_UPLOAD_LIMIT = 100;
 const MAX_REFERRALS_PER_MONTH = 5;
 const STREAK_BONUS_INTERVAL = 10;
 
@@ -30,6 +32,37 @@ async function getUserEmail(supabaseAdmin: any, userId: string) {
     .eq("user_id", userId)
     .single();
   return data;
+}
+
+async function getActivePlan(supabaseAdmin: any, userId: string) {
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("subscription_plan, subscription_expires_at")
+    .eq("user_id", userId)
+    .single();
+
+  if (!data) return "free";
+
+  const expiresAt = data.subscription_expires_at
+    ? new Date(data.subscription_expires_at)
+    : null;
+
+  const isPaidPlanActive =
+    (data.subscription_plan === "basic" || data.subscription_plan === "pro") &&
+    (!!expiresAt && expiresAt.getTime() > Date.now());
+
+  return isPaidPlanActive ? data.subscription_plan : "free";
+}
+
+function getUploadLimitForPlan(plan: string) {
+  switch (plan) {
+    case "basic":
+      return BASIC_UPLOAD_LIMIT;
+    case "pro":
+      return PRO_UPLOAD_LIMIT;
+    default:
+      return FREE_UPLOAD_LIMIT;
+  }
 }
 
 async function sendEmail(supabaseAdmin: any, templateName: string, recipientEmail: string, idempotencyKey: string, templateData: Record<string, any> = {}) {
@@ -162,6 +195,7 @@ Deno.serve(async (req) => {
         if (!stats) throw new Error("Could not create user stats");
         stats = await maybeResetMonthlyReferrals(stats);
         stats = await checkStreakBreak(stats);
+        const activePlan = await getActivePlan(supabaseAdmin, userId);
 
         const { data: badges } = await supabaseAdmin
           .from("user_badges")
@@ -175,11 +209,12 @@ Deno.serve(async (req) => {
           .eq("referrer_user_id", userId)
           .order("created_at", { ascending: false });
 
-        const totalUploadsAllowed = FREE_UPLOAD_LIMIT + (stats.bonus_uploads || 0);
+        const totalUploadsAllowed = getUploadLimitForPlan(activePlan) + (stats.bonus_uploads || 0);
         const uploadsRemaining = Math.max(0, totalUploadsAllowed - (stats.uploads_used || 0));
 
         result = {
           stats,
+          activePlan,
           badges: badges || [],
           referrals: referrals || [],
           totalUploadsAllowed,
@@ -196,6 +231,7 @@ Deno.serve(async (req) => {
         if (!stats) throw new Error("Could not create user stats");
         stats = await maybeResetMonthlyReferrals(stats);
         stats = await checkStreakBreak(stats);
+        const activePlan = await getActivePlan(supabaseAdmin, userId);
 
         const { data: freshStats } = await supabaseAdmin
           .from("user_stats")
@@ -231,7 +267,7 @@ Deno.serve(async (req) => {
           .eq("user_id", userId);
 
         // Credit alert: send when user has used 2 of 3 free uploads
-        if (newUploadsUsed === 2 && freshStats.bonus_uploads === 0) {
+        if (activePlan === "free" && newUploadsUsed === 2 && freshStats.bonus_uploads === 0) {
           const profile = await getUserEmail(supabaseAdmin, userId);
           if (profile?.email) {
             await sendEmail(supabaseAdmin, "credit-alert", profile.email, `credit-alert-${userId}-${today}`, {
