@@ -1,104 +1,51 @@
-## Plan: Pricing & Subscription System with Paystack + TWA Detection
 
-### Overview
 
-Add a pricing page with two plans (Basic $4.99/mo, Pro $9.99/mo), integrate Paystack for payments, detect Android TWA to hide monetization UI, and track subscription status in the database.
+## Plan: Fix Push Notifications for Android PWA
 
----
+### Problem
+Push notifications don't work on Android PWA because:
+1. Two competing service workers (`sw.js` and `sw-push.js`) fight for root scope
+2. The push service worker is only registered when the user clicks "Enable" — Android needs it registered at app startup to receive background pushes
+3. A React runtime error (`useState` null) may be blocking the app from loading
 
-### Step 1: Database Migration
+### Solution
 
-Add `subscription_plan` and `subscription_expires_at` columns to the `profiles` table:
-
-```sql
-ALTER TABLE public.profiles
-  ADD COLUMN subscription_plan text NOT NULL DEFAULT 'free',
-  ADD COLUMN subscription_expires_at timestamptz;
-```
-
-This lets us check a user's plan everywhere in the app.
+**Merge service workers into a single `sw.js`** that handles both caching AND push events, then register it once at app startup.
 
 ---
 
-### Step 2: TWA Detection Utility
+### Step 1: Merge push handlers into `public/sw.js`
+Add the `push`, `notificationclick`, and `notificationclose` event listeners from `sw-push.js` into the existing `sw.js`. Remove `sw-push.js` as a separate file.
 
-Create `src/hooks/useIsAndroidApp.ts` — a small hook that checks `document.referrer.includes('android-app://online.testio.twa')` and returns a boolean. All upgrade/pricing UI will be conditionally hidden when this returns `true`.
+### Step 2: Update `src/main.tsx` — register SW at startup
+Register `/sw.js` once on load. Remove the duplicate registration from `index.html` inline script. Add the iframe/preview guard so the SW doesn't interfere in the Lovable editor.
 
----
+### Step 3: Update `src/hooks/usePushNotifications.ts`
+- Change all references from `/sw-push.js` to `/sw.js`
+- On `subscribe()`, use `navigator.serviceWorker.ready` instead of re-registering a separate SW
+- On `checkSubscription()`, use `navigator.serviceWorker.ready` to get the active registration
 
-### Step 3: Pricing Page
+### Step 4: Fix the React runtime error
+The `useState` null error in `ThemeProvider` is likely caused by duplicate React instances. Check `vite.config.ts` — the `react()` plugin (from `@vitejs/plugin-react`) may conflict with something. This may also be a transient preview-only issue; verify after the SW fixes.
 
-Create `src/pages/Pricing.tsx` with two plan cards:
+### Step 5: Update `public/manifest.json`
+Ensure `"start_url": "/"` and `"display": "standalone"` are set (already correct). No changes needed.
 
-
-| Feature               | Testio Basic — $4.99/mo | Testio Pro — $9.99/mo    |
-| --------------------- | ----------------------- | ------------------------ |
-| Uploads               | 25/month                | Unlimited (100 soft cap) |
-| Notes/Quiz/Flashcards | Yes                     | Yes                      |
-| AI Tutor              | Standard                | Unlimited                |
-| Podcast               | 5 min, 5/month          | Full length, 30/month    |
-
-
-Each card has a "Subscribe Now" button that opens Paystack checkout popup. A note under Pro says "*Fair usage policy applies."
-
-Add route `/pricing` to `App.tsx`.
-
----
-
-### Step 4: Paystack Integration (Edge Function)
-
-**Secret needed:** `PAYSTACK_SECRET_KEY` — will request from user via the secrets tool.
-
-Create `supabase/functions/initialize-payment/index.ts`:
-
-- Accepts `{ plan: 'basic' | 'pro' }` + JWT auth
-- Calls Paystack Initialize Transaction API with the user's email and the correct amount (49900 or 99900 kobo — Paystack uses smallest currency unit)
-- Returns the `authorization_url` for the popup
-
-Create `supabase/functions/verify-payment/index.ts`:
-
-- Called after Paystack popup closes with a reference
-- Calls Paystack Verify Transaction API
-- On success, updates `profiles.subscription_plan` and `subscription_expires_at` (30 days from now)
-
-On the frontend, load Paystack inline JS and use the popup flow — no redirect needed.
-
----
-
-### Step 5: Hide Monetization in TWA
-
-Wrap the following in `{!isAndroidApp && ...}`:
-
-- Upgrade buttons in `UpgradePrompt.tsx`
-- Pricing link in navbar/settings
-- Any "Subscribe" CTAs
-
----
-
-### Step 6: Use Subscription Plan in App Logic
-
-Update `Dashboard.tsx` upload limit logic: free = 3, basic = 25, pro = 100.
-Update podcast generation to check plan for duration/count limits.
+### Step 6: Deploy edge function
+Redeploy `send-push-notification` to ensure it's live with the current VAPID keys.
 
 ---
 
 ### Files Changed
 
+| File | Change |
+|------|--------|
+| `public/sw.js` | Add push/notification event handlers from sw-push.js |
+| `public/sw-push.js` | Delete (merged into sw.js) |
+| `src/main.tsx` | Single SW registration with preview guard, remove duplicate |
+| `index.html` | Remove inline SW registration script |
+| `src/hooks/usePushNotifications.ts` | Reference `/sw.js`, use `navigator.serviceWorker.ready` |
 
-| File                                             | Change                                                         |
-| ------------------------------------------------ | -------------------------------------------------------------- |
-| **Migration**                                    | Add `subscription_plan`, `subscription_expires_at` to profiles |
-| `src/hooks/useIsAndroidApp.ts`                   | New — TWA detection hook                                       |
-| `src/pages/Pricing.tsx`                          | New — pricing page with two plan cards                         |
-| `src/App.tsx`                                    | Add `/pricing` route                                           |
-| `supabase/functions/initialize-payment/index.ts` | New — Paystack init                                            |
-| `supabase/functions/verify-payment/index.ts`     | New — Paystack verify + DB update                              |
-| `src/components/app/UpgradePrompt.tsx`           | Hide when TWA, link upgrade to `/pricing`                      |
-| `src/pages/Dashboard.tsx`                        | Adjust upload limits based on plan                             |
+### Why This Fixes Android
+Android PWA requires the service worker to be registered and active **before** a push event arrives. By merging into `sw.js` and registering at startup, the push handler is always listening — even when the app is in the background or closed. The native-style notification (not Chrome icon) comes from having proper `icon` and `badge` fields plus `display: standalone` in the manifest.
 
-
-### Prerequisite
-
-Will need the **Paystack Secret Key** added as a secret before the edge functions can work.
-
-Also add a congratulations message when payment is successful and a message when payment is not 
