@@ -123,6 +123,8 @@ const Dashboard = () => {
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your document has been processed." });
+        // Send push notification that study deck is ready
+        sendStudyDeckReadyNotification(doc.title);
       } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the document. Please try re-uploading or try again later.", variant: "destructive" });
