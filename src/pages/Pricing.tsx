@@ -12,9 +12,9 @@ const plans = [
   {
     id: "basic" as const,
     name: "Testio Basic",
-    price: "$4.99",
+    price: "$5.99",
     period: "/month",
-    amount: 499, // in cents for Paystack (will be converted to kobo/cents)
+    amount: 599,
     features: [
       "25 uploads/month",
       "Summary + Quiz + Flashcards",
