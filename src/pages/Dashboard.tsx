@@ -291,6 +291,28 @@ const Dashboard = () => {
           <button onClick={() => navigate("/profile")} className="text-muted-foreground hover:text-foreground transition-colors" title="Profile">
             <UserCircle className="w-5 h-5" />
           </button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="text-muted-foreground hover:text-foreground transition-colors" title="Watch Tutorial">
+                <HelpCircle className="w-5 h-5" />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>How to use Testio</DialogTitle>
+              </DialogHeader>
+              <div className="w-full rounded-xl overflow-hidden">
+                <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+                  <iframe
+                    src="https://www.loom.com/embed/8f58c3a8db8c4ec3b6efa8cdd5d52781"
+                    frameBorder="0"
+                    allowFullScreen
+                    className="absolute inset-0 w-full h-full"
+                  />
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
           <button onClick={() => navigate("/settings")} className="text-muted-foreground hover:text-foreground transition-colors" title="Settings">
             <Settings className="w-5 h-5" />
           </button>
