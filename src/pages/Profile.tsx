@@ -92,6 +92,9 @@ const Profile = () => {
             Save Changes
           </button>
         </div>
+
+        {/* Push Notifications */}
+        <PushNotificationSettings />
       </div>
     </div>
   );

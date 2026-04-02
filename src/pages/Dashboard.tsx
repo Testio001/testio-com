@@ -157,6 +157,7 @@ const Dashboard = () => {
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your text has been processed." });
+        sendStudyDeckReadyNotification(doc.title);
       } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the text. Please try again.", variant: "destructive" });
