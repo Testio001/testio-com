@@ -13,6 +13,7 @@ export function PushNotificationSettings() {
     isiOS,
     isPWA,
     subscribe,
+    refreshSubscription,
     unsubscribe
   } = usePushNotifications();
   const [isSendingTest, setIsSendingTest] = useState(false);
@@ -37,22 +38,52 @@ export function PushNotificationSettings() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      await supabase.functions.invoke('send-push-notification', {
-        body: {
-          user_id: user.id,
-          payload: {
-            title: "Test Notification 🔔",
-            body: "Push notifications are working on Testio!",
-            url: "/dashboard"
+      const sendTestNotification = async () => {
+        const { data, error } = await supabase.functions.invoke('send-push-notification', {
+          body: {
+            user_id: user.id,
+            payload: {
+              title: "Test Notification 🔔",
+              body: "Push notifications are working on Testio!",
+              url: "/dashboard"
+            }
           }
-        }
-      });
+        });
 
-      toast.success("Test notification sent!");
+        if (error) throw error;
+        return data as { sent?: number; total?: number } | null;
+      };
+
+      let result = await sendTestNotification();
+
+      if ((result?.sent ?? 0) < 1) {
+        await refreshSubscription();
+        result = await sendTestNotification();
+      }
+
+      if ((result?.sent ?? 0) < 1) {
+        throw new Error("Notification still wasn't delivered. Please wait a few seconds and try once more.");
+      }
+
+      toast.success("Test notification delivered!");
     } catch (error: any) {
       toast.error(error.message || "Failed to send test");
     } finally {
       setIsSendingTest(false);
+    }
+  };
+
+  const handleToggle = async () => {
+    try {
+      if (isSubscribed) {
+        await unsubscribe();
+        toast.success("Notifications disabled");
+      } else {
+        await subscribe(true);
+        toast.success("Notifications enabled!");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to toggle notifications");
     }
   };
 
