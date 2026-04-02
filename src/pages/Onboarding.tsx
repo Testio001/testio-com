@@ -135,6 +135,53 @@ const Onboarding = () => {
               {steps[step].description}
             </p>
 
+            {isNotificationStep && pushAvailable && (
+              <div className="mb-10">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await pushSubscribe();
+                      toast.success("Notifications enabled! 🔔");
+                    } catch {
+                      toast.error("Could not enable notifications");
+                    }
+                  }}
+                  disabled={pushLoading || pushSubscribed}
+                  className={`w-full rounded-2xl border p-4 transition-all ${
+                    pushSubscribed
+                      ? "border-primary bg-secondary shadow-[0_0_0_1px_hsl(var(--primary))]"
+                      : "border-border bg-card hover:border-primary/40 hover:bg-secondary/70"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-primary">
+                        <Bell className="h-5 w-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-semibold text-foreground">
+                          {pushSubscribed ? "Notifications Enabled ✓" : "Enable Push Notifications"}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Streak reminders, study deck alerts & more
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      className={`flex h-6 w-6 items-center justify-center rounded-full border ${
+                        pushSubscribed
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-transparent"
+                      }`}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                </button>
+              </div>
+            )}
+
             {isThemeStep && (
               <div className="grid gap-3 mb-10 text-left">
                 {themeOptions.map((option) => {
