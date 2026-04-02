@@ -276,14 +276,22 @@ Deno.serve(async (req) => {
           })
           .eq("user_id", userId);
 
-        // Credit alert: send when user has used 2 of 3 free uploads
-        if (activePlan === "free" && newUploadsUsed === 2 && freshStats.bonus_uploads === 0) {
+        // Credit alert: send when user has 1 upload left
+        const totalAllowed = getUploadLimitForPlan(activePlan) + (freshStats.bonus_uploads + bonusIncrease);
+        const uploadsRemaining = totalAllowed - newUploadsUsed;
+        if (uploadsRemaining === 1) {
           const profile = await getUserEmail(supabaseAdmin, userId);
           if (profile?.email) {
             await sendEmail(supabaseAdmin, "credit-alert", profile.email, `credit-alert-${userId}-${today}`, {
               displayName: profile.display_name || profile.email.split("@")[0],
             });
           }
+          // Push notification for usage limit
+          await sendPush(supabaseAdmin, userId, {
+            title: "⚠️ Almost there!",
+            body: "You have 1 AI upload left this month. Upgrade to Pro for unlimited study sessions!",
+            url: "/pricing"
+          });
         }
 
         // Award badges
