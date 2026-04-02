@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Brain, MessageSquare, Mic, ArrowRight, Sparkles, Moon, Sun, Check } from "lucide-react";
+import { FileText, Brain, MessageSquare, Mic, ArrowRight, Sparkles, Moon, Sun, Check, Bell } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { toast } from "sonner";
 import testioLogo from "@/assets/testio-logo.png";
 
 const steps = [
@@ -29,6 +31,12 @@ const steps = [
     icon: MessageSquare,
     title: "Chat With Your Notes",
     description: "Ask questions, get explanations, and dive deeper into topics with an AI assistant that knows your material.",
+    color: "text-testio-green",
+  },
+  {
+    icon: Bell,
+    title: "Stay on Track",
+    description: "Enable push notifications to get streak reminders, study nudges, and alerts when your AI study deck is ready.",
     color: "text-testio-green",
   },
   {
