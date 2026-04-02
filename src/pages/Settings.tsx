@@ -6,6 +6,7 @@ import { ArrowLeft, Moon, Sun, Trash2, Loader2, Mail, Globe, FileText, ChevronRi
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
 import testioLogo from "@/assets/testio-logo.png";
+import { PushNotificationSettings } from "@/components/PushNotificationSettings";
 
 const LANGUAGES = [
   { code: "en", label: "English" },
