@@ -31,3 +31,5 @@ project_id = "kjdduozjlfhgznrcsoxr"
     verify_jwt = false
   [functions.streak-reminder]
     verify_jwt = false
+  [functions.send-push-notification]
+    verify_jwt = false
