@@ -404,6 +404,13 @@ Deno.serve(async (req) => {
           });
         }
 
+        // Push notification to referrer
+        await sendPush(supabaseAdmin, referrer.user_id, {
+          title: "🎉 Referral confirmed!",
+          body: "A friend just joined using your link! You earned 1 bonus upload + 1 streak freeze.",
+          url: "/dashboard"
+        });
+
         result = {
           success: true,
           message: "Referral applied! You earned 1 bonus upload.",
