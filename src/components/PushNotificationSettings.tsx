@@ -18,20 +18,6 @@ export function PushNotificationSettings() {
   } = usePushNotifications();
   const [isSendingTest, setIsSendingTest] = useState(false);
 
-  const handleToggle = async () => {
-    try {
-      if (isSubscribed) {
-        await unsubscribe();
-        toast.success("Notifications disabled");
-      } else {
-        await subscribe();
-        toast.success("Notifications enabled!");
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to toggle notifications");
-    }
-  };
-
   const handleSendTest = async () => {
     setIsSendingTest(true);
     try {

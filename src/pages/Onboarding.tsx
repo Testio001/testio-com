@@ -140,8 +140,8 @@ const Onboarding = () => {
                 <button
                   type="button"
                   onClick={async () => {
-                    try {
-                      await pushSubscribe();
+                      try {
+                        await pushSubscribe(true);
                       toast.success("Notifications enabled! 🔔");
                     } catch {
                       toast.error("Could not enable notifications");
