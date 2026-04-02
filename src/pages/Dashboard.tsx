@@ -283,18 +283,18 @@ const Dashboard = () => {
             className="text-muted-foreground hover:text-foreground transition-colors"
             title="Share referral link"
           >
-            <Gift className="w-5 h-5" />
+            <Gift className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           <button onClick={() => navigate("/leaderboard")} className="text-muted-foreground hover:text-foreground transition-colors" title="Leaderboard">
-            <Trophy className="w-5 h-5" />
+            <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           <button onClick={() => navigate("/profile")} className="text-muted-foreground hover:text-foreground transition-colors" title="Profile">
-            <UserCircle className="w-5 h-5" />
+            <UserCircle className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           <Dialog>
             <DialogTrigger asChild>
               <button className="text-muted-foreground hover:text-foreground transition-colors" title="Watch Tutorial">
-                <HelpCircle className="w-5 h-5" />
+                <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-2xl">
@@ -314,10 +314,10 @@ const Dashboard = () => {
             </DialogContent>
           </Dialog>
           <button onClick={() => navigate("/settings")} className="text-muted-foreground hover:text-foreground transition-colors" title="Settings">
-            <Settings className="w-5 h-5" />
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           <button onClick={signOut} className="text-muted-foreground hover:text-foreground transition-colors" title="Sign out">
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
       </header>
