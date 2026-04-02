@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import testioLogo from "@/assets/testio-logo.png";
+import { PushNotificationSettings } from "@/components/PushNotificationSettings";
 
 const Profile = () => {
   const { user } = useAuth();
