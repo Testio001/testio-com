@@ -6,6 +6,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+async function sendPush(supabase: any, userId: string, payload: { title: string; body: string; url?: string }) {
+  try {
+    await supabase.functions.invoke("send-push-notification", {
+      body: { user_id: userId, payload }
+    });
+  } catch (e) {
+    console.error(`[Push] Failed for ${userId}:`, e);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -36,8 +46,9 @@ serve(async (req) => {
 
     let notified = 0;
     let idleNotified = 0;
+    let pushSent = 0;
 
-    // Streak at-risk notifications
+    // Streak at-risk notifications (email + push)
     if (activeStreaks) {
       for (const user of activeStreaks) {
         if (!user.last_upload_date) continue;
@@ -47,6 +58,14 @@ serve(async (req) => {
         const diffDays = Math.floor((today.getTime() - lastUpload.getTime()) / (1000 * 60 * 60 * 24));
 
         if (diffDays >= 1) {
+          // Send push notification
+          await sendPush(supabase, user.user_id, {
+            title: "🔥 Keep the streak alive!",
+            body: "Don't break your momentum. Take a quick 5-question quiz on your last upload to lock in that knowledge.",
+            url: "/dashboard"
+          });
+          pushSent++;
+
           const { data: profile } = await supabase
             .from("profiles")
             .select("email, display_name")
@@ -93,12 +112,19 @@ serve(async (req) => {
       }
     }
 
-    // Idle reminder (3+ days no upload) via transactional email system
+    // Idle reminder (3+ days no upload) — email + push
     if (idleUsers) {
       for (const user of idleUsers) {
-        // Skip users already notified via streak reminder above
         const alreadyNotified = activeStreaks?.some(s => s.user_id === user.user_id);
         if (alreadyNotified) continue;
+
+        // Send re-engagement push
+        await sendPush(supabase, user.user_id, {
+          title: "📝 Time to study!",
+          body: "Upload your syllabus today and let Testio create a study plan for you.",
+          url: "/dashboard"
+        });
+        pushSent++;
 
         const { data: profile } = await supabase
           .from("profiles")
@@ -126,8 +152,34 @@ serve(async (req) => {
       }
     }
 
+    // Random study reminder push — pick random users who uploaded in last 7 days but not today
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const todayStr = today.toISOString().split("T")[0];
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
+
+    const { data: recentUsers } = await supabase
+      .from("user_stats")
+      .select("user_id")
+      .gte("last_upload_date", sevenDaysAgoStr)
+      .neq("last_upload_date", todayStr)
+      .limit(20);
+
+    if (recentUsers) {
+      const studyMessages = [
+        { title: "📝 Midterms approaching?", body: "Upload your syllabus today and let Testio create a 14-day study plan for you." },
+        { title: "💡 Quick study session?", body: "Review your flashcards for 5 minutes. Small steps lead to big results!" },
+        { title: "🧠 Knowledge check!", body: "Take a quick quiz on your last upload. It only takes 2 minutes!" },
+      ];
+      const msg = studyMessages[Math.floor(Math.random() * studyMessages.length)];
+      for (const u of recentUsers) {
+        await sendPush(supabase, u.user_id, { ...msg, url: "/dashboard" });
+        pushSent++;
+      }
+    }
+
     return new Response(
-      JSON.stringify({ success: true, notified, idleNotified }),
+      JSON.stringify({ success: true, notified, idleNotified, pushSent }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
