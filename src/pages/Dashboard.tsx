@@ -260,15 +260,15 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border/50 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <img src={testioLogo} alt="Testio" className="w-7 h-7" />
-          <span className="text-foreground font-bold text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
-          <Badge variant={userPlan === "pro" ? "default" : userPlan === "basic" ? "secondary" : "outline"} className="text-[10px] uppercase ml-1">
+      <header className="border-b border-border/50 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <img src={testioLogo} alt="Testio" className="w-6 h-6 sm:w-7 sm:h-7 shrink-0" />
+          <span className="text-foreground font-bold text-base sm:text-lg shrink-0" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
+          <Badge variant={userPlan === "pro" ? "default" : userPlan === "basic" ? "secondary" : "outline"} className="text-[9px] sm:text-[10px] uppercase ml-0.5 sm:ml-1 shrink-0">
             {userPlan}
           </Badge>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           <StreakDisplay stats={gamification.stats} compact />
           <button
             onClick={() => {
