@@ -19,6 +19,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Unsubscribe from "./pages/Unsubscribe";
 import Pricing from "./pages/Pricing";
 import Home from "./pages/Home";
+import EntryPoint from "./pages/EntryPoint";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
