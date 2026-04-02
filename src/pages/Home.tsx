@@ -114,6 +114,26 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Product Walkthrough */}
+      <section className="py-20 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">See Testio in Action</h2>
+          <p className="text-gray-500 mb-10 max-w-2xl mx-auto">
+            Watch a full 7-minute deep dive into how Testio transforms your study materials.
+          </p>
+          <div className="w-full max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-xl">
+            <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+              <iframe
+                src="https://www.loom.com/embed/8f58c3a8db8c4ec3b6efa8cdd5d52781"
+                frameBorder="0"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full rounded-2xl"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Section */}
       <section className="py-20 px-6">
         <div className="max-w-3xl mx-auto">
