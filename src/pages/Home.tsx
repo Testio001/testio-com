@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight } from "lucide-react";
+import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users } from "lucide-react";
 
 const features = [
   {
@@ -26,6 +26,21 @@ const features = [
 
 const plans = [
   {
+    name: "Free Forever",
+    price: "$0",
+    period: "",
+    features: [
+      "3 uploads/month",
+      "AI Summaries & Flashcards",
+      "AI Quizzes (20 questions)",
+      "5-minute Study Podcasts",
+      "AI Tutor access",
+      "Earn bonus uploads via referrals",
+    ],
+    highlight: false,
+    cta: "Start Free",
+  },
+  {
     name: "Testio Basic",
     price: "$5.99",
     period: "/month",
@@ -36,6 +51,7 @@ const plans = [
       "Podcast (Max 5 mins, 5/month)",
     ],
     highlight: false,
+    cta: "Subscribe",
   },
   {
     name: "Testio Pro Unlimited",
@@ -48,6 +64,7 @@ const plans = [
       "Priority processing",
     ],
     highlight: true,
+    cta: "Subscribe",
   },
 ];
 
