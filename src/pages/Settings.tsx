@@ -112,6 +112,9 @@ const Settings = () => {
           </select>
         </div>
 
+        {/* Push Notifications */}
+        <PushNotificationSettings />
+
         {/* Account Info */}
         <div className="bg-testio-card rounded-xl p-6">
           <h3 className="text-foreground font-semibold mb-4">Account</h3>
