@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Brain, MessageSquare, Mic, ArrowRight, Sparkles, Moon, Sun, Check } from "lucide-react";
+import { FileText, Brain, MessageSquare, Mic, ArrowRight, Sparkles, Moon, Sun, Check, Bell } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { toast } from "sonner";
 import testioLogo from "@/assets/testio-logo.png";
 
 const steps = [
@@ -29,6 +31,12 @@ const steps = [
     icon: MessageSquare,
     title: "Chat With Your Notes",
     description: "Ask questions, get explanations, and dive deeper into topics with an AI assistant that knows your material.",
+    color: "text-testio-green",
+  },
+  {
+    icon: Bell,
+    title: "Stay on Track",
+    description: "Enable push notifications to get streak reminders, study nudges, and alerts when your AI study deck is ready.",
     color: "text-testio-green",
   },
   {
@@ -58,6 +66,7 @@ const Onboarding = () => {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: pushSubscribe, isLoading: pushLoading, isiOS, isPWA } = usePushNotifications();
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -66,6 +75,8 @@ const Onboarding = () => {
   }, [user, authLoading, navigate]);
   const { theme, setTheme } = useTheme();
   const isThemeStep = step === steps.length - 1;
+  const isNotificationStep = step === 4; // The "Stay on Track" step
+  const pushAvailable = pushSupported && !(isiOS && !isPWA);
 
   const handleNext = () => {
     if (step < steps.length - 1) {
@@ -123,6 +134,53 @@ const Onboarding = () => {
             <p className="text-muted-foreground leading-relaxed mb-10 max-w-sm mx-auto">
               {steps[step].description}
             </p>
+
+            {isNotificationStep && pushAvailable && (
+              <div className="mb-10">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await pushSubscribe();
+                      toast.success("Notifications enabled! 🔔");
+                    } catch {
+                      toast.error("Could not enable notifications");
+                    }
+                  }}
+                  disabled={pushLoading || pushSubscribed}
+                  className={`w-full rounded-2xl border p-4 transition-all ${
+                    pushSubscribed
+                      ? "border-primary bg-secondary shadow-[0_0_0_1px_hsl(var(--primary))]"
+                      : "border-border bg-card hover:border-primary/40 hover:bg-secondary/70"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-primary">
+                        <Bell className="h-5 w-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-semibold text-foreground">
+                          {pushSubscribed ? "Notifications Enabled ✓" : "Enable Push Notifications"}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Streak reminders, study deck alerts & more
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      className={`flex h-6 w-6 items-center justify-center rounded-full border ${
+                        pushSubscribed
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-transparent"
+                      }`}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                </button>
+              </div>
+            )}
 
             {isThemeStep && (
               <div className="grid gap-3 mb-10 text-left">

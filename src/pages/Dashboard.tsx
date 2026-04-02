@@ -32,6 +32,24 @@ const Dashboard = () => {
   const [renameValue, setRenameValue] = useState("");
   const [userPlan, setUserPlan] = useState("free");
 
+  const sendStudyDeckReadyNotification = async (docTitle: string) => {
+    try {
+      if (!user) return;
+      await supabase.functions.invoke('send-push-notification', {
+        body: {
+          user_id: user.id,
+          payload: {
+            title: "📚 Your Study Deck is Ready!",
+            body: `The AI has finished summarizing '${docTitle}'. Tap to take your first quiz!`,
+            url: "/dashboard"
+          }
+        }
+      });
+    } catch {
+      // Silent fail - notification is non-critical
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchData();
@@ -123,6 +141,8 @@ const Dashboard = () => {
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your document has been processed." });
+        // Send push notification that study deck is ready
+        sendStudyDeckReadyNotification(doc.title);
       } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the document. Please try re-uploading or try again later.", variant: "destructive" });
@@ -155,6 +175,7 @@ const Dashboard = () => {
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your text has been processed." });
+        sendStudyDeckReadyNotification(doc.title);
       } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the text. Please try again.", variant: "destructive" });
@@ -195,6 +216,7 @@ const Dashboard = () => {
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your image has been processed." });
+        sendStudyDeckReadyNotification(doc.title);
       } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the image. Please try again.", variant: "destructive" });
