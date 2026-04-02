@@ -66,6 +66,7 @@ const Onboarding = () => {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: pushSubscribe, isLoading: pushLoading, isiOS, isPWA } = usePushNotifications();
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -74,6 +75,8 @@ const Onboarding = () => {
   }, [user, authLoading, navigate]);
   const { theme, setTheme } = useTheme();
   const isThemeStep = step === steps.length - 1;
+  const isNotificationStep = step === 4; // The "Stay on Track" step
+  const pushAvailable = pushSupported && !(isiOS && !isPWA);
 
   const handleNext = () => {
     if (step < steps.length - 1) {
