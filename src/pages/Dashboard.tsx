@@ -6,6 +6,7 @@ import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
 import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import GamificationSidebar from "@/components/app/GamificationSidebar";
 import UpgradePrompt from "@/components/app/UpgradePrompt";
