@@ -52,11 +52,8 @@ export function usePushNotifications() {
   const checkSubscription = async () => {
     try {
       if (!('serviceWorker' in navigator)) return;
-      const registration = await navigator.serviceWorker.getRegistration('/sw-push.js');
-      if (!registration) {
-        setIsSubscribed(false);
-        return;
-      }
+      // Use the unified sw.js registration
+      const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       setIsSubscribed(!!subscription);
     } catch {
@@ -73,8 +70,8 @@ export function usePushNotifications() {
       setPermission(perm);
       if (perm !== 'granted') throw new Error('Notification permission denied');
 
-      const registration = await navigator.serviceWorker.register('/sw-push.js', { scope: '/' });
-      await navigator.serviceWorker.ready;
+      // Use the already-registered unified service worker
+      const registration = await navigator.serviceWorker.ready;
 
       const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
       const subscription = await registration.pushManager.subscribe({
@@ -113,9 +110,7 @@ export function usePushNotifications() {
   const unsubscribe = useCallback(async () => {
     setIsLoading(true);
     try {
-      const registration = await navigator.serviceWorker.getRegistration('/sw-push.js');
-      if (!registration) { setIsSubscribed(false); return; }
-
+      const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
         await subscription.unsubscribe();
