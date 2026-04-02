@@ -86,8 +86,10 @@ export function usePushNotifications() {
       const authKey = subscription.getKey('auth');
       if (!p256dhKey || !authKey) throw new Error('Failed to get subscription keys');
 
-      const p256dh = btoa(String.fromCharCode(...new Uint8Array(p256dhKey)));
-      const auth = btoa(String.fromCharCode(...new Uint8Array(authKey)));
+      const p256dh = btoa(String.fromCharCode(...new Uint8Array(p256dhKey)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const auth = btoa(String.fromCharCode(...new Uint8Array(authKey)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
