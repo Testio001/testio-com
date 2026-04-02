@@ -207,6 +207,8 @@ Deno.serve(async (req) => {
     });
 
     let successCount = 0;
+    let failedCount = 0;
+    let deletedCount = 0;
 
     for (const subscription of subscriptions) {
       try {
@@ -237,19 +239,23 @@ Deno.serve(async (req) => {
 
         if (response.ok || response.status === 201) {
           successCount++;
-        } else if (response.status === 410 || response.status === 404) {
+        } else if (response.status === 410 || response.status === 404 || response.status === 403) {
+          failedCount++;
           await supabase.from('push_subscriptions').delete().eq('id', subscription.id);
+          deletedCount++;
         } else {
+          failedCount++;
           const text = await response.text();
           console.error(`[Push] Failed ${response.status}: ${text}`);
         }
       } catch (error) {
+        failedCount++;
         console.error(`[Push] Error sending:`, error);
       }
     }
 
     return new Response(
-      JSON.stringify({ success: true, sent: successCount, total: subscriptions.length }),
+      JSON.stringify({ success: successCount > 0, sent: successCount, total: subscriptions.length, failed: failedCount, deleted: deletedCount }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {

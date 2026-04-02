@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const VAPID_PUBLIC_KEY = 'BIz_Jj22yOlTLzBQJb1HnlRIC406qAcVKAIysh6mRIUFOflPX2roe2mLTeYKYgiMwaD03zCZOsxAnRhNYsLeBnk';
+let cachedVapidPublicKey: string | null = null;
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -49,6 +49,61 @@ export function usePushNotifications() {
     checkSubscription();
   }, []);
 
+  const getVapidPublicKey = useCallback(async () => {
+    if (cachedVapidPublicKey) return cachedVapidPublicKey;
+
+    const { data, error } = await supabase.functions.invoke('get-vapid-public-key');
+
+    if (error) {
+      throw new Error('Failed to load notification configuration');
+    }
+
+    const publicKey = data?.publicKey;
+
+    if (!publicKey) {
+      throw new Error('Notification public key is missing');
+    }
+
+    cachedVapidPublicKey = publicKey;
+    return publicKey;
+  }, []);
+
+  const removeSubscriptionFromDatabase = useCallback(async (endpoint: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase
+      .from('push_subscriptions' as any)
+      .delete()
+      .eq('user_id', user.id)
+      .eq('endpoint', endpoint);
+  }, []);
+
+  const syncSubscriptionToDatabase = useCallback(async (subscription: PushSubscription) => {
+    const p256dhKey = subscription.getKey('p256dh');
+    const authKey = subscription.getKey('auth');
+    if (!p256dhKey || !authKey) throw new Error('Failed to get subscription keys');
+
+    const p256dh = btoa(String.fromCharCode(...new Uint8Array(p256dhKey)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const auth = btoa(String.fromCharCode(...new Uint8Array(authKey)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+      .from('push_subscriptions' as any)
+      .upsert({
+        user_id: user.id,
+        endpoint: subscription.endpoint,
+        p256dh,
+        auth,
+      }, { onConflict: 'user_id,endpoint' });
+
+    if (error) throw error;
+  }, []);
+
   const checkSubscription = async () => {
     try {
       if (!('serviceWorker' in navigator)) return;
@@ -61,51 +116,50 @@ export function usePushNotifications() {
     }
   };
 
-  const subscribe = useCallback(async () => {
+  const subscribe = useCallback(async (forceRefresh = false) => {
     if (!isSupported) throw new Error('Push notifications are not supported');
     setIsLoading(true);
 
     try {
-      const perm = await Notification.requestPermission();
+      const currentPermission = Notification.permission;
+      const perm = currentPermission === 'granted'
+        ? 'granted'
+        : await Notification.requestPermission();
+
       setPermission(perm);
       if (perm !== 'granted') throw new Error('Notification permission denied');
 
-      // Use the already-registered unified service worker
       const registration = await navigator.serviceWorker.ready;
+      const vapidPublicKey = await getVapidPublicKey();
+      const existingSubscription = await registration.pushManager.getSubscription();
 
-      const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      if (existingSubscription && !forceRefresh) {
+        await syncSubscriptionToDatabase(existingSubscription);
+        setIsSubscribed(true);
+        return;
+      }
+
+      if (existingSubscription) {
+        await removeSubscriptionFromDatabase(existingSubscription.endpoint);
+        await existingSubscription.unsubscribe();
+      }
+
+      const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: applicationServerKey.buffer as ArrayBuffer
       });
 
-      const p256dhKey = subscription.getKey('p256dh');
-      const authKey = subscription.getKey('auth');
-      if (!p256dhKey || !authKey) throw new Error('Failed to get subscription keys');
-
-      const p256dh = btoa(String.fromCharCode(...new Uint8Array(p256dhKey)))
-        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-      const auth = btoa(String.fromCharCode(...new Uint8Array(authKey)))
-        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { error } = await supabase
-        .from('push_subscriptions' as any)
-        .upsert({
-          user_id: user.id,
-          endpoint: subscription.endpoint,
-          p256dh,
-          auth
-        }, { onConflict: 'user_id,endpoint' });
-
-      if (error) throw error;
+      await syncSubscriptionToDatabase(subscription);
       setIsSubscribed(true);
     } finally {
       setIsLoading(false);
     }
-  }, [isSupported]);
+  }, [getVapidPublicKey, isSupported, removeSubscriptionFromDatabase, syncSubscriptionToDatabase]);
+
+  const refreshSubscription = useCallback(async () => {
+    await subscribe(true);
+  }, [subscribe]);
 
   const unsubscribe = useCallback(async () => {
     setIsLoading(true);
@@ -113,21 +167,14 @@ export function usePushNotifications() {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
+        await removeSubscriptionFromDatabase(subscription.endpoint);
         await subscription.unsubscribe();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase
-            .from('push_subscriptions' as any)
-            .delete()
-            .eq('user_id', user.id)
-            .eq('endpoint', subscription.endpoint);
-        }
       }
       setIsSubscribed(false);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [removeSubscriptionFromDatabase]);
 
-  return { isSupported, isSubscribed, permission, isLoading, isiOS, isPWA, subscribe, unsubscribe };
+  return { isSupported, isSubscribed, permission, isLoading, isiOS, isPWA, subscribe, refreshSubscription, unsubscribe };
 }
