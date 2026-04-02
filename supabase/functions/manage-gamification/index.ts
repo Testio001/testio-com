@@ -75,6 +75,16 @@ async function sendEmail(supabaseAdmin: any, templateName: string, recipientEmai
   }
 }
 
+async function sendPush(supabaseAdmin: any, userId: string, payload: { title: string; body: string; url?: string }) {
+  try {
+    await supabaseAdmin.functions.invoke("send-push-notification", {
+      body: { user_id: userId, payload }
+    });
+  } catch (e) {
+    console.error(`Failed to send push to ${userId}:`, e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
