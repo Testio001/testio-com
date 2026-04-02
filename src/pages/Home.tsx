@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight } from "lucide-react";
+import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users } from "lucide-react";
 
 const features = [
   {
@@ -26,6 +26,21 @@ const features = [
 
 const plans = [
   {
+    name: "Free Forever",
+    price: "$0",
+    period: "",
+    features: [
+      "3 uploads/month",
+      "AI Summaries & Flashcards",
+      "AI Quizzes (20 questions)",
+      "5-minute Study Podcasts",
+      "AI Tutor access",
+      "Earn bonus uploads via referrals",
+    ],
+    highlight: false,
+    cta: "Start Free",
+  },
+  {
     name: "Testio Basic",
     price: "$5.99",
     period: "/month",
@@ -36,6 +51,7 @@ const plans = [
       "Podcast (Max 5 mins, 5/month)",
     ],
     highlight: false,
+    cta: "Subscribe",
   },
   {
     name: "Testio Pro Unlimited",
@@ -48,6 +64,7 @@ const plans = [
       "Priority processing",
     ],
     highlight: true,
+    cta: "Subscribe",
   },
 ];
 
@@ -141,11 +158,11 @@ const Home = () => {
           <p className="text-center text-gray-500 mb-14 max-w-md mx-auto">
             Choose the plan that fits your study needs. Cancel anytime.
           </p>
-          <div className="grid sm:grid-cols-2 gap-8">
+          <div className="grid sm:grid-cols-3 gap-6">
             {plans.map((plan) => (
               <div
                 key={plan.name}
-                className={`relative rounded-2xl p-8 border ${
+                className={`relative rounded-2xl p-7 border ${
                   plan.highlight
                     ? "bg-indigo-50 border-indigo-300 shadow-xl"
                     : "bg-white border-gray-200"
@@ -159,7 +176,7 @@ const Home = () => {
                 <h3 className="font-bold text-gray-900 text-xl mb-1">{plan.name}</h3>
                 <div className="flex items-baseline gap-1 mb-6">
                   <span className="text-4xl font-extrabold text-gray-900">{plan.price}</span>
-                  <span className="text-gray-500 text-sm">{plan.period}</span>
+                  {plan.period && <span className="text-gray-500 text-sm">{plan.period}</span>}
                 </div>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((feature) => (
@@ -177,11 +194,46 @@ const Home = () => {
                       : "bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-200"
                   }`}
                 >
-                  Subscribe
+                  {plan.cta}
                 </button>
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Referral Section */}
+      <section className="py-20 px-6 bg-indigo-50">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center mx-auto mb-6">
+            <Gift className="w-8 h-8 text-indigo-600" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Invite Friends, Earn Free Uploads</h2>
+          <p className="text-gray-600 max-w-2xl mx-auto mb-10 text-lg">
+            Love Testio? Share it with your classmates! For every friend who signs up using your referral link, 
+            you both get <span className="font-bold text-indigo-600">bonus uploads</span> and 
+            <span className="font-bold text-indigo-600"> streak rewards</span>. The more you share, the more you earn.
+          </p>
+          <div className="grid sm:grid-cols-3 gap-6 max-w-3xl mx-auto mb-10">
+            <div className="bg-white rounded-xl p-6 border border-indigo-100">
+              <div className="text-3xl font-extrabold text-indigo-600 mb-2">1</div>
+              <p className="text-sm text-gray-700 font-medium">Share your unique referral link</p>
+            </div>
+            <div className="bg-white rounded-xl p-6 border border-indigo-100">
+              <div className="text-3xl font-extrabold text-indigo-600 mb-2">2</div>
+              <p className="text-sm text-gray-700 font-medium">Your friend signs up & uploads</p>
+            </div>
+            <div className="bg-white rounded-xl p-6 border border-indigo-100">
+              <div className="text-3xl font-extrabold text-indigo-600 mb-2">3</div>
+              <p className="text-sm text-gray-700 font-medium">You both earn bonus uploads & streak perks</p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate("/auth")}
+            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+          >
+            <Users className="w-5 h-5" /> Start Referring
+          </button>
         </div>
       </section>
 
