@@ -32,6 +32,24 @@ const Dashboard = () => {
   const [renameValue, setRenameValue] = useState("");
   const [userPlan, setUserPlan] = useState("free");
 
+  const sendStudyDeckReadyNotification = async (docTitle: string) => {
+    try {
+      if (!user) return;
+      await supabase.functions.invoke('send-push-notification', {
+        body: {
+          user_id: user.id,
+          payload: {
+            title: "📚 Your Study Deck is Ready!",
+            body: `The AI has finished summarizing '${docTitle}'. Tap to take your first quiz!`,
+            url: "/dashboard"
+          }
+        }
+      });
+    } catch {
+      // Silent fail - notification is non-critical
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchData();
