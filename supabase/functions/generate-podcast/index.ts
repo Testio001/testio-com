@@ -12,7 +12,7 @@ serve(async (req) => {
 
   try {
     const { documentId, maxExchanges } = await req.json();
-    const exchangeLimit = maxExchanges || 20;
+    const exchangeLimit = maxExchanges || 60; // No limit sent = pro user, allow long podcast
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
