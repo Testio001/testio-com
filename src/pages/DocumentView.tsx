@@ -219,7 +219,7 @@ const DocumentView = () => {
           </div>
         )}
 
-        {activeTab === "flashcards" && (
+        {activeTab === "flashcards" && !hasFlashcards && (
           <div className="mb-6">
             <button onClick={generateFlashcards} disabled={generating === "flashcards"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
               {generating === "flashcards" ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
@@ -228,27 +228,31 @@ const DocumentView = () => {
           </div>
         )}
 
-        {activeTab === "quiz" && (
+        {activeTab === "quiz" && !hasQuiz && (
           <div className="mb-6">
             <button onClick={generateQuiz} disabled={generating === "quiz"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
               {generating === "quiz" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
               Generate Quiz
             </button>
-            <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
-              <Crown className="w-3 h-3" /> Free plan: up to {FREE_QUIZ_MAX_QUESTIONS} questions per quiz
-            </p>
+            {subscriptionPlan === "free" && (
+              <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
+                <Crown className="w-3 h-3" /> Free plan: up to {FREE_QUIZ_MAX_QUESTIONS} questions per quiz
+              </p>
+            )}
           </div>
         )}
 
-        {activeTab === "podcast" && (
+        {activeTab === "podcast" && !hasPodcast && (
           <div className="mb-6">
             <button onClick={generatePodcast} disabled={generating === "podcast"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
               {generating === "podcast" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
               Generate Podcast
             </button>
-            <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
-              <Crown className="w-3 h-3" /> Free plan: ~5 minute preview. Upgrade for full-length podcasts.
-            </p>
+            {subscriptionPlan !== "pro" && (
+              <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
+                <Crown className="w-3 h-3" /> Free plan: ~5 minute preview. Upgrade for full-length podcasts.
+              </p>
+            )}
             {generating === "podcast" && (
               <p className="text-muted-foreground text-xs mt-3 flex items-center gap-2">
                 <Loader2 className="w-3 h-3 animate-spin" />
