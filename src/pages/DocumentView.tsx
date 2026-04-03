@@ -95,6 +95,7 @@ const DocumentView = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({ title: "Flashcards generated!" });
+      setHasFlashcards(true);
       setFlashcardKey(prev => prev + 1);
       setActiveTab("flashcards");
     } catch (err: any) {
