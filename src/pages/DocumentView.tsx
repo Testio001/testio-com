@@ -136,13 +136,17 @@ const DocumentView = () => {
     if (!id) return;
     setGenerating("podcast");
     try {
-      // Free users get shortened podcast (14 exchanges ~5 mins)
-      const { data, error } = await supabase.functions.invoke("generate-podcast", {
-        body: { documentId: id, maxExchanges: FREE_PODCAST_MAX_EXCHANGES }
-      });
+      // Pro users get unlimited exchanges, free/basic get capped
+      const isPro = subscriptionPlan === "pro";
+      const body: any = { documentId: id };
+      if (!isPro) {
+        body.maxExchanges = FREE_PODCAST_MAX_EXCHANGES;
+      }
+      const { data, error } = await supabase.functions.invoke("generate-podcast", { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({ title: "Podcast generated!" });
+      setHasPodcast(true);
       setPodcastKey(prev => prev + 1);
       setActiveTab("podcast");
     } catch (err: any) {
