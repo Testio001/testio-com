@@ -32,6 +32,10 @@ const DocumentView = () => {
   const [quizKey, setQuizKey] = useState(0);
   const [podcastKey, setPodcastKey] = useState(0);
   const [loadingContent, setLoadingContent] = useState(true);
+  const [hasFlashcards, setHasFlashcards] = useState(false);
+  const [hasQuiz, setHasQuiz] = useState(false);
+  const [hasPodcast, setHasPodcast] = useState(false);
+  const [subscriptionPlan, setSubscriptionPlan] = useState("free");
 
   useEffect(() => {
     if (id && user) fetchDocument();
@@ -43,6 +47,21 @@ const DocumentView = () => {
     if (docData) setDoc(docData);
     const { data: notesData } = await supabase.from("notes").select("*").eq("document_id", id!).order("created_at");
     if (notesData) setNotes(notesData);
+
+    // Check existing generated content
+    const { count: fcCount } = await supabase.from("flashcard_sets").select("id", { count: "exact", head: true }).eq("document_id", id!);
+    setHasFlashcards((fcCount ?? 0) > 0);
+    const { count: qCount } = await supabase.from("quizzes").select("id", { count: "exact", head: true }).eq("document_id", id!);
+    setHasQuiz((qCount ?? 0) > 0);
+    const { count: pCount } = await supabase.from("podcasts").select("id", { count: "exact", head: true }).eq("document_id", id!);
+    setHasPodcast((pCount ?? 0) > 0);
+
+    // Get user plan
+    if (user) {
+      const { data: profile } = await supabase.from("profiles").select("subscription_plan").eq("user_id", user.id).single();
+      if (profile) setSubscriptionPlan(profile.subscription_plan);
+    }
+
     setLoadingContent(false);
   };
 
@@ -76,6 +95,7 @@ const DocumentView = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({ title: "Flashcards generated!" });
+      setHasFlashcards(true);
       setFlashcardKey(prev => prev + 1);
       setActiveTab("flashcards");
     } catch (err: any) {
@@ -99,6 +119,7 @@ const DocumentView = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({ title: "Quiz generated!" });
+      setHasQuiz(true);
       setQuizKey(prev => prev + 1);
       setActiveTab("quiz");
     } catch (err: any) {
@@ -115,13 +136,17 @@ const DocumentView = () => {
     if (!id) return;
     setGenerating("podcast");
     try {
-      // Free users get shortened podcast (14 exchanges ~5 mins)
-      const { data, error } = await supabase.functions.invoke("generate-podcast", {
-        body: { documentId: id, maxExchanges: FREE_PODCAST_MAX_EXCHANGES }
-      });
+      // Pro users get unlimited exchanges, free/basic get capped
+      const isPro = subscriptionPlan === "pro";
+      const body: any = { documentId: id };
+      if (!isPro) {
+        body.maxExchanges = FREE_PODCAST_MAX_EXCHANGES;
+      }
+      const { data, error } = await supabase.functions.invoke("generate-podcast", { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({ title: "Podcast generated!" });
+      setHasPodcast(true);
       setPodcastKey(prev => prev + 1);
       setActiveTab("podcast");
     } catch (err: any) {
@@ -194,7 +219,7 @@ const DocumentView = () => {
           </div>
         )}
 
-        {activeTab === "flashcards" && (
+        {activeTab === "flashcards" && !hasFlashcards && (
           <div className="mb-6">
             <button onClick={generateFlashcards} disabled={generating === "flashcards"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
               {generating === "flashcards" ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
@@ -203,27 +228,31 @@ const DocumentView = () => {
           </div>
         )}
 
-        {activeTab === "quiz" && (
+        {activeTab === "quiz" && !hasQuiz && (
           <div className="mb-6">
             <button onClick={generateQuiz} disabled={generating === "quiz"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
               {generating === "quiz" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
               Generate Quiz
             </button>
-            <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
-              <Crown className="w-3 h-3" /> Free plan: up to {FREE_QUIZ_MAX_QUESTIONS} questions per quiz
-            </p>
+            {subscriptionPlan === "free" && (
+              <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
+                <Crown className="w-3 h-3" /> Free plan: up to {FREE_QUIZ_MAX_QUESTIONS} questions per quiz
+              </p>
+            )}
           </div>
         )}
 
-        {activeTab === "podcast" && (
+        {activeTab === "podcast" && !hasPodcast && (
           <div className="mb-6">
             <button onClick={generatePodcast} disabled={generating === "podcast"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
               {generating === "podcast" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
               Generate Podcast
             </button>
-            <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
-              <Crown className="w-3 h-3" /> Free plan: ~5 minute preview. Upgrade for full-length podcasts.
-            </p>
+            {subscriptionPlan !== "pro" && (
+              <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
+                <Crown className="w-3 h-3" /> Free plan: ~5 minute preview. Upgrade for full-length podcasts.
+              </p>
+            )}
             {generating === "podcast" && (
               <p className="text-muted-foreground text-xs mt-3 flex items-center gap-2">
                 <Loader2 className="w-3 h-3 animate-spin" />

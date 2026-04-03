@@ -12,9 +12,9 @@ const plans = [
   {
     id: "basic" as const,
     name: "Testio Basic",
-    price: "$5.99",
+    price: "$4.99",
     period: "/month",
-    amount: 599,
+    amount: 499,
     features: [
       "25 uploads/month",
       "Summary + Quiz + Flashcards",
@@ -26,9 +26,9 @@ const plans = [
   {
     id: "pro" as const,
     name: "Testio Pro Unlimited",
-    price: "$10.99",
+    price: "$9.99",
     period: "/month",
-    amount: 1099,
+    amount: 999,
     features: [
       "Unlimited uploads*",
       "Full Podcast access (30/month)",
