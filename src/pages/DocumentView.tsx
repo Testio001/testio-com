@@ -32,6 +32,10 @@ const DocumentView = () => {
   const [quizKey, setQuizKey] = useState(0);
   const [podcastKey, setPodcastKey] = useState(0);
   const [loadingContent, setLoadingContent] = useState(true);
+  const [hasFlashcards, setHasFlashcards] = useState(false);
+  const [hasQuiz, setHasQuiz] = useState(false);
+  const [hasPodcast, setHasPodcast] = useState(false);
+  const [subscriptionPlan, setSubscriptionPlan] = useState("free");
 
   useEffect(() => {
     if (id && user) fetchDocument();
