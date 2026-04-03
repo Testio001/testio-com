@@ -42,7 +42,7 @@ const plans = [
   },
   {
     name: "Testio Basic",
-    price: "$5.99",
+    price: "$4.99",
     period: "/month",
     features: [
       "25 uploads/month",
