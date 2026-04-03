@@ -47,6 +47,21 @@ const DocumentView = () => {
     if (docData) setDoc(docData);
     const { data: notesData } = await supabase.from("notes").select("*").eq("document_id", id!).order("created_at");
     if (notesData) setNotes(notesData);
+
+    // Check existing generated content
+    const { count: fcCount } = await supabase.from("flashcard_sets").select("id", { count: "exact", head: true }).eq("document_id", id!);
+    setHasFlashcards((fcCount ?? 0) > 0);
+    const { count: qCount } = await supabase.from("quizzes").select("id", { count: "exact", head: true }).eq("document_id", id!);
+    setHasQuiz((qCount ?? 0) > 0);
+    const { count: pCount } = await supabase.from("podcasts").select("id", { count: "exact", head: true }).eq("document_id", id!);
+    setHasPodcast((pCount ?? 0) > 0);
+
+    // Get user plan
+    if (user) {
+      const { data: profile } = await supabase.from("profiles").select("subscription_plan").eq("user_id", user.id).single();
+      if (profile) setSubscriptionPlan(profile.subscription_plan);
+    }
+
     setLoadingContent(false);
   };
 
