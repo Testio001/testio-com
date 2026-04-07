@@ -32,6 +32,7 @@ const Dashboard = () => {
   const [renamingDoc, setRenamingDoc] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [userPlan, setUserPlan] = useState("free");
+  const [showStudyMusic, setShowStudyMusic] = useState(false);
 
   const sendStudyDeckReadyNotification = async (docTitle: string) => {
     try {
