@@ -413,6 +413,29 @@ const Dashboard = () => {
                 <button onClick={tryUpload} className="btn-testio-primary text-sm !py-2 !px-6">Upload Your First Document</button>
               </motion.div>
             ) : (
+              {/* Study Music Feature Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                onClick={() => setShowStudyMusic(true)}
+                className="bg-testio-card rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group mb-6 border border-border relative overflow-hidden"
+              >
+                <div className="absolute top-3 right-3">
+                  <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">Coming Soon</Badge>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Music className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-foreground font-semibold text-sm">Study Music</h3>
+                    <p className="text-muted-foreground text-xs mt-0.5">Turn your notes into catchy songs for memorization</p>
+                  </div>
+                </div>
+              </motion.div>
+
+              <StudyMusicModal open={showStudyMusic} onOpenChange={setShowStudyMusic} />
+
               <div className="grid sm:grid-cols-2 gap-4">
                 {filteredDocs.map((doc, i) => (
                   <motion.div key={doc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}

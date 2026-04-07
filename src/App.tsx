@@ -54,6 +54,7 @@ const App = () => (
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
+              <Route path="/waitlist-analytics" element={<ProtectedRoute><WaitlistAnalytics /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <PWAInstallBanner />
