@@ -512,6 +512,33 @@ export type Database = {
         }
         Relationships: []
       }
+      study_music_waitlist: {
+        Row: {
+          created_at: string
+          email: string
+          genre: string
+          id: string
+          user_id: string | null
+          would_use_daily: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          genre: string
+          id?: string
+          user_id?: string | null
+          would_use_daily: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          genre?: string
+          id?: string
+          user_id?: string | null
+          would_use_daily?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
