@@ -482,6 +482,7 @@ const Dashboard = () => {
                   </motion.div>
                 ))}
               </div>
+              </>
             )}
           </div>
 
