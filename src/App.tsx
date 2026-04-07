@@ -20,6 +20,7 @@ import Unsubscribe from "./pages/Unsubscribe";
 import Pricing from "./pages/Pricing";
 import Home from "./pages/Home";
 import EntryPoint from "./pages/EntryPoint";
+import WaitlistAnalytics from "./pages/WaitlistAnalytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
+              <Route path="/waitlist-analytics" element={<ProtectedRoute><WaitlistAnalytics /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <PWAInstallBanner />

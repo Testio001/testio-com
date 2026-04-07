@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle } from "lucide-react";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Music } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,7 @@ import StreakDisplay from "@/components/app/StreakDisplay";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
+import StudyMusicModal from "@/components/app/StudyMusicModal";
 
 type Document = Tables<"documents">;
 
@@ -31,6 +32,7 @@ const Dashboard = () => {
   const [renamingDoc, setRenamingDoc] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [userPlan, setUserPlan] = useState("free");
+  const [showStudyMusic, setShowStudyMusic] = useState(false);
 
   const sendStudyDeckReadyNotification = async (docTitle: string) => {
     try {
@@ -411,7 +413,31 @@ const Dashboard = () => {
                 <button onClick={tryUpload} className="btn-testio-primary text-sm !py-2 !px-6">Upload Your First Document</button>
               </motion.div>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <>
+                {/* Study Music Feature Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={() => setShowStudyMusic(true)}
+                  className="bg-testio-card rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group mb-6 border border-border relative overflow-hidden"
+                >
+                  <div className="absolute top-3 right-3">
+                    <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">Coming Soon</Badge>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Music className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-foreground font-semibold text-sm">Study Music</h3>
+                      <p className="text-muted-foreground text-xs mt-0.5">Turn your notes into catchy songs for memorization</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <StudyMusicModal open={showStudyMusic} onOpenChange={setShowStudyMusic} />
+
+                <div className="grid sm:grid-cols-2 gap-4">
                 {filteredDocs.map((doc, i) => (
                   <motion.div key={doc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                     onClick={() => navigate(`/document/${doc.id}`)} className="bg-testio-card rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group">
@@ -456,6 +482,7 @@ const Dashboard = () => {
                   </motion.div>
                 ))}
               </div>
+              </>
             )}
           </div>
 
