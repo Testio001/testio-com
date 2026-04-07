@@ -14,6 +14,7 @@ import StreakDisplay from "@/components/app/StreakDisplay";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
+import StudyMusicModal from "@/components/app/StudyMusicModal";
 
 type Document = Tables<"documents">;
 
