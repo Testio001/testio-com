@@ -5,9 +5,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PLAN_AMOUNTS: Record<string, number> = {
-  basic: 499,  // $4.99 in cents
-  pro: 999,    // $9.99 in cents
+const PLAN_VARIANTS: Record<string, { variant_id: number; product_id: number }> = {
+  basic: { variant_id: 1504464, product_id: 957604 },
+  pro: { variant_id: 1504491, product_id: 957624 },
 };
 
 Deno.serve(async (req) => {
@@ -33,50 +33,73 @@ Deno.serve(async (req) => {
     }
 
     const { plan } = await req.json();
-    if (!plan || !PLAN_AMOUNTS[plan]) {
+    if (!plan || !PLAN_VARIANTS[plan]) {
       return new Response(JSON.stringify({ error: "Invalid plan. Must be 'basic' or 'pro'." }), { status: 400, headers: corsHeaders });
     }
 
-    const amount = PLAN_AMOUNTS[plan] * 100; // Paystack uses smallest currency unit (kobo for NGN, cents for USD)
-    const reference = `testio_${plan}_${user.id.substring(0, 8)}_${Date.now()}`;
-
-    const paystackKey = Deno.env.get("PAYSTACK_SECRET_KEY");
-    if (!paystackKey) {
+    const lsKey = Deno.env.get("LEMONSQUEEZY_API_KEY");
+    if (!lsKey) {
       return new Response(JSON.stringify({ error: "Payment not configured" }), { status: 500, headers: corsHeaders });
     }
 
-    const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+    const variant = PLAN_VARIANTS[plan];
+
+    // Create a Lemon Squeezy checkout
+    const checkoutRes = await fetch("https://api.lemonsqueezy.com/v1/checkouts", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${paystackKey}`,
-        "Content-Type": "application/json",
+        Authorization: `Bearer ${lsKey}`,
+        "Content-Type": "application/vnd.api+json",
+        Accept: "application/vnd.api+json",
       },
       body: JSON.stringify({
-        email: user.email,
-        amount,
-        reference,
-        currency: "USD",
-        metadata: {
-          user_id: user.id,
-          plan,
+        data: {
+          type: "checkouts",
+          attributes: {
+            checkout_data: {
+              email: user.email,
+              custom: {
+                user_id: user.id,
+                plan: plan,
+              },
+            },
+            product_options: {
+              redirect_url: "https://testio-com.lovable.app/pricing?payment=success",
+            },
+          },
+          relationships: {
+            store: {
+              data: {
+                type: "stores",
+                id: "165498",
+              },
+            },
+            variant: {
+              data: {
+                type: "variants",
+                id: String(variant.variant_id),
+              },
+            },
+          },
         },
       }),
     });
 
-    const paystackData = await paystackRes.json();
+    const checkoutData = await checkoutRes.json();
 
-    if (!paystackData.status) {
-      return new Response(JSON.stringify({ error: paystackData.message || "Payment initialization failed" }), { status: 400, headers: corsHeaders });
+    if (!checkoutRes.ok) {
+      console.error("Lemon Squeezy error:", JSON.stringify(checkoutData));
+      return new Response(JSON.stringify({ error: checkoutData.errors?.[0]?.detail || "Checkout creation failed" }), { status: 400, headers: corsHeaders });
     }
 
+    const checkoutUrl = checkoutData.data?.attributes?.url;
+
     return new Response(
-      JSON.stringify({
-        authorization_url: paystackData.data.authorization_url,
-        reference: paystackData.data.reference,
-      }),
+      JSON.stringify({ checkout_url: checkoutUrl }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    console.error("Error:", err);
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
   }
 });
