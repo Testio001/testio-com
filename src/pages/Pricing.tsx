@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +14,6 @@ const plans = [
     name: "Testio Basic",
     price: "$4.99",
     period: "/month",
-    amount: 499,
     features: [
       "25 uploads/month",
       "Summary + Quiz + Flashcards",
@@ -28,7 +27,6 @@ const plans = [
     name: "Testio Pro Unlimited",
     price: "$9.99",
     period: "/month",
-    amount: 999,
     features: [
       "Unlimited uploads*",
       "Full Podcast access (30/month)",
@@ -46,6 +44,47 @@ const Pricing = () => {
   const { toast } = useToast();
   const isAndroidApp = useIsAndroidApp();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+
+  // Check for successful payment return
+  useEffect(() => {
+    if (searchParams.get("payment") === "success" && user) {
+      const verifyPayment = async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke("verify-payment", {
+            body: {},
+          });
+
+          if (error) throw error;
+
+          if (data?.success) {
+            toast({
+              title: "🎉 Payment Successful!",
+              description: `Welcome to Testio ${data.plan === "pro" ? "Pro" : "Basic"}! Enjoy your premium features.`,
+            });
+            navigate("/dashboard", { replace: true });
+          } else {
+            // Retry after a few seconds (webhook may not have arrived yet)
+            setTimeout(async () => {
+              const { data: retryData } = await supabase.functions.invoke("verify-payment", {
+                body: {},
+              });
+              if (retryData?.success) {
+                toast({
+                  title: "🎉 Payment Successful!",
+                  description: `Your subscription is now active!`,
+                });
+                navigate("/dashboard", { replace: true });
+              }
+            }, 5000);
+          }
+        } catch {
+          // Silent fail - webhook will handle it
+        }
+      };
+      verifyPayment();
+    }
+  }, [searchParams, user]);
 
   if (isAndroidApp) {
     return (
@@ -75,53 +114,9 @@ const Pricing = () => {
 
       if (error) throw error;
 
-      if (data?.authorization_url) {
-        // Open Paystack in a new window/popup
-        const popup = window.open(data.authorization_url, "_blank", "width=500,height=700,scrollbars=yes");
-        
-        // Poll for payment completion
-        const pollInterval = setInterval(async () => {
-          if (popup?.closed) {
-            clearInterval(pollInterval);
-            // Verify the payment
-            if (data.reference) {
-              try {
-                const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-payment", {
-                  body: { reference: data.reference },
-                });
-
-                if (verifyError) throw verifyError;
-
-                if (verifyData?.success) {
-                  toast({
-                    title: "🎉 Payment Successful!",
-                    description: `Welcome to ${plan.name}! Enjoy your premium features.`,
-                  });
-                  navigate("/dashboard");
-                } else {
-                  toast({
-                    title: "Payment not completed",
-                    description: "Your payment was not completed. Please try again.",
-                    variant: "destructive",
-                  });
-                }
-              } catch {
-                toast({
-                  title: "Verification failed",
-                  description: "We couldn't verify your payment. Please contact support if you were charged.",
-                  variant: "destructive",
-                });
-              }
-            }
-            setLoadingPlan(null);
-          }
-        }, 1000);
-
-        // Timeout after 10 minutes
-        setTimeout(() => {
-          clearInterval(pollInterval);
-          setLoadingPlan(null);
-        }, 600000);
+      if (data?.checkout_url) {
+        // Redirect to Lemon Squeezy checkout
+        window.location.href = data.checkout_url;
       }
     } catch (err: any) {
       toast({
@@ -225,7 +220,7 @@ const Pricing = () => {
         </div>
 
         <p className="text-center text-muted-foreground text-xs mt-8">
-          Secure payment powered by Paystack. Cancel anytime.
+          Secure payment powered by Lemon Squeezy. Cancel anytime.
         </p>
       </div>
     </div>

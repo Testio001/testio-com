@@ -1,8 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createHmac } from "node:crypto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-signature",
+};
+
+// Map variant IDs to plans
+const VARIANT_TO_PLAN: Record<number, string> = {
+  1504464: "basic",
+  1504491: "pro",
 };
 
 Deno.serve(async (req) => {
@@ -11,87 +18,134 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-    }
+    // Handle webhook from Lemon Squeezy
+    if (req.method === "POST") {
+      const signature = req.headers.get("x-signature");
+      const rawBody = await req.text();
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+      // If there's a signature header, it's a webhook call
+      if (signature) {
+        const lsKey = Deno.env.get("LEMONSQUEEZY_API_KEY");
+        if (!lsKey) {
+          return new Response(JSON.stringify({ error: "Not configured" }), { status: 500, headers: corsHeaders });
+        }
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-    }
+        // Verify webhook signature
+        const hmac = createHmac("sha256", lsKey);
+        hmac.update(rawBody);
+        const digest = hmac.digest("hex");
 
-    const userId = claimsData.claims.sub;
-    const { reference } = await req.json();
+        if (digest !== signature) {
+          console.error("Invalid webhook signature");
+          return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers: corsHeaders });
+        }
 
-    if (!reference) {
-      return new Response(JSON.stringify({ error: "Missing reference" }), { status: 400, headers: corsHeaders });
-    }
+        const payload = JSON.parse(rawBody);
+        const eventName = payload.meta?.event_name;
 
-    const paystackKey = Deno.env.get("PAYSTACK_SECRET_KEY");
-    if (!paystackKey) {
-      return new Response(JSON.stringify({ error: "Payment not configured" }), { status: 500, headers: corsHeaders });
-    }
+        // We care about order_created and subscription_created
+        if (eventName === "order_created" || eventName === "subscription_created") {
+          const customData = payload.meta?.custom_data || {};
+          const userId = customData.user_id;
+          const plan = customData.plan;
 
-    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
-      headers: { Authorization: `Bearer ${paystackKey}` },
-    });
+          if (!userId || !plan || !["basic", "pro"].includes(plan)) {
+            // Try to get plan from variant
+            const variantId = payload.data?.attributes?.first_order_item?.variant_id 
+              || payload.data?.attributes?.variant_id;
+            const derivedPlan = variantId ? VARIANT_TO_PLAN[variantId] : null;
+            
+            if (!userId) {
+              console.error("No user_id in custom data");
+              return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
+            }
 
-    const verifyData = await verifyRes.json();
+            const finalPlan = plan || derivedPlan || "basic";
 
-    if (!verifyData.status || verifyData.data.status !== "success") {
+            const adminClient = createClient(
+              Deno.env.get("SUPABASE_URL")!,
+              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+            );
+
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 30);
+
+            await adminClient.from("profiles").update({
+              subscription_plan: finalPlan,
+              subscription_expires_at: expiresAt.toISOString(),
+            }).eq("user_id", userId);
+
+            console.log(`Activated ${finalPlan} for user ${userId}`);
+            return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
+          }
+
+          const adminClient = createClient(
+            Deno.env.get("SUPABASE_URL")!,
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+          );
+
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 30);
+
+          await adminClient.from("profiles").update({
+            subscription_plan: plan,
+            subscription_expires_at: expiresAt.toISOString(),
+          }).eq("user_id", userId);
+
+          console.log(`Activated ${plan} for user ${userId}`);
+        }
+
+        return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
+      }
+
+      // If no signature, it's a manual verification call from the frontend
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+      }
+
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+      }
+
+      // Check if the user's profile has been updated by the webhook
+      const adminClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+
+      const { data: profile } = await adminClient
+        .from("profiles")
+        .select("subscription_plan, subscription_expires_at")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profile && profile.subscription_plan !== "free" && profile.subscription_expires_at) {
+        const expires = new Date(profile.subscription_expires_at);
+        if (expires > new Date()) {
+          return new Response(
+            JSON.stringify({ success: true, plan: profile.subscription_plan, expires_at: profile.subscription_expires_at }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
       return new Response(
-        JSON.stringify({ success: false, message: "Payment not successful" }),
+        JSON.stringify({ success: false, message: "Subscription not yet active. It may take a moment to process." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Extract plan from metadata
-    const plan = verifyData.data.metadata?.plan;
-    if (!plan || !["basic", "pro"].includes(plan)) {
-      return new Response(JSON.stringify({ error: "Invalid plan in payment" }), { status: 400, headers: corsHeaders });
-    }
-
-    // Verify the user_id in metadata matches the authenticated user
-    const metaUserId = verifyData.data.metadata?.user_id;
-    if (metaUserId !== userId) {
-      return new Response(JSON.stringify({ error: "User mismatch" }), { status: 403, headers: corsHeaders });
-    }
-
-    // Update profile with subscription
-    const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-
-    const { error: updateError } = await adminClient
-      .from("profiles")
-      .update({
-        subscription_plan: plan,
-        subscription_expires_at: expiresAt.toISOString(),
-      })
-      .eq("user_id", userId);
-
-    if (updateError) {
-      console.error("Profile update error:", updateError);
-      return new Response(JSON.stringify({ error: "Failed to activate subscription" }), { status: 500, headers: corsHeaders });
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, plan, expires_at: expiresAt.toISOString() }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: corsHeaders });
   } catch (err) {
+    console.error("Error:", err);
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
   }
 });
