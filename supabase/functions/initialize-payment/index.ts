@@ -44,6 +44,20 @@ Deno.serve(async (req) => {
 
     const variant = PLAN_VARIANTS[plan];
 
+    // Get store ID from Lemon Squeezy
+    const storeRes = await fetch("https://api.lemonsqueezy.com/v1/stores", {
+      headers: {
+        Authorization: `Bearer ${lsKey}`,
+        Accept: "application/vnd.api+json",
+      },
+    });
+    const storeData = await storeRes.json();
+    const storeId = storeData.data?.[0]?.id;
+    if (!storeId) {
+      console.error("No store found:", JSON.stringify(storeData));
+      return new Response(JSON.stringify({ error: "No store found" }), { status: 500, headers: corsHeaders });
+    }
+
     // Create a Lemon Squeezy checkout
     const checkoutRes = await fetch("https://api.lemonsqueezy.com/v1/checkouts", {
       method: "POST",
@@ -71,7 +85,7 @@ Deno.serve(async (req) => {
             store: {
               data: {
                 type: "stores",
-                id: "165498",
+                id: storeId,
               },
             },
             variant: {
