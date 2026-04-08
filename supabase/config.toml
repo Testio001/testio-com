@@ -33,3 +33,7 @@ project_id = "kjdduozjlfhgznrcsoxr"
     verify_jwt = false
   [functions.send-push-notification]
     verify_jwt = false
+  [functions.verify-payment]
+    verify_jwt = false
+  [functions.initialize-payment]
+    verify_jwt = false
