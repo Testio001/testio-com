@@ -254,7 +254,10 @@ const Home = () => {
               <a href="mailto:support@testio.online" className="hover:text-indigo-600 transition-colors">Contact Us</a>
             </div>
           </div>
-          <p className="text-center text-gray-400 text-xs mt-8">© 2025 Testio. All rights reserved.</p>
+          <div className="mt-8 flex flex-col items-center gap-1">
+            <p className="text-gray-400 text-xs">© 2025 Testio. All rights reserved.</p>
+            <p className="text-gray-400 text-[10px]">Created by <span className="font-semibold text-gray-500">TechWorld</span></p>
+          </div>
         </div>
       </footer>
     </div>

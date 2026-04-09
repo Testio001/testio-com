@@ -15,7 +15,10 @@ const Footer = () => {
             <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
             <a href="#" className="hover:text-foreground transition-colors">Terms</a>
           </div>
-          <p className="text-xs text-muted-foreground">© 2025 Testio. All rights reserved.</p>
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">© 2025 Testio. All rights reserved.</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Created by <span className="font-semibold">TechWorld</span></p>
+          </div>
         </div>
       </div>
     </footer>

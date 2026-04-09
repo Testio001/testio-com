@@ -219,9 +219,10 @@ const Pricing = () => {
           ))}
         </div>
 
-        <p className="text-center text-muted-foreground text-xs mt-8">
-          Secure payment powered by Lemon Squeezy. Cancel anytime.
-        </p>
+        <div className="text-center mt-8 space-y-1">
+          <p className="text-muted-foreground text-xs">Secure payment powered by Lemon Squeezy. Cancel anytime.</p>
+          <p className="text-muted-foreground text-[10px]">Created by <span className="font-semibold">TechWorld</span></p>
+        </div>
       </div>
     </div>
   );
