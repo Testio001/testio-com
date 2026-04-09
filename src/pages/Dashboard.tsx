@@ -532,6 +532,11 @@ const Dashboard = () => {
             gamification={gamification}
           />
         </div>
+
+        {/* TechWorld branding */}
+        <div className="text-center py-4 mt-4">
+          <p className="text-[10px] text-muted-foreground">Created by <span className="font-semibold">TechWorld</span></p>
+        </div>
       </div>
     </div>
   );
