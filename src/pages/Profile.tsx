@@ -27,6 +27,8 @@ const Profile = () => {
     if (data) {
       setDisplayName(data.display_name || "");
       setEmail(data.email || user!.email || "");
+      setSubscriptionPlan(data.subscription_plan || "free");
+      setSubscriptionExpires(data.subscription_expires_at || null);
     } else {
       setEmail(user!.email || "");
     }
