@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Crown, Calendar, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import testioLogo from "@/assets/testio-logo.png";
 import { PushNotificationSettings } from "@/components/PushNotificationSettings";
