@@ -97,6 +97,50 @@ const Profile = () => {
           </button>
         </div>
 
+        {/* Subscription Status */}
+        <div className="bg-testio-card rounded-xl p-6 space-y-4">
+          <h2 className="text-foreground font-semibold text-sm flex items-center gap-2">
+            <Crown className="w-4 h-4 text-primary" />
+            Subscription
+          </h2>
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+              subscriptionPlan === "pro"
+                ? "bg-primary/20 text-primary"
+                : subscriptionPlan === "basic"
+                ? "bg-accent/20 text-accent-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}>
+              {subscriptionPlan === "pro" ? "Pro" : subscriptionPlan === "basic" ? "Basic" : "Free"}
+            </span>
+          </div>
+          {subscriptionExpires && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>
+                {new Date(subscriptionExpires) > new Date()
+                  ? `Renews ${new Date(subscriptionExpires).toLocaleDateString()}`
+                  : `Expired ${new Date(subscriptionExpires).toLocaleDateString()}`}
+              </span>
+            </div>
+          )}
+          {subscriptionPlan === "free" ? (
+            <button
+              onClick={() => navigate("/pricing")}
+              className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2"
+            >
+              <Crown className="w-4 h-4" /> Upgrade Plan
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/pricing")}
+              className="text-sm text-primary hover:underline flex items-center gap-1"
+            >
+              <ExternalLink className="w-3.5 h-3.5" /> Manage Subscription
+            </button>
+          )}
+        </div>
+
         {/* Push Notifications */}
         <PushNotificationSettings />
       </div>
