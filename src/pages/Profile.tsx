@@ -13,6 +13,8 @@ const Profile = () => {
   const { toast } = useToast();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
+  const [subscriptionPlan, setSubscriptionPlan] = useState("free");
+  const [subscriptionExpires, setSubscriptionExpires] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
