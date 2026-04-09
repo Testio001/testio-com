@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Music } from "lucide-react";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Music, Crown, Zap } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -380,6 +380,36 @@ const Dashboard = () => {
                 className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
             </div>
 
+            {/* Upgrade to Pro Banner - always visible for free/basic users */}
+            {userPlan !== "pro" && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10 border border-primary/20 rounded-xl p-4 cursor-pointer hover:border-primary/40 transition-all"
+                onClick={() => navigate("/pricing")}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                    <Zap className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-foreground font-bold text-sm flex items-center gap-1.5">
+                      <Crown className="w-3.5 h-3.5 text-primary" />
+                      {userPlan === "free" ? "Upgrade to Pro — Unlock Everything" : "Go Pro — Unlimited Power"}
+                    </h3>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      {userPlan === "free" 
+                        ? "Unlimited uploads, full podcasts, priority AI processing — just $9.99/mo" 
+                        : "Get unlimited uploads & full podcast access for just $9.99/mo"}
+                    </p>
+                  </div>
+                  <div className="shrink-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1.5 rounded-full">
+                    Upgrade
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {showUpload && <UploadModal onClose={() => setShowUpload(false)} onFileUpload={handleFileUpload} onTextUpload={handleTextUpload} onImageUpload={handleImageUpload} />}
 
             {showReferral && (
@@ -501,6 +531,11 @@ const Dashboard = () => {
             onUpgrade={() => navigate("/pricing")}
             gamification={gamification}
           />
+        </div>
+
+        {/* TechWorld branding */}
+        <div className="text-center py-4 mt-4">
+          <p className="text-[10px] text-muted-foreground">Created by <span className="font-semibold">TechWorld</span></p>
         </div>
       </div>
     </div>

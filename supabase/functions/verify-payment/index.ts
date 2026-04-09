@@ -25,13 +25,14 @@ Deno.serve(async (req) => {
 
       // If there's a signature header, it's a webhook call
       if (signature) {
-        const lsKey = Deno.env.get("LEMONSQUEEZY_API_KEY");
-        if (!lsKey) {
+        const webhookSecret = Deno.env.get("LEMONSQUEEZY_WEBHOOK_SECRET");
+        if (!webhookSecret) {
+          console.error("LEMONSQUEEZY_WEBHOOK_SECRET not configured");
           return new Response(JSON.stringify({ error: "Not configured" }), { status: 500, headers: corsHeaders });
         }
 
-        // Verify webhook signature
-        const hmac = createHmac("sha256", lsKey);
+        // Verify webhook signature using the dedicated webhook secret
+        const hmac = createHmac("sha256", webhookSecret);
         hmac.update(rawBody);
         const digest = hmac.digest("hex");
 
