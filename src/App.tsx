@@ -22,6 +22,7 @@ import Home from "./pages/Home";
 import EntryPoint from "./pages/EntryPoint";
 import WaitlistAnalytics from "./pages/WaitlistAnalytics";
 import NotFound from "./pages/NotFound";
+import PromoVideo from "./pages/PromoVideo";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/home" element={<Home />} />
+              <Route path="/promo" element={<PromoVideo />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/document/:id" element={<ProtectedRoute><DocumentView /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
