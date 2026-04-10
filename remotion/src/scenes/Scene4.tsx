@@ -3,22 +3,40 @@ import { AbsoluteFill, useCurrentFrame, interpolate, spring, useVideoConfig } fr
 const TEAL = "#26c6a0";
 
 const stats = [
-  { value: "10K+", label: "Students" },
-  { value: "50K+", label: "Documents" },
-  { value: "98%", label: "Satisfaction" },
+  { value: "10K+", label: "Active Students" },
+  { value: "50K+", label: "Documents Processed" },
+  { value: "98%", label: "Satisfaction Rate" },
+  { value: "4.9★", label: "Average Rating" },
 ];
 
 export const Scene4Stats = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
+  const headingOpacity = interpolate(frame, [0, 20], [0, 1], { extrapolateRight: "clamp" });
+
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
-      <div style={{ display: "flex", gap: 120 }}>
+      <div
+        style={{
+          fontSize: 56,
+          fontWeight: 800,
+          color: "#fafafa",
+          fontFamily: "sans-serif",
+          letterSpacing: -2,
+          marginBottom: 80,
+          opacity: headingOpacity,
+          textAlign: "center",
+        }}
+      >
+        Trusted by <span style={{ color: TEAL }}>thousands</span>
+      </div>
+
+      <div style={{ display: "flex", gap: 100 }}>
         {stats.map((stat, i) => {
-          const delay = i * 12;
+          const delay = 10 + i * 14;
           const s = spring({ frame: frame - delay, fps, config: { damping: 12, stiffness: 100 } });
-          const countOpacity = interpolate(frame, [delay + 5, delay + 20], [0, 1], { extrapolateRight: "clamp" });
+          const countOpacity = interpolate(frame, [delay + 5, delay + 22], [0, 1], { extrapolateRight: "clamp" });
 
           return (
             <div
@@ -30,7 +48,7 @@ export const Scene4Stats = () => {
             >
               <div
                 style={{
-                  fontSize: 96,
+                  fontSize: 88,
                   fontWeight: 800,
                   color: TEAL,
                   fontFamily: "sans-serif",
@@ -43,11 +61,11 @@ export const Scene4Stats = () => {
               </div>
               <div
                 style={{
-                  fontSize: 28,
+                  fontSize: 24,
                   color: "#888",
                   fontFamily: "sans-serif",
                   fontWeight: 500,
-                  marginTop: 10,
+                  marginTop: 12,
                   opacity: countOpacity,
                 }}
               >

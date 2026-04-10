@@ -71,7 +71,7 @@ const PromoVideo = () => {
       </button>
 
       <p className="text-muted-foreground text-sm mt-4">
-        MP4 · 1920×1080 · 15 seconds
+        MP4 · 1920×1080 · 30 seconds
       </p>
     </div>
   );

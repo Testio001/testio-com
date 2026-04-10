@@ -7,23 +7,21 @@ export const Scene5CTA = () => {
   const { fps } = useVideoConfig();
 
   const s = spring({ frame, fps, config: { damping: 15, stiffness: 80 } });
-  const tagOpacity = interpolate(frame, [20, 40], [0, 1], { extrapolateRight: "clamp" });
-  const tagY = interpolate(frame, [20, 40], [30, 0], { extrapolateRight: "clamp" });
+  const tagOpacity = interpolate(frame, [25, 50], [0, 1], { extrapolateRight: "clamp" });
+  const tagY = interpolate(frame, [25, 50], [30, 0], { extrapolateRight: "clamp" });
+  const urlOpacity = interpolate(frame, [45, 70], [0, 1], { extrapolateRight: "clamp" });
+  const urlScale = spring({ frame: frame - 50, fps, config: { damping: 12, stiffness: 100 } });
 
-  // Pulsing glow
   const pulse = Math.sin(frame * 0.08) * 0.3 + 0.7;
-
-  // Logo subtle rotation
   const logoRotate = Math.sin(frame * 0.03) * 3;
 
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
-      {/* Big glow */}
       <div
         style={{
           position: "absolute",
-          width: 600,
-          height: 600,
+          width: 700,
+          height: 700,
           borderRadius: "50%",
           background: `radial-gradient(circle, ${TEAL}20, transparent 70%)`,
           filter: "blur(60px)",
@@ -32,12 +30,11 @@ export const Scene5CTA = () => {
       />
 
       <div style={{ textAlign: "center", zIndex: 1 }}>
-        {/* Logo */}
         <div
           style={{
-            width: 140,
-            height: 140,
-            borderRadius: 32,
+            width: 160,
+            height: 160,
+            borderRadius: 36,
             background: `linear-gradient(135deg, ${TEAL}, #1fa88a)`,
             display: "flex",
             alignItems: "center",
@@ -47,13 +44,12 @@ export const Scene5CTA = () => {
             boxShadow: `0 30px 80px ${TEAL}50`,
           }}
         >
-          <span style={{ fontSize: 84, fontWeight: 800, color: "#0a0c14", fontFamily: "sans-serif" }}>T</span>
+          <span style={{ fontSize: 96, fontWeight: 800, color: "#0a0c14", fontFamily: "sans-serif" }}>T</span>
         </div>
 
-        {/* Title */}
         <div
           style={{
-            fontSize: 80,
+            fontSize: 88,
             fontWeight: 800,
             color: "#fafafa",
             fontFamily: "sans-serif",
@@ -64,14 +60,13 @@ export const Scene5CTA = () => {
           Start with <span style={{ color: TEAL }}>Testio</span>
         </div>
 
-        {/* Tagline */}
         <div
           style={{
-            fontSize: 30,
+            fontSize: 34,
             color: "#777",
             fontFamily: "sans-serif",
             fontWeight: 400,
-            marginTop: 24,
+            marginTop: 28,
             opacity: tagOpacity,
             transform: `translateY(${tagY}px)`,
           }}
@@ -79,19 +74,33 @@ export const Scene5CTA = () => {
           Study smarter. Not harder.
         </div>
 
-        {/* URL */}
         <div
           style={{
-            fontSize: 22,
+            fontSize: 32,
             color: TEAL,
             fontFamily: "sans-serif",
-            fontWeight: 600,
-            marginTop: 40,
-            opacity: tagOpacity,
-            letterSpacing: 2,
+            fontWeight: 700,
+            marginTop: 50,
+            opacity: urlOpacity,
+            transform: `scale(${urlScale})`,
+            letterSpacing: 4,
+            textShadow: `0 0 30px ${TEAL}40`,
           }}
         >
-          testio-com.lovable.app
+          Testio.online
+        </div>
+
+        <div
+          style={{
+            fontSize: 18,
+            color: "#555",
+            fontFamily: "sans-serif",
+            fontWeight: 400,
+            marginTop: 20,
+            opacity: urlOpacity,
+          }}
+        >
+          Created by TechWorld
         </div>
       </div>
     </AbsoluteFill>
