@@ -291,9 +291,11 @@ const Dashboard = () => {
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           <img src={testioLogo} alt="Testio" className="w-6 h-6 sm:w-7 sm:h-7 shrink-0" />
           <span className="text-foreground font-bold text-base sm:text-lg shrink-0" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
-          <Badge variant={userPlan === "pro" ? "default" : userPlan === "basic" ? "secondary" : "outline"} className="text-[9px] sm:text-[10px] uppercase ml-0.5 sm:ml-1 shrink-0">
-            {userPlan}
-          </Badge>
+          {userPlan && (
+            <Badge variant={userPlan === "pro" ? "default" : userPlan === "basic" ? "secondary" : "outline"} className="text-[9px] sm:text-[10px] uppercase ml-0.5 sm:ml-1 shrink-0">
+              {userPlan}
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-1.5 sm:gap-3">
           <StreakDisplay stats={gamification.stats} compact />
