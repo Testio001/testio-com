@@ -84,7 +84,7 @@ const Dashboard = () => {
   const fetchPlan = async () => {
     if (!user) return;
     const { data } = await supabase.from("profiles").select("subscription_plan").eq("user_id", user.id).single();
-    if (data?.subscription_plan) setUserPlan(data.subscription_plan);
+    setUserPlan(data?.subscription_plan || "free");
   };
 
   const fetchData = async () => {
