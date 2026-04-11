@@ -31,8 +31,10 @@ const Dashboard = () => {
   const [showReferral, setShowReferral] = useState(false);
   const [renamingDoc, setRenamingDoc] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [userPlan, setUserPlan] = useState("free");
+  const [userPlan, setUserPlan] = useState<string | null>(null);
   const [showStudyMusic, setShowStudyMusic] = useState(false);
+  const [showPeriodicUpgrade, setShowPeriodicUpgrade] = useState(false);
+  const isAndroidApp = useIsAndroidApp();
 
   const sendStudyDeckReadyNotification = async (docTitle: string) => {
     try {
