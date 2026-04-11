@@ -91,8 +91,21 @@ const Dashboard = () => {
 
   const fetchPlan = async () => {
     if (!user) return;
-    const { data } = await supabase.from("profiles").select("subscription_plan").eq("user_id", user.id).single();
-    setUserPlan(data?.subscription_plan || "free");
+    const { data } = await supabase.from("profiles").select("subscription_plan, subscription_expires_at").eq("user_id", user.id).single();
+    if (!data) {
+      setUserPlan("free");
+      return;
+    }
+    const plan = data.subscription_plan || "free";
+    // If subscription has expired, treat as free
+    if (plan !== "free" && data.subscription_expires_at) {
+      const expiresAt = new Date(data.subscription_expires_at);
+      if (expiresAt < new Date()) {
+        setUserPlan("free");
+        return;
+      }
+    }
+    setUserPlan(plan);
   };
 
   const fetchData = async () => {

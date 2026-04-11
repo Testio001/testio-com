@@ -23,6 +23,7 @@ import EntryPoint from "./pages/EntryPoint";
 import WaitlistAnalytics from "./pages/WaitlistAnalytics";
 import NotFound from "./pages/NotFound";
 import PromoVideo from "./pages/PromoVideo";
+import ThemeToggle from "./components/ThemeToggle";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
             <PWAInstallBanner />
+            <ThemeToggle />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
