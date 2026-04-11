@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Music, Crown, Zap } from "lucide-react";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Music, Crown, Zap, X } from "lucide-react";
+import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -31,8 +32,10 @@ const Dashboard = () => {
   const [showReferral, setShowReferral] = useState(false);
   const [renamingDoc, setRenamingDoc] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [userPlan, setUserPlan] = useState("free");
+  const [userPlan, setUserPlan] = useState<string | null>(null);
   const [showStudyMusic, setShowStudyMusic] = useState(false);
+  const [showPeriodicUpgrade, setShowPeriodicUpgrade] = useState(false);
+  const isAndroidApp = useIsAndroidApp();
 
   const sendStudyDeckReadyNotification = async (docTitle: string) => {
     try {
@@ -78,10 +81,18 @@ const Dashboard = () => {
     }
   }, [user]);
 
+  // Periodic upgrade prompt for free users - show after 3 minutes, then every 5 minutes
+  useEffect(() => {
+    if (!userPlan || userPlan !== "free" || isAndroidApp) return;
+    const initialTimer = setTimeout(() => setShowPeriodicUpgrade(true), 3 * 60 * 1000);
+    const interval = setInterval(() => setShowPeriodicUpgrade(true), 5 * 60 * 1000);
+    return () => { clearTimeout(initialTimer); clearInterval(interval); };
+  }, [userPlan, isAndroidApp]);
+
   const fetchPlan = async () => {
     if (!user) return;
     const { data } = await supabase.from("profiles").select("subscription_plan").eq("user_id", user.id).single();
-    if (data?.subscription_plan) setUserPlan(data.subscription_plan);
+    setUserPlan(data?.subscription_plan || "free");
   };
 
   const fetchData = async () => {
@@ -288,9 +299,11 @@ const Dashboard = () => {
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           <img src={testioLogo} alt="Testio" className="w-6 h-6 sm:w-7 sm:h-7 shrink-0" />
           <span className="text-foreground font-bold text-base sm:text-lg shrink-0" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
-          <Badge variant={userPlan === "pro" ? "default" : userPlan === "basic" ? "secondary" : "outline"} className="text-[9px] sm:text-[10px] uppercase ml-0.5 sm:ml-1 shrink-0">
-            {userPlan}
-          </Badge>
+          {userPlan && (
+            <Badge variant={userPlan === "pro" ? "default" : userPlan === "basic" ? "secondary" : "outline"} className="text-[9px] sm:text-[10px] uppercase ml-0.5 sm:ml-1 shrink-0">
+              {userPlan}
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-1.5 sm:gap-3">
           <StreakDisplay stats={gamification.stats} compact />
@@ -381,33 +394,54 @@ const Dashboard = () => {
             </div>
 
             {/* Upgrade to Pro Banner - always visible for free/basic users */}
-            {userPlan !== "pro" && (
+            {userPlan && userPlan !== "pro" && !isAndroidApp && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-6 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10 border border-primary/20 rounded-xl p-4 cursor-pointer hover:border-primary/40 transition-all"
+                className="mb-6 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/15 border-2 border-primary/30 rounded-xl p-5 cursor-pointer hover:border-primary/50 transition-all shadow-lg shadow-primary/5"
                 onClick={() => navigate("/pricing")}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                    <Zap className="w-5 h-5 text-primary" />
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0 animate-pulse">
+                    <Zap className="w-6 h-6 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-foreground font-bold text-sm flex items-center gap-1.5">
-                      <Crown className="w-3.5 h-3.5 text-primary" />
-                      {userPlan === "free" ? "Upgrade to Pro — Unlock Everything" : "Go Pro — Unlimited Power"}
+                      <Crown className="w-4 h-4 text-primary" />
+                      Upgrade to Pro — Unlock Everything
                     </h3>
                     <p className="text-muted-foreground text-xs mt-0.5">
-                      {userPlan === "free" 
-                        ? "Unlimited uploads, full podcasts, priority AI processing — just $9.99/mo" 
-                        : "Get unlimited uploads & full podcast access for just $9.99/mo"}
+                      Unlimited uploads, full podcasts, quizzes & flashcards — starting at just <span className="text-primary font-bold">$4.99/mo</span>
                     </p>
                   </div>
-                  <div className="shrink-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1.5 rounded-full">
+                  <div className="shrink-0 bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-full">
                     Upgrade
                   </div>
                 </div>
               </motion.div>
+            )}
+
+            {/* Periodic upgrade prompt for free users */}
+            {showPeriodicUpgrade && userPlan === "free" && !isAndroidApp && (
+              <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowPeriodicUpgrade(false)}>
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} onClick={(e) => e.stopPropagation()} className="bg-card border border-primary/30 rounded-2xl p-6 w-full max-w-sm text-center relative">
+                  <button onClick={() => setShowPeriodicUpgrade(false)} className="absolute top-3 right-3 text-muted-foreground hover:text-foreground">
+                    <X className="w-4 h-4" />
+                  </button>
+                  <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+                    <Crown className="w-8 h-8 text-primary" />
+                  </div>
+                  <h3 className="text-foreground font-bold text-lg mb-2">Unlock the Full Testio Experience</h3>
+                  <p className="text-muted-foreground text-sm mb-1">Get unlimited uploads, full-length podcasts, unlimited quizzes & flashcards.</p>
+                  <p className="text-primary font-bold text-lg mb-4">Starting at $4.99/mo</p>
+                  <button onClick={() => { setShowPeriodicUpgrade(false); navigate("/pricing"); }} className="w-full btn-testio-primary text-sm !py-3 flex items-center justify-center gap-2 mb-2">
+                    <Crown className="w-4 h-4" /> Upgrade Now
+                  </button>
+                  <button onClick={() => setShowPeriodicUpgrade(false)} className="text-muted-foreground text-xs hover:text-foreground transition-colors">
+                    Continue with Free Plan
+                  </button>
+                </motion.div>
+              </div>
             )}
 
             {showUpload && <UploadModal onClose={() => setShowUpload(false)} onFileUpload={handleFileUpload} onTextUpload={handleTextUpload} onImageUpload={handleImageUpload} />}

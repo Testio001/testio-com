@@ -15,7 +15,7 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken }: Up
   const messages = {
     upload: {
       title: "Upload limit reached",
-      description: "You've used all your free uploads. Upgrade for unlimited access or refer a friend to earn 1 bonus upload.",
+      description: "You've used all your free uploads. Upgrade starting at $4.99/mo for more access or refer a friend to earn 1 bonus upload.",
     },
     podcast: {
       title: "Free podcast preview",
