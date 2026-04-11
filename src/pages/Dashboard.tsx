@@ -81,6 +81,14 @@ const Dashboard = () => {
     }
   }, [user]);
 
+  // Periodic upgrade prompt for free users - show after 3 minutes, then every 5 minutes
+  useEffect(() => {
+    if (!userPlan || userPlan !== "free" || isAndroidApp) return;
+    const initialTimer = setTimeout(() => setShowPeriodicUpgrade(true), 3 * 60 * 1000);
+    const interval = setInterval(() => setShowPeriodicUpgrade(true), 5 * 60 * 1000);
+    return () => { clearTimeout(initialTimer); clearInterval(interval); };
+  }, [userPlan, isAndroidApp]);
+
   const fetchPlan = async () => {
     if (!user) return;
     const { data } = await supabase.from("profiles").select("subscription_plan").eq("user_id", user.id).single();
