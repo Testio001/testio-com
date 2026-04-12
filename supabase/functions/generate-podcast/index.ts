@@ -45,7 +45,7 @@ Rules:
 - Include about ${exchangeLimit} exchanges total
 - Make it educational but fun and conversational
 - Start with a brief intro and end with a quick summary
-${maxExchanges ? '- Always end the conversation with Alex saying: "Want to dive deeper? Upgrade to Testio Premium for full-length podcasts!"' : '- End with a thoughtful conclusion summarizing the key takeaways'}
+${exchangeLimit < 26 ? '- Always end the conversation with Alex saying: "Want to dive deeper? Upgrade to Testio Premium for full-length podcasts!"' : '- End with a thoughtful conclusion summarizing the key takeaways'}
 - Output ONLY valid JSON array of objects with "speaker" (either "Alex" or "Sam") and "text" fields
 - No markdown, no code blocks, just the raw JSON array`,
           },
