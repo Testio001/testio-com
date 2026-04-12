@@ -23,7 +23,7 @@ const DocumentView = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { FREE_PODCAST_MAX_EXCHANGES, FREE_QUIZ_MAX_QUESTIONS } = useGamification();
+  const { FREE_PODCAST_MAX_EXCHANGES, BASIC_PODCAST_MAX_EXCHANGES, PRO_PODCAST_MAX_EXCHANGES, FREE_QUIZ_MAX_QUESTIONS } = useGamification();
   const [doc, setDoc] = useState<Document | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeTab, setActiveTab] = useState<"notes" | "flashcards" | "quiz" | "chat" | "podcast">("notes");
@@ -136,10 +136,12 @@ const DocumentView = () => {
     if (!id) return;
     setGenerating("podcast");
     try {
-      // Pro users get unlimited exchanges, free/basic get capped
-      const isPro = subscriptionPlan === "pro";
       const body: any = { documentId: id };
-      if (!isPro) {
+      if (subscriptionPlan === "pro") {
+        body.maxExchanges = PRO_PODCAST_MAX_EXCHANGES;
+      } else if (subscriptionPlan === "basic") {
+        body.maxExchanges = BASIC_PODCAST_MAX_EXCHANGES;
+      } else {
         body.maxExchanges = FREE_PODCAST_MAX_EXCHANGES;
       }
       const { data, error } = await supabase.functions.invoke("generate-podcast", { body });
