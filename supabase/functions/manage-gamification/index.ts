@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const FREE_UPLOAD_LIMIT = 3;
-const BASIC_UPLOAD_LIMIT = 25;
+const BASIC_UPLOAD_LIMIT = 12;
 const PRO_UPLOAD_LIMIT = 100;
 const MAX_REFERRALS_PER_MONTH = 5;
 const STREAK_BONUS_INTERVAL = 10;
