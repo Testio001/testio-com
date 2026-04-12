@@ -12,7 +12,7 @@ serve(async (req) => {
 
   try {
     const { documentId, maxExchanges } = await req.json();
-    const exchangeLimit = maxExchanges || 26; // Default to pro limit
+    const exchangeLimit = maxExchanges || 17; // Default to pro limit
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
@@ -45,7 +45,7 @@ Rules:
 - Include about ${exchangeLimit} exchanges total
 - Make it educational but fun and conversational
 - Start with a brief intro and end with a quick summary
-${exchangeLimit < 26 ? '- Always end the conversation with Alex saying: "Want to dive deeper? Upgrade to Testio Premium for full-length podcasts!"' : '- End with a thoughtful conclusion summarizing the key takeaways'}
+${exchangeLimit < 17 ? '- Always end the conversation with Alex saying: "Want to dive deeper? Upgrade to Testio Premium for full-length podcasts!"' : '- End with a thoughtful conclusion summarizing the key takeaways'}
 - Output ONLY valid JSON array of objects with "speaker" (either "Alex" or "Sam") and "text" fields
 - No markdown, no code blocks, just the raw JSON array`,
           },
@@ -67,13 +67,27 @@ ${exchangeLimit < 26 ? '- Always end the conversation with Alex saying: "Want to
     const audioChunks: Uint8Array[] = [];
     for (const segment of script) {
       const voice = segment.speaker === "Alex" ? "onyx" : "nova";
-      const ttsResponse = await fetch("https://api.openai.com/v1/audio/speech", {
+      const ttsResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "tts-1", input: segment.text, voice, response_format: "mp3" }),
+        body: JSON.stringify({
+          model: "gpt-4o-mini-audio-preview",
+          modalities: ["text", "audio"],
+          audio: { voice, format: "mp3" },
+          messages: [
+            { role: "system", content: "You are a podcast host. Read the following text naturally and expressively. Output ONLY the spoken audio, no additional text." },
+            { role: "user", content: segment.text },
+          ],
+        }),
       });
       if (!ttsResponse.ok) { console.error(`TTS failed: ${ttsResponse.status}`); continue; }
-      audioChunks.push(new Uint8Array(await ttsResponse.arrayBuffer()));
+      const ttsData = await ttsResponse.json();
+      const audioBase64 = ttsData.choices?.[0]?.message?.audio?.data;
+      if (!audioBase64) { console.error("No audio data in response"); continue; }
+      const binaryString = atob(audioBase64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+      audioChunks.push(bytes);
     }
 
     const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
