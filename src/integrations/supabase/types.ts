@@ -589,6 +589,7 @@ export type Database = {
       }
       user_stats: {
         Row: {
+          bonus_podcasts: number
           bonus_uploads: number
           created_at: string
           current_streak: number
@@ -604,6 +605,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          bonus_podcasts?: number
           bonus_uploads?: number
           created_at?: string
           current_streak?: number
@@ -619,6 +621,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          bonus_podcasts?: number
           bonus_uploads?: number
           created_at?: string
           current_streak?: number

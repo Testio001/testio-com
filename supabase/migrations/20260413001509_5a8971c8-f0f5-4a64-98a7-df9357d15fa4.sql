@@ -1,0 +1,1 @@
+ALTER TABLE public.user_stats ADD COLUMN bonus_podcasts integer NOT NULL DEFAULT 0;
