@@ -12,7 +12,7 @@ serve(async (req) => {
 
   try {
     const { documentId, maxExchanges } = await req.json();
-    const exchangeLimit = maxExchanges || 17; // Default to pro limit
+    const exchangeLimit = maxExchanges || 17;
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
@@ -27,46 +27,35 @@ serve(async (req) => {
 
     if (!sourceContent.trim()) throw new Error("No content available to generate podcast. Generate notes first.");
 
-    const scriptResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `You are a podcast script writer. Create an engaging, educational podcast conversation between two hosts:
-- Host A (Alex): The knowledgeable expert who explains concepts clearly
-- Host B (Sam): The curious learner who asks great questions and makes connections
-
-Rules:
-- Write a natural, flowing conversation (NOT a lecture)
-- Each speaker turn should be 1-3 sentences max
-- Include about ${exchangeLimit} exchanges total
-- Make it educational but fun and conversational
-- Start with a brief intro and end with a quick summary
-${exchangeLimit < 17 ? '- Always end the conversation with Alex saying: "Want to dive deeper? Upgrade to Testio Premium for full-length podcasts!"' : '- End with a thoughtful conclusion summarizing the key takeaways'}
-- Output ONLY valid JSON array of objects with "speaker" (either "Alex" or "Sam") and "text" fields
-- No markdown, no code blocks, just the raw JSON array`,
-          },
-          { role: "user", content: `Create a podcast script about the following study material:\n\n${sourceContent.substring(0, 12000)}` },
-        ],
-        temperature: 0.8,
-      }),
-    });
-
-    if (!scriptResponse.ok) throw new Error("Podcast script generation failed. Please try again.");
-
-    const scriptData = await scriptResponse.json();
-    let scriptText = scriptData.choices?.[0]?.message?.content || "";
-    scriptText = scriptText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-
-    let script: Array<{ speaker: string; text: string }>;
-    try { script = JSON.parse(scriptText); } catch { throw new Error("Failed to parse podcast script. Please try again."); }
-
+    const needsUpgradeCTA = exchangeLimit < 17;
+    const conversation: Array<{ speaker: string; text: string }> = [];
     const audioChunks: Uint8Array[] = [];
-    for (const segment of script) {
-      const voice = segment.speaker === "Alex" ? "onyx" : "nova";
+
+    for (let i = 0; i < exchangeLimit; i++) {
+      const speaker = i % 2 === 0 ? "Alex" : "Sam";
+      const voice = speaker === "Alex" ? "onyx" : "nova";
+      const isFirst = i === 0;
+      const isLast = i === exchangeLimit - 1;
+
+      const prevConvo = conversation.map(c => `${c.speaker}: ${c.text}`).join("\n");
+
+      let instruction: string;
+      if (isFirst) {
+        instruction = `You are Alex, a knowledgeable and enthusiastic podcast host. Start the podcast by introducing the topic from the study material below. Be engaging and natural, 1-3 sentences max.`;
+      } else if (isLast) {
+        if (needsUpgradeCTA) {
+          instruction = `You are ${speaker}. Wrap up briefly and end by saying exactly: "Want to dive deeper? Upgrade to Testio Premium for full-length podcasts!"`;
+        } else {
+          instruction = `You are ${speaker}. Give a brief, thoughtful conclusion summarizing the key takeaways from this conversation. 1-3 sentences.`;
+        }
+      } else if (speaker === "Sam") {
+        instruction = `You are Sam, a curious and engaged learner. React to what Alex just said and ask a great follow-up question about the study material. Be natural, 1-3 sentences max.`;
+      } else {
+        instruction = `You are Alex, a knowledgeable expert. Answer Sam's question clearly and engagingly based on the study material. Be natural, 1-3 sentences max.`;
+      }
+
+      const systemContent = `${instruction}\n\nStudy material:\n${sourceContent.substring(0, 6000)}${prevConvo ? `\n\nConversation so far:\n${prevConvo}` : ""}`;
+
       const ttsResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
@@ -75,20 +64,33 @@ ${exchangeLimit < 17 ? '- Always end the conversation with Alex saying: "Want to
           modalities: ["text", "audio"],
           audio: { voice, format: "mp3" },
           messages: [
-            { role: "system", content: "You are a podcast host. Read the following text naturally and expressively. Output ONLY the spoken audio, no additional text." },
-            { role: "user", content: segment.text },
+            { role: "system", content: systemContent },
+            { role: "user", content: "Generate your next line in the podcast conversation. Speak naturally as if you're on a real podcast." },
           ],
         }),
       });
-      if (!ttsResponse.ok) { console.error(`TTS failed: ${ttsResponse.status}`); continue; }
+
+      if (!ttsResponse.ok) {
+        console.error(`Audio generation failed for turn ${i}: ${ttsResponse.status}`);
+        continue;
+      }
+
       const ttsData = await ttsResponse.json();
-      const audioBase64 = ttsData.choices?.[0]?.message?.audio?.data;
-      if (!audioBase64) { console.error("No audio data in response"); continue; }
-      const binaryString = atob(audioBase64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-      audioChunks.push(bytes);
+      const audioObj = ttsData.choices?.[0]?.message?.audio;
+      const transcript = audioObj?.transcript || ttsData.choices?.[0]?.message?.content || "";
+      const audioBase64 = audioObj?.data;
+
+      conversation.push({ speaker, text: transcript });
+
+      if (audioBase64) {
+        const binaryString = atob(audioBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let j = 0; j < binaryString.length; j++) bytes[j] = binaryString.charCodeAt(j);
+        audioChunks.push(bytes);
+      }
     }
+
+    if (audioChunks.length === 0) throw new Error("Failed to generate podcast audio. Please try again.");
 
     const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
     const combinedAudio = new Uint8Array(totalLength);
@@ -105,10 +107,10 @@ ${exchangeLimit < 17 ? '- Always end the conversation with Alex saying: "Want to
 
     await supabase.from("podcasts").insert({
       document_id: documentId, user_id: doc.user_id, title: `Podcast: ${doc.title}`,
-      script: JSON.stringify(script), audio_url: audioUrl, status: "completed",
+      script: JSON.stringify(conversation), audio_url: audioUrl, status: "completed",
     });
 
-    return new Response(JSON.stringify({ success: true, audioUrl, script }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ success: true, audioUrl, script: conversation }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("Podcast error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Podcast generation failed. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -7,6 +7,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function extractSummary(noteContent: string): string {
+  const overviewMatch = noteContent.match(/## Brief Overview[\s\S]*?(?=\n## |$)/);
+  const keyPointsMatch = noteContent.match(/## Key Points[\s\S]*?(?=\n## |$)/);
+
+  let summary = "";
+  if (overviewMatch) summary += overviewMatch[0].trim() + "\n\n";
+  if (keyPointsMatch) summary += keyPointsMatch[0].trim() + "\n\n";
+
+  const sectionMatches = noteContent.match(/## .+[\s\S]*?(?=\n## |$)/g);
+  if (sectionMatches && !summary) {
+    summary = sectionMatches.map(s => s.substring(0, 500)).join("\n\n");
+  }
+
+  return summary || noteContent.substring(0, 4000);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -20,10 +36,10 @@ serve(async (req) => {
 
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
 
-    // Use notes only if not corrupted
+    // Use summary from notes instead of full content
     const { data: notes } = await supabase.from("notes").select("content").eq("document_id", documentId);
     const noteContent = notes?.map((n: any) => n.content).filter((c: string) => !isCorruptedNotes(c)).join("\n");
-    const sourceContent = (noteContent && noteContent.length > content.length) ? noteContent : content;
+    const sourceContent = noteContent ? extractSummary(noteContent) : content.substring(0, 4000);
 
     const { data: existingQuizzes } = await supabase.from("quizzes").select("id").eq("document_id", documentId);
     let existingQuestions: string[] = [];
@@ -42,8 +58,8 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "Generate a multiple-choice quiz from the study content. Return structured data." },
-          { role: "user", content: `Create ${questionCount} NEW unique multiple-choice questions from this content. Each question should have 4 options with exactly one correct answer and an explanation.${avoidPrompt}\n\nContent:\n${sourceContent.substring(0, 12000)}` }
+          { role: "system", content: "Generate a multiple-choice quiz from the study content summary. Return structured data." },
+          { role: "user", content: `Create ${questionCount} NEW unique multiple-choice questions from this content summary. Each question should have 4 options with exactly one correct answer and an explanation.${avoidPrompt}\n\nContent Summary:\n${sourceContent}` }
         ],
         tools: [{
           type: "function",

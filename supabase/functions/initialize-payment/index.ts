@@ -8,6 +8,7 @@ const corsHeaders = {
 const PLAN_VARIANTS: Record<string, { variant_id: number; product_id: number }> = {
   basic: { variant_id: 1504464, product_id: 957604 },
   pro: { variant_id: 1504491, product_id: 957624 },
+  podcast_addon: { variant_id: 1519137, product_id: 967498 },
 };
 
 Deno.serve(async (req) => {
@@ -34,7 +35,7 @@ Deno.serve(async (req) => {
 
     const { plan } = await req.json();
     if (!plan || !PLAN_VARIANTS[plan]) {
-      return new Response(JSON.stringify({ error: "Invalid plan. Must be 'basic' or 'pro'." }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Invalid plan. Must be 'basic', 'pro', or 'podcast_addon'." }), { status: 400, headers: corsHeaders });
     }
 
     const lsKey = Deno.env.get("LEMONSQUEEZY_API_KEY");
@@ -44,7 +45,6 @@ Deno.serve(async (req) => {
 
     const variant = PLAN_VARIANTS[plan];
 
-    // Get store ID from Lemon Squeezy
     const storeRes = await fetch("https://api.lemonsqueezy.com/v1/stores", {
       headers: {
         Authorization: `Bearer ${lsKey}`,
@@ -58,7 +58,10 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "No store found" }), { status: 500, headers: corsHeaders });
     }
 
-    // Create a Lemon Squeezy checkout
+    const redirectUrl = plan === "podcast_addon"
+      ? "https://testio-com.lovable.app/dashboard?purchase=podcast_success"
+      : "https://testio-com.lovable.app/pricing?payment=success";
+
     const checkoutRes = await fetch("https://api.lemonsqueezy.com/v1/checkouts", {
       method: "POST",
       headers: {
@@ -78,7 +81,7 @@ Deno.serve(async (req) => {
               },
             },
             product_options: {
-              redirect_url: "https://testio-com.lovable.app/pricing?payment=success",
+              redirect_url: redirectUrl,
             },
           },
           relationships: {
