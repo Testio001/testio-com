@@ -15,10 +15,10 @@ const plans = [
     price: "$4.99",
     period: "/month",
     features: [
-      "25 uploads/month",
+      "12 uploads/month",
       "Summary + Quiz + Flashcards",
-      "AI Tutor (Standard)",
-      "Podcast (Max 5 mins, 5/month)",
+      "AI Tutor (21 questions/doc)",
+      "Podcast (Max 7 mins, 5/month)",
     ],
     highlight: false,
   },
@@ -29,8 +29,8 @@ const plans = [
     period: "/month",
     features: [
       "Unlimited uploads*",
-      "Full Podcast access (30/month)",
-      "Unlimited AI Tutor",
+      "17 Podcasts/month (Max 13 mins)",
+      "AI Tutor (41 questions/doc)",
       "Priority processing",
     ],
     highlight: true,
@@ -46,7 +46,6 @@ const Pricing = () => {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
 
-  // Check for successful payment return
   useEffect(() => {
     if (searchParams.get("payment") === "success" && user) {
       const verifyPayment = async () => {
@@ -64,7 +63,6 @@ const Pricing = () => {
             });
             navigate("/dashboard", { replace: true });
           } else {
-            // Retry after a few seconds (webhook may not have arrived yet)
             setTimeout(async () => {
               const { data: retryData } = await supabase.functions.invoke("verify-payment", {
                 body: {},
@@ -115,7 +113,6 @@ const Pricing = () => {
       if (error) throw error;
 
       if (data?.checkout_url) {
-        // Redirect to Lemon Squeezy checkout
         window.location.href = data.checkout_url;
       }
     } catch (err: any) {

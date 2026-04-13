@@ -7,6 +7,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function extractSummary(noteContent: string): string {
+  const overviewMatch = noteContent.match(/## Brief Overview[\s\S]*?(?=\n## |$)/);
+  const keyPointsMatch = noteContent.match(/## Key Points[\s\S]*?(?=\n## |$)/);
+
+  let summary = "";
+  if (overviewMatch) summary += overviewMatch[0].trim() + "\n\n";
+  if (keyPointsMatch) summary += keyPointsMatch[0].trim() + "\n\n";
+
+  // Also grab section headings and first paragraphs for richer context
+  const sectionMatches = noteContent.match(/## .+[\s\S]*?(?=\n## |$)/g);
+  if (sectionMatches && !summary) {
+    summary = sectionMatches.map(s => s.substring(0, 500)).join("\n\n");
+  }
+
+  return summary || noteContent.substring(0, 4000);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -18,13 +35,12 @@ serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Get validated content - NO title fallback
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
 
-    // Use notes only if they're not corrupted
+    // Use summary from notes instead of full content
     const { data: notes } = await supabase.from("notes").select("content").eq("document_id", documentId);
     const noteContent = notes?.map((n: any) => n.content).filter((c: string) => !isCorruptedNotes(c)).join("\n");
-    const sourceContent = (noteContent && noteContent.length > content.length) ? noteContent : content;
+    const sourceContent = noteContent ? extractSummary(noteContent) : content.substring(0, 4000);
 
     // Get existing cards to avoid duplicates
     const { data: existingSets } = await supabase.from("flashcard_sets").select("id").eq("document_id", documentId);
@@ -44,8 +60,8 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "Generate flashcards from the provided study content. Return ONLY valid JSON." },
-          { role: "user", content: `Create ${cardCount} NEW unique flashcards from this content. Return JSON array with objects having "front" (question) and "back" (answer) fields.${avoidPrompt}\n\nContent:\n${sourceContent.substring(0, 12000)}` }
+          { role: "system", content: "Generate flashcards from the provided study summary. Return ONLY valid JSON." },
+          { role: "user", content: `Create ${cardCount} NEW unique flashcards from this content summary. Return JSON array with objects having "front" (question) and "back" (answer) fields.${avoidPrompt}\n\nContent Summary:\n${sourceContent}` }
         ],
         tools: [{
           type: "function",

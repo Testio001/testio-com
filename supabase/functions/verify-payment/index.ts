@@ -6,10 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-signature",
 };
 
-// Map variant IDs to plans
 const VARIANT_TO_PLAN: Record<number, string> = {
   1504464: "basic",
   1504491: "pro",
+  1519137: "podcast_addon",
 };
 
 Deno.serve(async (req) => {
@@ -18,12 +18,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Handle webhook from Lemon Squeezy
     if (req.method === "POST") {
       const signature = req.headers.get("x-signature");
       const rawBody = await req.text();
 
-      // If there's a signature header, it's a webhook call
       if (signature) {
         const webhookSecret = Deno.env.get("LEMONSQUEEZY_WEBHOOK_SECRET");
         if (!webhookSecret) {
@@ -31,7 +29,6 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ error: "Not configured" }), { status: 500, headers: corsHeaders });
         }
 
-        // Verify webhook signature using the dedicated webhook secret
         const hmac = createHmac("sha256", webhookSecret);
         hmac.update(rawBody);
         const digest = hmac.digest("hex");
@@ -44,39 +41,13 @@ Deno.serve(async (req) => {
         const payload = JSON.parse(rawBody);
         const eventName = payload.meta?.event_name;
 
-        // We care about order_created and subscription_created
         if (eventName === "order_created" || eventName === "subscription_created") {
           const customData = payload.meta?.custom_data || {};
           const userId = customData.user_id;
           const plan = customData.plan;
 
-          if (!userId || !plan || !["basic", "pro"].includes(plan)) {
-            // Try to get plan from variant
-            const variantId = payload.data?.attributes?.first_order_item?.variant_id 
-              || payload.data?.attributes?.variant_id;
-            const derivedPlan = variantId ? VARIANT_TO_PLAN[variantId] : null;
-            
-            if (!userId) {
-              console.error("No user_id in custom data");
-              return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
-            }
-
-            const finalPlan = plan || derivedPlan || "basic";
-
-            const adminClient = createClient(
-              Deno.env.get("SUPABASE_URL")!,
-              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-            );
-
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 30);
-
-            await adminClient.from("profiles").update({
-              subscription_plan: finalPlan,
-              subscription_expires_at: expiresAt.toISOString(),
-            }).eq("user_id", userId);
-
-            console.log(`Activated ${finalPlan} for user ${userId}`);
+          if (!userId) {
+            console.error("No user_id in custom data");
             return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
           }
 
@@ -85,21 +56,63 @@ Deno.serve(async (req) => {
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
           );
 
+          // Handle podcast addon purchase
+          if (plan === "podcast_addon") {
+            // Add 5 bonus podcasts to user_stats
+            const { data: stats } = await adminClient
+              .from("user_stats")
+              .select("bonus_podcasts")
+              .eq("user_id", userId)
+              .single();
+
+            const currentBonus = (stats as any)?.bonus_podcasts ?? 0;
+            await adminClient
+              .from("user_stats")
+              .update({ bonus_podcasts: currentBonus + 5 })
+              .eq("user_id", userId);
+
+            console.log(`Added 5 bonus podcasts for user ${userId}`);
+            return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
+          }
+
+          // Handle subscription purchase
+          const variantId = payload.data?.attributes?.first_order_item?.variant_id
+            || payload.data?.attributes?.variant_id;
+          const finalPlan = plan || (variantId ? VARIANT_TO_PLAN[variantId] : null) || "basic";
+
+          // Skip if it's a podcast addon variant
+          if (finalPlan === "podcast_addon") {
+            const { data: stats } = await adminClient
+              .from("user_stats")
+              .select("bonus_podcasts")
+              .eq("user_id", userId)
+              .single();
+
+            const currentBonus = (stats as any)?.bonus_podcasts ?? 0;
+            await adminClient
+              .from("user_stats")
+              .update({ bonus_podcasts: currentBonus + 5 })
+              .eq("user_id", userId);
+
+            console.log(`Added 5 bonus podcasts for user ${userId} (variant match)`);
+            return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
+          }
+
           const expiresAt = new Date();
           expiresAt.setDate(expiresAt.getDate() + 30);
 
           await adminClient.from("profiles").update({
-            subscription_plan: plan,
+            subscription_plan: finalPlan,
             subscription_expires_at: expiresAt.toISOString(),
           }).eq("user_id", userId);
 
-          console.log(`Activated ${plan} for user ${userId}`);
+          console.log(`Activated ${finalPlan} for user ${userId}`);
         }
 
         return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
       }
 
-      // If no signature, it's a manual verification call from the frontend
+      // Manual verification call from frontend
       const authHeader = req.headers.get("Authorization");
       if (!authHeader?.startsWith("Bearer ")) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
@@ -116,7 +129,6 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
       }
 
-      // Check if the user's profile has been updated by the webhook
       const adminClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!

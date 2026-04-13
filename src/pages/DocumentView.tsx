@@ -12,11 +12,18 @@ import FlashcardViewer from "@/components/app/FlashcardViewer";
 import QuizViewer from "@/components/app/QuizViewer";
 import ChatPanel from "@/components/app/ChatPanel";
 import PodcastPlayer from "@/components/app/PodcastPlayer";
+import PodcastLimitModal from "@/components/app/PodcastLimitModal";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 
 type Document = Tables<"documents">;
 type Note = Tables<"notes">;
+
+const PODCAST_LIMITS: Record<string, number> = {
+  free: 2,
+  basic: 5,
+  pro: 17,
+};
 
 const DocumentView = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,6 +43,9 @@ const DocumentView = () => {
   const [hasQuiz, setHasQuiz] = useState(false);
   const [hasPodcast, setHasPodcast] = useState(false);
   const [subscriptionPlan, setSubscriptionPlan] = useState("free");
+  const [podcastCount, setPodcastCount] = useState(0);
+  const [bonusPodcasts, setBonusPodcasts] = useState(0);
+  const [showPodcastLimitModal, setShowPodcastLimitModal] = useState(false);
 
   useEffect(() => {
     if (id && user) fetchDocument();
@@ -48,7 +58,6 @@ const DocumentView = () => {
     const { data: notesData } = await supabase.from("notes").select("*").eq("document_id", id!).order("created_at");
     if (notesData) setNotes(notesData);
 
-    // Check existing generated content
     const { count: fcCount } = await supabase.from("flashcard_sets").select("id", { count: "exact", head: true }).eq("document_id", id!);
     setHasFlashcards((fcCount ?? 0) > 0);
     const { count: qCount } = await supabase.from("quizzes").select("id", { count: "exact", head: true }).eq("document_id", id!);
@@ -56,13 +65,32 @@ const DocumentView = () => {
     const { count: pCount } = await supabase.from("podcasts").select("id", { count: "exact", head: true }).eq("document_id", id!);
     setHasPodcast((pCount ?? 0) > 0);
 
-    // Get user plan
     if (user) {
-      const { data: profile } = await supabase.from("profiles").select("subscription_plan").eq("user_id", user.id).single();
-      if (profile) setSubscriptionPlan(profile.subscription_plan);
+      const { data: profile } = await supabase.from("profiles").select("subscription_plan, subscription_expires_at").eq("user_id", user.id).single();
+      if (profile) {
+        const isExpired = profile.subscription_expires_at && new Date(profile.subscription_expires_at) < new Date();
+        setSubscriptionPlan(isExpired ? "free" : (profile.subscription_plan || "free"));
+      }
+
+      // Get total podcast count for user
+      const { count: totalPodcasts } = await supabase.from("podcasts").select("id", { count: "exact", head: true }).eq("user_id", user.id);
+      setPodcastCount(totalPodcasts ?? 0);
+
+      // Get bonus podcasts from user_stats
+      const { data: stats } = await supabase.from("user_stats").select("*").eq("user_id", user.id).single();
+      setBonusPodcasts((stats as any)?.bonus_podcasts ?? 0);
     }
 
     setLoadingContent(false);
+  };
+
+  const getPodcastLimit = () => {
+    const baseLimit = PODCAST_LIMITS[subscriptionPlan] || 2;
+    return baseLimit + bonusPodcasts;
+  };
+
+  const canGeneratePodcast = () => {
+    return podcastCount < getPodcastLimit();
   };
 
   const generateNotes = async () => {
@@ -112,7 +140,6 @@ const DocumentView = () => {
     if (!id) return;
     setGenerating("quiz");
     try {
-      // Free users get max 20 questions
       const { data, error } = await supabase.functions.invoke("generate-quiz", {
         body: { documentId: id, count: FREE_QUIZ_MAX_QUESTIONS, maxQuestions: FREE_QUIZ_MAX_QUESTIONS }
       });
@@ -134,6 +161,13 @@ const DocumentView = () => {
 
   const generatePodcast = async () => {
     if (!id) return;
+
+    // Check podcast limit
+    if (!canGeneratePodcast()) {
+      setShowPodcastLimitModal(true);
+      return;
+    }
+
     setGenerating("podcast");
     try {
       const body: any = { documentId: id };
@@ -149,6 +183,7 @@ const DocumentView = () => {
       if (data?.error) throw new Error(data.error);
       toast({ title: "Podcast generated!" });
       setHasPodcast(true);
+      setPodcastCount(prev => prev + 1);
       setPodcastKey(prev => prev + 1);
       setActiveTab("podcast");
     } catch (err: any) {
@@ -174,6 +209,9 @@ const DocumentView = () => {
     { id: "podcast" as const, label: "Podcast", icon: Mic },
     { id: "chat" as const, label: "Chat", icon: MessageSquare },
   ];
+
+  const podcastLimitTotal = getPodcastLimit();
+  const podcastsRemaining = Math.max(0, podcastLimitTotal - podcastCount);
 
   return (
     <div className="min-h-screen bg-background">
@@ -211,7 +249,7 @@ const DocumentView = () => {
           ))}
         </div>
 
-        {/* Action buttons — hidden while content is loading */}
+        {/* Action buttons */}
         {!loadingContent && activeTab === "notes" && notes.length === 0 && (
           <div className="mb-6">
             <button onClick={generateNotes} disabled={generating === "notes"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
@@ -250,15 +288,18 @@ const DocumentView = () => {
               {generating === "podcast" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
               Generate Podcast
             </button>
-            {subscriptionPlan !== "pro" && (
-              <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
-                <Crown className="w-3 h-3" /> Free plan: ~5 minute preview. Upgrade for full-length podcasts.
-              </p>
-            )}
+            <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
+              <Crown className="w-3 h-3" />
+              {podcastsRemaining > 0
+                ? `${podcastsRemaining} podcast${podcastsRemaining !== 1 ? "s" : ""} remaining (${podcastCount}/${podcastLimitTotal})`
+                : "Podcast limit reached"
+              }
+              {subscriptionPlan !== "pro" && " · Upgrade for more"}
+            </p>
             {generating === "podcast" && (
               <p className="text-muted-foreground text-xs mt-3 flex items-center gap-2">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                This may take up to 2-3 minutes. Please do not close this page while the podcast is being generated.
+                This may take up to 3-5 minutes. Please do not close this page while the podcast is being generated.
               </p>
             )}
           </div>
@@ -279,10 +320,16 @@ const DocumentView = () => {
             {activeTab === "flashcards" && <FlashcardViewer key={flashcardKey} documentId={id!} />}
             {activeTab === "quiz" && <QuizViewer key={quizKey} documentId={id!} />}
             {activeTab === "podcast" && <PodcastPlayer key={podcastKey} documentId={id!} />}
-            {activeTab === "chat" && <ChatPanel documentId={id!} />}
+            {activeTab === "chat" && <ChatPanel documentId={id!} subscriptionPlan={subscriptionPlan} />}
           </motion.div>
         )}
       </div>
+
+      <PodcastLimitModal
+        isOpen={showPodcastLimitModal}
+        onClose={() => setShowPodcastLimitModal(false)}
+        subscriptionPlan={subscriptionPlan}
+      />
     </div>
   );
 };
