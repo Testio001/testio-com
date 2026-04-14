@@ -92,7 +92,7 @@ const PodcastLimitModal = ({ isOpen, onClose, subscriptionPlan }: PodcastLimitMo
                   <p className="text-muted-foreground text-xs mt-0.5">
                     Upgrade to Pro for <span className="font-bold text-foreground">$9.99/mo</span>
                   </p>
-                  <p className="text-muted-foreground text-[10px] mt-1">17 Podcasts + unlimited uploads & AI Tutor</p>
+                  <p className="text-muted-foreground text-[10px] mt-1">12 Podcasts + unlimited uploads & AI Tutor</p>
                 </div>
               </div>
             </button>
