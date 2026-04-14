@@ -318,7 +318,7 @@ const Dashboard = () => {
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-1 sm:gap-3 overflow-x-auto">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           <StreakDisplay stats={gamification.stats} compact />
           <button
             onClick={() => {
@@ -330,20 +330,20 @@ const Dashboard = () => {
                 toast({ title: "Link copied!", description: "Share it with friends to earn uploads." });
               }
             }}
-            className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            className="text-muted-foreground hover:text-foreground transition-colors"
             title="Share referral link"
           >
             <Gift className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
-          <button onClick={() => navigate("/leaderboard")} className="text-muted-foreground hover:text-foreground transition-colors shrink-0" title="Leaderboard">
+          <button onClick={() => navigate("/leaderboard")} className="text-muted-foreground hover:text-foreground transition-colors" title="Leaderboard">
             <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
-          <button onClick={() => navigate("/profile")} className="text-muted-foreground hover:text-foreground transition-colors shrink-0" title="Profile">
+          <button onClick={() => navigate("/profile")} className="text-muted-foreground hover:text-foreground transition-colors" title="Profile">
             <UserCircle className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           <Dialog>
             <DialogTrigger asChild>
-              <button className="text-muted-foreground hover:text-foreground transition-colors shrink-0 hidden sm:inline-flex" title="Watch Tutorial">
+              <button className="text-muted-foreground hover:text-foreground transition-colors" title="Watch Tutorial">
                 <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </DialogTrigger>
@@ -363,10 +363,10 @@ const Dashboard = () => {
               </div>
             </DialogContent>
           </Dialog>
-          <button onClick={() => navigate("/settings")} className="text-muted-foreground hover:text-foreground transition-colors shrink-0" title="Settings">
+          <button onClick={() => navigate("/settings")} className="text-muted-foreground hover:text-foreground transition-colors" title="Settings">
             <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
-          <button onClick={signOut} className="text-muted-foreground hover:text-foreground transition-colors shrink-0" title="Sign out">
+          <button onClick={signOut} className="text-muted-foreground hover:text-foreground transition-colors" title="Sign out">
             <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
@@ -378,7 +378,7 @@ const Dashboard = () => {
           <div className="flex-1 min-w-0">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-foreground">My Documents</h1>
+                <h1 className="text-2xl font-bold text-foreground">My Documents</h1>
                 <p className="text-muted-foreground text-sm mt-1">
                   {gamification.canUpload
                     ? `${gamification.uploadsRemaining} upload${gamification.uploadsRemaining > 1 ? "s" : ""} remaining`
@@ -514,10 +514,10 @@ const Dashboard = () => {
 
                 <StudyMusicModal open={showStudyMusic} onOpenChange={setShowStudyMusic} />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid sm:grid-cols-2 gap-4">
                 {filteredDocs.map((doc, i) => (
                   <motion.div key={doc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                    onClick={() => navigate(`/document/${doc.id}`)} className="bg-testio-card rounded-xl p-4 sm:p-5 cursor-pointer hover:border-primary/30 transition-all group">
+                    onClick={() => navigate(`/document/${doc.id}`)} className="bg-testio-card rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group">
                     <div className="flex items-start justify-between mb-3">
                       <FileText className="w-8 h-8 text-primary/60" />
                       <div className="flex items-center gap-1">

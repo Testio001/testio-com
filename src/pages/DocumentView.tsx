@@ -22,7 +22,7 @@ type Note = Tables<"notes">;
 const PODCAST_LIMITS: Record<string, number> = {
   free: 2,
   basic: 5,
-  pro: 12,
+  pro: 17,
 };
 
 const DocumentView = () => {

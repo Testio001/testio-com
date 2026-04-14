@@ -12,7 +12,7 @@ serve(async (req) => {
 
   try {
     const { documentId, maxExchanges } = await req.json();
-    const exchangeLimit = maxExchanges || 20;
+    const exchangeLimit = maxExchanges || 17;
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
@@ -27,7 +27,7 @@ serve(async (req) => {
 
     if (!sourceContent.trim()) throw new Error("No content available to generate podcast. Generate notes first.");
 
-    const needsUpgradeCTA = exchangeLimit < 20;
+    const needsUpgradeCTA = exchangeLimit < 17;
     const conversation: Array<{ speaker: string; text: string }> = [];
     const audioChunks: Uint8Array[] = [];
 
@@ -41,58 +41,46 @@ serve(async (req) => {
 
       let instruction: string;
       if (isFirst) {
-        instruction = `You are Alex, a knowledgeable and enthusiastic podcast host. Start the podcast by introducing the topic from the study material below. Be engaging and natural, 2-4 sentences.`;
+        instruction = `You are Alex, a knowledgeable and enthusiastic podcast host. Start the podcast by introducing the topic from the study material below. Be engaging and natural, 1-3 sentences max.`;
       } else if (isLast) {
         if (needsUpgradeCTA) {
           instruction = `You are ${speaker}. Wrap up briefly and end by saying exactly: "Want to dive deeper? Upgrade to Testio Premium for full-length podcasts!"`;
         } else {
-          instruction = `You are ${speaker}. Give a brief, thoughtful conclusion summarizing the key takeaways from this conversation. 2-4 sentences.`;
+          instruction = `You are ${speaker}. Give a brief, thoughtful conclusion summarizing the key takeaways from this conversation. 1-3 sentences.`;
         }
       } else if (speaker === "Sam") {
-        instruction = `You are Sam, a curious and engaged learner. React to what Alex just said and ask a great follow-up question about the study material. Be natural, 2-4 sentences.`;
+        instruction = `You are Sam, a curious and engaged learner. React to what Alex just said and ask a great follow-up question about the study material. Be natural, 1-3 sentences max.`;
       } else {
-        instruction = `You are Alex, a knowledgeable expert. Answer Sam's question clearly and engagingly based on the study material. Be natural, 2-4 sentences.`;
+        instruction = `You are Alex, a knowledgeable expert. Answer Sam's question clearly and engagingly based on the study material. Be natural, 1-3 sentences max.`;
       }
 
       const systemContent = `${instruction}\n\nStudy material:\n${sourceContent.substring(0, 6000)}${prevConvo ? `\n\nConversation so far:\n${prevConvo}` : ""}`;
 
-      // Retry up to 2 times on failure
-      let audioBase64: string | null = null;
-      let transcript = "";
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          const ttsResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "gpt-4o-mini-audio-preview",
-              modalities: ["text", "audio"],
-              audio: { voice, format: "mp3" },
-              messages: [
-                { role: "system", content: systemContent },
-                { role: "user", content: "Generate your next line in the podcast conversation. Speak naturally as if you're on a real podcast." },
-              ],
-            }),
-          });
+      const ttsResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini-audio-preview",
+          modalities: ["text", "audio"],
+          audio: { voice, format: "mp3" },
+          messages: [
+            { role: "system", content: systemContent },
+            { role: "user", content: "Generate your next line in the podcast conversation. Speak naturally as if you're on a real podcast." },
+          ],
+        }),
+      });
 
-          if (!ttsResponse.ok) {
-            console.error(`Audio generation failed for turn ${i}, attempt ${attempt}: ${ttsResponse.status}`);
-            if (attempt < 2) { await new Promise(r => setTimeout(r, 2000)); continue; }
-            break;
-          }
-
-          const ttsData = await ttsResponse.json();
-          const audioObj = ttsData.choices?.[0]?.message?.audio;
-          transcript = audioObj?.transcript || ttsData.choices?.[0]?.message?.content || "";
-          audioBase64 = audioObj?.data || null;
-          break;
-        } catch (err) {
-          console.error(`Turn ${i} attempt ${attempt} error:`, err);
-          if (attempt < 2) { await new Promise(r => setTimeout(r, 2000)); continue; }
-        }
+      if (!ttsResponse.ok) {
+        console.error(`Audio generation failed for turn ${i}: ${ttsResponse.status}`);
+        continue;
       }
 
-      if (transcript) conversation.push({ speaker, text: transcript });
+      const ttsData = await ttsResponse.json();
+      const audioObj = ttsData.choices?.[0]?.message?.audio;
+      const transcript = audioObj?.transcript || ttsData.choices?.[0]?.message?.content || "";
+      const audioBase64 = audioObj?.data;
+
+      conversation.push({ speaker, text: transcript });
 
       if (audioBase64) {
         const binaryString = atob(audioBase64);
