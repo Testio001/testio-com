@@ -350,7 +350,7 @@ async function extractWithOpenAI(uint8Array: Uint8Array, title: string, openaiKe
     method: "POST",
     headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{
         role: "user",
         content: [
