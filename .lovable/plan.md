@@ -1,51 +1,47 @@
 
 
-## Plan: Fix Push Notifications for Android PWA
+## Plan: Replace AI-based text extraction with dedicated libraries
 
 ### Problem
-Push notifications don't work on Android PWA because:
-1. Two competing service workers (`sw.js` and `sw-push.js`) fight for root scope
-2. The push service worker is only registered when the user clicks "Enable" — Android needs it registered at app startup to receive background pushes
-3. A React runtime error (`useState` null) may be blocking the app from loading
+After switching from `gpt-4o` to `gpt-4o-mini` for document extraction, PDF processing consistently fails. The `gpt-4o-mini` model is weaker at PDF file parsing via the vision/file API, causing documents to be marked as "failed."
 
 ### Solution
 
-**Merge service workers into a single `sw.js`** that handles both caching AND push events, then register it once at app startup.
+Replace the extraction pipeline in `supabase/functions/_shared/extract-content.ts` with dedicated libraries that run natively in Deno edge functions:
 
----
+| File Type | Current Method | New Method |
+|-----------|---------------|------------|
+| **PDF** | Regex → gpt-4o-mini OCR fallback | Regex → **unpdf** (pdf.js-based, edge-compatible) |
+| **DOCX** | Local ZIP/XML parsing → gpt-4o-mini fallback | Keep local ZIP/XML parsing (already works). Remove AI fallback — if local parsing fails, return clear error |
+| **Images** | gpt-4o-mini vision | **Keep gpt-4o-mini vision** (Tesseract.js WASM is too heavy for edge functions and unreliable in Deno runtime — this is the one case where AI vision is the right tool) |
 
-### Step 1: Merge push handlers into `public/sw.js`
-Add the `push`, `notificationclick`, and `notificationclose` event listeners from `sw-push.js` into the existing `sw.js`. Remove `sw-push.js` as a separate file.
+### Why not the exact libraries requested?
+- **pdfplumber**: Python-only library, cannot run in Deno/JavaScript edge functions. **unpdf** is the equivalent — it wraps Mozilla's pdf.js optimized for edge runtimes and does the same text extraction.
+- **Mammoth.js**: Node.js library that requires filesystem access. The current custom DOCX parser (ZIP → XML → text) already works well. If it doesn't extract properly, the issue is likely a corrupted file, not a parser problem.
+- **Tesseract.js**: Requires loading ~15MB WASM binaries at runtime. Edge functions have strict memory/time limits, making this unreliable. gpt-4o-mini vision actually works well for image OCR — the failures are only with PDFs.
 
-### Step 2: Update `src/main.tsx` — register SW at startup
-Register `/sw.js` once on load. Remove the duplicate registration from `index.html` inline script. Add the iframe/preview guard so the SW doesn't interfere in the Lovable editor.
+### Changes
 
-### Step 3: Update `src/hooks/usePushNotifications.ts`
-- Change all references from `/sw-push.js` to `/sw.js`
-- On `subscribe()`, use `navigator.serviceWorker.ready` instead of re-registering a separate SW
-- On `checkSubscription()`, use `navigator.serviceWorker.ready` to get the active registration
+**1. `supabase/functions/_shared/extract-content.ts`**
+- Import `extractText, getDocumentProxy` from `unpdf` via esm.sh
+- Replace `extractWithOpenAI()` function with a new `extractPdfWithUnpdf()` that uses unpdf's `extractText`
+- Keep `extractPdfTextRegex()` as the fast first attempt
+- Keep `extractFromImage()` using gpt-4o-mini vision (unchanged)
+- Remove `extractDocxWithOpenAI()` — if local DOCX parsing fails, return an actionable error
+- Update `ExtractionResult.method` types to include `"unpdf"`
 
-### Step 4: Fix the React runtime error
-The `useState` null error in `ThemeProvider` is likely caused by duplicate React instances. Check `vite.config.ts` — the `react()` plugin (from `@vitejs/plugin-react`) may conflict with something. This may also be a transient preview-only issue; verify after the SW fixes.
+**2. Deploy `process-document` edge function**
 
-### Step 5: Update `public/manifest.json`
-Ensure `"start_url": "/"` and `"display": "standalone"` are set (already correct). No changes needed.
+### Technical detail
+```typescript
+import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.12";
 
-### Step 6: Deploy edge function
-Redeploy `send-push-notification` to ensure it's live with the current VAPID keys.
+async function extractPdfWithUnpdf(uint8Array: Uint8Array): Promise<string> {
+  const pdf = await getDocumentProxy(uint8Array);
+  const { text } = await extractText(pdf, { mergePages: true });
+  return text;
+}
+```
 
----
-
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `public/sw.js` | Add push/notification event handlers from sw-push.js |
-| `public/sw-push.js` | Delete (merged into sw.js) |
-| `src/main.tsx` | Single SW registration with preview guard, remove duplicate |
-| `index.html` | Remove inline SW registration script |
-| `src/hooks/usePushNotifications.ts` | Reference `/sw.js`, use `navigator.serviceWorker.ready` |
-
-### Why This Fixes Android
-Android PWA requires the service worker to be registered and active **before** a push event arrives. By merging into `sw.js` and registering at startup, the push handler is always listening — even when the app is in the background or closed. The native-style notification (not Chrome icon) comes from having proper `icon` and `badge` fields plus `display: standalone` in the manifest.
+This replaces the OpenAI API call entirely for PDFs — faster, cheaper, and more reliable.
 
