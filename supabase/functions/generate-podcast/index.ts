@@ -7,12 +7,62 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function callAudioAPI(apiKey: string, systemContent: string, voice: string, retries = 2): Promise<{ transcript: string; audioData: Uint8Array | null }> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini-audio-preview",
+          modalities: ["text", "audio"],
+          audio: { voice, format: "mp3" },
+          messages: [
+            { role: "system", content: systemContent },
+            { role: "user", content: "Generate your next line in the podcast conversation. Speak naturally, with depth and detail. Do NOT be brief." },
+          ],
+          max_tokens: 600,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error(`Audio API attempt ${attempt} failed: ${response.status}`);
+        if (attempt < retries) { await new Promise(r => setTimeout(r, 2000)); continue; }
+        throw new Error(`Audio API failed after ${retries + 1} attempts: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const audioObj = data.choices?.[0]?.message?.audio;
+      const transcript = audioObj?.transcript || data.choices?.[0]?.message?.content || "";
+      const audioBase64 = audioObj?.data;
+
+      let audioData: Uint8Array | null = null;
+      if (audioBase64) {
+        const binaryString = atob(audioBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let j = 0; j < binaryString.length; j++) bytes[j] = binaryString.charCodeAt(j);
+        audioData = bytes;
+      }
+
+      if (!audioData || transcript.length < 10) {
+        if (attempt < retries) { await new Promise(r => setTimeout(r, 2000)); continue; }
+      }
+
+      return { transcript, audioData };
+    } catch (e) {
+      if (attempt < retries) { await new Promise(r => setTimeout(r, 2000)); continue; }
+      throw e;
+    }
+  }
+  return { transcript: "", audioData: null };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const { documentId, maxExchanges } = await req.json();
-    const exchangeLimit = maxExchanges || 17;
+    const exchangeLimit = maxExchanges || 24;
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
@@ -27,9 +77,10 @@ serve(async (req) => {
 
     if (!sourceContent.trim()) throw new Error("No content available to generate podcast. Generate notes first.");
 
-    const needsUpgradeCTA = exchangeLimit < 17;
+    const needsUpgradeCTA = exchangeLimit < 24;
     const conversation: Array<{ speaker: string; text: string }> = [];
     const audioChunks: Uint8Array[] = [];
+    const materialContext = sourceContent.substring(0, 8000);
 
     for (let i = 0; i < exchangeLimit; i++) {
       const speaker = i % 2 === 0 ? "Alex" : "Sam";
@@ -37,56 +88,33 @@ serve(async (req) => {
       const isFirst = i === 0;
       const isLast = i === exchangeLimit - 1;
 
-      const prevConvo = conversation.map(c => `${c.speaker}: ${c.text}`).join("\n");
+      // Only include last 4 exchanges as context to save tokens
+      const recentConvo = conversation.slice(-4).map(c => `${c.speaker}: ${c.text}`).join("\n");
 
       let instruction: string;
       if (isFirst) {
-        instruction = `You are Alex, a knowledgeable and enthusiastic podcast host. Start the podcast by introducing the topic from the study material below. Be engaging and natural, 1-3 sentences max.`;
+        instruction = `You are Alex, a knowledgeable and enthusiastic podcast host. Start the podcast by warmly introducing the topic from the study material below. Set the scene, explain why this topic matters, and give a preview of what you'll cover. Speak in 3-5 detailed sentences. Be engaging, natural, and conversational.`;
       } else if (isLast) {
         if (needsUpgradeCTA) {
-          instruction = `You are ${speaker}. Wrap up briefly and end by saying exactly: "Want to dive deeper? Upgrade to Testio Premium for full-length podcasts!"`;
+          instruction = `You are ${speaker}. Give a brief but meaningful summary of what was discussed, then end by saying exactly: "Want the full deep dive? Upgrade to Testio Premium for complete, uncut podcasts!" Speak in 3-4 sentences.`;
         } else {
-          instruction = `You are ${speaker}. Give a brief, thoughtful conclusion summarizing the key takeaways from this conversation. 1-3 sentences.`;
+          instruction = `You are ${speaker}. Give a thoughtful, comprehensive conclusion summarizing the key takeaways from this entire conversation. Mention the most important insights and leave the listener with something actionable. Speak in 3-5 sentences.`;
         }
       } else if (speaker === "Sam") {
-        instruction = `You are Sam, a curious and engaged learner. React to what Alex just said and ask a great follow-up question about the study material. Be natural, 1-3 sentences max.`;
+        instruction = `You are Sam, a curious and deeply engaged learner. React substantively to what Alex just said — show that you understood it, then ask a thoughtful follow-up question that digs deeper into the study material. Add your own perspective or relate it to a real-world example. Speak in 3-5 detailed sentences. Be natural and conversational.`;
       } else {
-        instruction = `You are Alex, a knowledgeable expert. Answer Sam's question clearly and engagingly based on the study material. Be natural, 1-3 sentences max.`;
+        instruction = `You are Alex, a knowledgeable expert and engaging teacher. Answer Sam's question thoroughly and clearly using the study material. Provide examples, analogies, or interesting details to make the explanation memorable. Speak in 3-5 detailed sentences. Be natural and conversational.`;
       }
 
-      const systemContent = `${instruction}\n\nStudy material:\n${sourceContent.substring(0, 6000)}${prevConvo ? `\n\nConversation so far:\n${prevConvo}` : ""}`;
+      const systemContent = `${instruction}\n\nIMPORTANT: You MUST speak in at least 3 full sentences with real substance. Never give one-liners.\n\nStudy material:\n${materialContext}${recentConvo ? `\n\nRecent conversation:\n${recentConvo}` : ""}`;
 
-      const ttsResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gpt-4o-mini-audio-preview",
-          modalities: ["text", "audio"],
-          audio: { voice, format: "mp3" },
-          messages: [
-            { role: "system", content: systemContent },
-            { role: "user", content: "Generate your next line in the podcast conversation. Speak naturally as if you're on a real podcast." },
-          ],
-        }),
-      });
+      const { transcript, audioData } = await callAudioAPI(OPENAI_API_KEY, systemContent, voice);
 
-      if (!ttsResponse.ok) {
-        console.error(`Audio generation failed for turn ${i}: ${ttsResponse.status}`);
-        continue;
+      if (transcript) {
+        conversation.push({ speaker, text: transcript });
       }
-
-      const ttsData = await ttsResponse.json();
-      const audioObj = ttsData.choices?.[0]?.message?.audio;
-      const transcript = audioObj?.transcript || ttsData.choices?.[0]?.message?.content || "";
-      const audioBase64 = audioObj?.data;
-
-      conversation.push({ speaker, text: transcript });
-
-      if (audioBase64) {
-        const binaryString = atob(audioBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let j = 0; j < binaryString.length; j++) bytes[j] = binaryString.charCodeAt(j);
-        audioChunks.push(bytes);
+      if (audioData) {
+        audioChunks.push(audioData);
       }
     }
 
