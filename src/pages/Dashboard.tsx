@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Music, Crown, Zap, X } from "lucide-react";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Music, Crown, Zap, X, Home, LayoutDashboard } from "lucide-react";
 import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -59,7 +59,6 @@ const Dashboard = () => {
     if (user) {
       fetchData();
       fetchPlan();
-      // Process pending referral — but only if it's not the user's own code
       const pendingRef = localStorage.getItem("testio-referral");
       if (pendingRef) {
         localStorage.removeItem("testio-referral");
@@ -81,7 +80,6 @@ const Dashboard = () => {
     }
   }, [user]);
 
-  // Periodic upgrade prompt for free users - show after 3 minutes, then every 5 minutes
   useEffect(() => {
     if (!userPlan || userPlan !== "free" || isAndroidApp) return;
     const initialTimer = setTimeout(() => setShowPeriodicUpgrade(true), 3 * 60 * 1000);
@@ -97,7 +95,6 @@ const Dashboard = () => {
       return;
     }
     const plan = data.subscription_plan || "free";
-    // If subscription has expired, treat as free
     if (plan !== "free" && data.subscription_expires_at) {
       const expiresAt = new Date(data.subscription_expires_at);
       if (expiresAt < new Date()) {
@@ -132,7 +129,6 @@ const Dashboard = () => {
     const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
     if (uploadError) { setUploading(null); toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
     setUploading("Creating document...");
-    // Classify file type correctly
     const ext = fileExt?.toLowerCase() || "";
     const imageExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
     let sourceType = "text";
@@ -156,7 +152,6 @@ const Dashboard = () => {
       try {
         const { error: fnError } = await supabase.functions.invoke("process-document", { body: { documentId: doc.id } });
         if (fnError) throw fnError;
-        // Only count upload after successful processing
         gamification.optimisticIncrement();
         const result = await gamification.recordUpload();
         if (result?.bonusEarned) {
@@ -167,7 +162,6 @@ const Dashboard = () => {
         fetchData();
         setUploading(null);
         toast({ title: "Done!", description: "Your document has been processed." });
-        // Send push notification that study deck is ready
         sendStudyDeckReadyNotification(doc.title);
       } catch {
         setUploading(null);
@@ -255,7 +249,6 @@ const Dashboard = () => {
   };
 
   const deleteDocument = async (docId: string) => {
-    // Remove from UI immediately
     const deletedDoc = documents.find(d => d.id === docId);
     setDocuments(prev => prev.filter(d => d.id !== docId));
 
@@ -306,20 +299,38 @@ const Dashboard = () => {
 
   const filteredDocs = documents.filter((d) => d.title.toLowerCase().includes(search.toLowerCase()));
 
+  const bottomNavItems = [
+    { icon: LayoutDashboard, label: "Home", action: () => {} },
+    { icon: Trophy, label: "Rank", action: () => navigate("/leaderboard") },
+    { icon: Plus, label: "Upload", action: tryUpload, primary: true },
+    { icon: Gift, label: "Refer", action: () => {
+      const link = gamification.getReferralLink();
+      if (navigator.share) {
+        navigator.share({ title: "Join Testio!", text: "Study smarter with AI-powered notes. Use my link to get a bonus upload!", url: link });
+      } else {
+        navigator.clipboard.writeText(link);
+        toast({ title: "Link copied!", description: "Share it with friends to earn uploads." });
+      }
+    }},
+    { icon: UserCircle, label: "Profile", action: () => navigate("/profile") },
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
+      {/* Desktop/Tablet header */}
       <header className="border-b border-border/50 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <img src={testioLogo} alt="Testio" className="w-6 h-6 sm:w-7 sm:h-7 shrink-0" />
-          <span className="text-foreground font-bold text-base sm:text-lg shrink-0" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
+          <img src={testioLogo} alt="Testio" className="w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9 shrink-0" />
+          <span className="text-foreground font-bold text-base sm:text-lg md:text-xl shrink-0" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
           {userPlan && (
-            <Badge variant={userPlan === "pro" ? "default" : userPlan === "basic" ? "secondary" : "outline"} className="text-[9px] sm:text-[10px] uppercase ml-0.5 sm:ml-1 shrink-0">
+            <Badge variant={userPlan === "pro" ? "default" : userPlan === "basic" ? "secondary" : "outline"} className="text-[9px] sm:text-[10px] md:text-xs uppercase ml-0.5 sm:ml-1 shrink-0">
               {userPlan}
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4">
           <StreakDisplay stats={gamification.stats} compact />
+          {/* These icons hidden on mobile, shown on md+ */}
           <button
             onClick={() => {
               const link = gamification.getReferralLink();
@@ -330,21 +341,21 @@ const Dashboard = () => {
                 toast({ title: "Link copied!", description: "Share it with friends to earn uploads." });
               }
             }}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="hidden md:block text-muted-foreground hover:text-foreground transition-colors"
             title="Share referral link"
           >
-            <Gift className="w-4 h-4 sm:w-5 sm:h-5" />
+            <Gift className="w-5 h-5 md:w-6 md:h-6" />
           </button>
-          <button onClick={() => navigate("/leaderboard")} className="text-muted-foreground hover:text-foreground transition-colors" title="Leaderboard">
-            <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
+          <button onClick={() => navigate("/leaderboard")} className="hidden md:block text-muted-foreground hover:text-foreground transition-colors" title="Leaderboard">
+            <Trophy className="w-5 h-5 md:w-6 md:h-6" />
           </button>
-          <button onClick={() => navigate("/profile")} className="text-muted-foreground hover:text-foreground transition-colors" title="Profile">
-            <UserCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+          <button onClick={() => navigate("/profile")} className="hidden md:block text-muted-foreground hover:text-foreground transition-colors" title="Profile">
+            <UserCircle className="w-5 h-5 md:w-6 md:h-6" />
           </button>
           <Dialog>
             <DialogTrigger asChild>
-              <button className="text-muted-foreground hover:text-foreground transition-colors" title="Watch Tutorial">
-                <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+              <button className="hidden sm:block text-muted-foreground hover:text-foreground transition-colors" title="Watch Tutorial">
+                <HelpCircle className="w-5 h-5 md:w-6 md:h-6" />
               </button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-2xl">
@@ -364,10 +375,10 @@ const Dashboard = () => {
             </DialogContent>
           </Dialog>
           <button onClick={() => navigate("/settings")} className="text-muted-foreground hover:text-foreground transition-colors" title="Settings">
-            <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
           </button>
           <button onClick={signOut} className="text-muted-foreground hover:text-foreground transition-colors" title="Sign out">
-            <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+            <LogOut className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
           </button>
         </div>
       </header>
@@ -376,22 +387,23 @@ const Dashboard = () => {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Main content */}
           <div className="flex-1 min-w-0">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
               <div>
-                <h1 className="text-2xl font-bold text-foreground">My Documents</h1>
-                <p className="text-muted-foreground text-sm mt-1">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">My Documents</h1>
+                <p className="text-muted-foreground text-xs sm:text-sm mt-1">
                   {gamification.canUpload
                     ? `${gamification.uploadsRemaining} upload${gamification.uploadsRemaining > 1 ? "s" : ""} remaining`
                     : "Upload limit reached"}
                 </p>
               </div>
-              <button onClick={tryUpload} className="btn-testio-primary text-sm flex items-center gap-2 !py-2 !px-4">
-                <Plus className="w-4 h-4" /> Upload
+              {/* Upload button hidden on mobile (bottom nav has it), shown on sm+ */}
+              <button onClick={tryUpload} className="hidden sm:flex btn-testio-primary text-sm items-center gap-2 !py-2 !px-4 md:!py-2.5 md:!px-6 md:text-base">
+                <Plus className="w-4 h-4 md:w-5 md:h-5" /> Upload
               </button>
             </div>
 
             {uploading && (
-              <div className="mb-6 bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+              <div className="mb-6 bg-primary/10 border border-primary/20 rounded-xl p-3 sm:p-4 flex items-center gap-3">
                 <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
                 <div>
                   <p className="text-foreground text-sm font-medium">{uploading}</p>
@@ -406,35 +418,35 @@ const Dashboard = () => {
                 className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
             </div>
 
-            {/* Upgrade to Pro Banner - always visible for free/basic users */}
+            {/* Upgrade to Pro Banner */}
             {userPlan && userPlan !== "pro" && !isAndroidApp && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-6 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/15 border-2 border-primary/30 rounded-xl p-5 cursor-pointer hover:border-primary/50 transition-all shadow-lg shadow-primary/5"
+                className="mb-6 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/15 border-2 border-primary/30 rounded-xl p-4 sm:p-5 cursor-pointer hover:border-primary/50 transition-all shadow-lg shadow-primary/5"
                 onClick={() => navigate("/pricing")}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0 animate-pulse">
-                    <Zap className="w-6 h-6 text-primary" />
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0 animate-pulse">
+                    <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-foreground font-bold text-sm flex items-center gap-1.5">
-                      <Crown className="w-4 h-4 text-primary" />
+                    <h3 className="text-foreground font-bold text-xs sm:text-sm flex items-center gap-1.5">
+                      <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                       Upgrade to Pro — Unlock Everything
                     </h3>
-                    <p className="text-muted-foreground text-xs mt-0.5">
-                      Unlimited uploads, full podcasts, quizzes & flashcards — starting at just <span className="text-primary font-bold">$4.99/mo</span>
+                    <p className="text-muted-foreground text-[10px] sm:text-xs mt-0.5">
+                      Unlimited uploads, full podcasts & AI Tutor — starting at <span className="text-primary font-bold">$4.99/mo</span>
                     </p>
                   </div>
-                  <div className="shrink-0 bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-full">
+                  <div className="hidden sm:block shrink-0 bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-full">
                     Upgrade
                   </div>
                 </div>
               </motion.div>
             )}
 
-            {/* Periodic upgrade prompt for free users */}
+            {/* Periodic upgrade prompt */}
             {showPeriodicUpgrade && userPlan === "free" && !isAndroidApp && (
               <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowPeriodicUpgrade(false)}>
                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} onClick={(e) => e.stopPropagation()} className="bg-card border border-primary/30 rounded-2xl p-6 w-full max-w-sm text-center relative">
@@ -483,10 +495,10 @@ const Dashboard = () => {
             {loading ? (
               <div className="text-center text-muted-foreground py-20">Loading...</div>
             ) : filteredDocs.length === 0 ? (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
-                <Upload className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                <h3 className="text-foreground font-semibold mb-2">No documents yet</h3>
-                <p className="text-muted-foreground text-sm mb-6">Upload a PDF, paste text, or upload an image to get started</p>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16 sm:py-20">
+                <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <h3 className="text-foreground font-semibold mb-2 text-sm sm:text-base">No documents yet</h3>
+                <p className="text-muted-foreground text-xs sm:text-sm mb-6">Upload a PDF, paste text, or upload an image to get started</p>
                 <button onClick={tryUpload} className="btn-testio-primary text-sm !py-2 !px-6">Upload Your First Document</button>
               </motion.div>
             ) : (
@@ -496,14 +508,14 @@ const Dashboard = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   onClick={() => setShowStudyMusic(true)}
-                  className="bg-testio-card rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group mb-6 border border-border relative overflow-hidden"
+                  className="bg-testio-card rounded-xl p-4 sm:p-5 cursor-pointer hover:border-primary/30 transition-all group mb-6 border border-border relative overflow-hidden"
                 >
                   <div className="absolute top-3 right-3">
                     <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">Coming Soon</Badge>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <Music className="w-6 h-6 text-primary" />
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Music className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                     </div>
                     <div>
                       <h3 className="text-foreground font-semibold text-sm">Study Music</h3>
@@ -514,14 +526,14 @@ const Dashboard = () => {
 
                 <StudyMusicModal open={showStudyMusic} onOpenChange={setShowStudyMusic} />
 
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {filteredDocs.map((doc, i) => (
                   <motion.div key={doc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                    onClick={() => navigate(`/document/${doc.id}`)} className="bg-testio-card rounded-xl p-5 cursor-pointer hover:border-primary/30 transition-all group">
+                    onClick={() => navigate(`/document/${doc.id}`)} className="bg-testio-card rounded-xl p-4 sm:p-5 cursor-pointer hover:border-primary/30 transition-all group">
                     <div className="flex items-start justify-between mb-3">
-                      <FileText className="w-8 h-8 text-primary/60" />
+                      <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-primary/60" />
                       <div className="flex items-center gap-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${doc.status === "completed" ? "bg-testio-green/20 text-testio-green" : doc.status === "processing" ? "bg-yellow-500/20 text-yellow-400" : doc.status === "failed" ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>{doc.status}</span>
+                        <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full ${doc.status === "completed" ? "bg-testio-green/20 text-testio-green" : doc.status === "processing" ? "bg-yellow-500/20 text-yellow-400" : doc.status === "failed" ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>{doc.status}</span>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <button className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-secondary">
@@ -585,6 +597,34 @@ const Dashboard = () => {
           <p className="text-[10px] text-muted-foreground">Created by <span className="font-semibold">TechWorld</span></p>
         </div>
       </div>
+
+      {/* Mobile Bottom Navigation Bar - Facebook style */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border/60 backdrop-blur-xl safe-bottom">
+        <div className="flex items-center justify-around px-1 py-1.5">
+          {bottomNavItems.map((item) => (
+            <button
+              key={item.label}
+              onClick={item.action}
+              className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
+                item.primary
+                  ? "relative"
+                  : "text-muted-foreground active:text-foreground"
+              }`}
+            >
+              {item.primary ? (
+                <div className="w-11 h-11 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/30 -mt-4">
+                  <item.icon className="w-5 h-5 text-primary-foreground" />
+                </div>
+              ) : (
+                <item.icon className="w-6 h-6" />
+              )}
+              <span className={`text-[10px] font-semibold ${item.primary ? "text-primary mt-0.5" : ""}`}>
+                {item.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 };
@@ -595,13 +635,23 @@ const UploadModal = ({ onClose, onFileUpload, onTextUpload, onImageUpload }: { o
   const [title, setTitle] = useState("");
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={(e) => e.stopPropagation()} className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg">
-        <h2 className="text-lg font-bold text-foreground mb-4">Add Content</h2>
-        <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6">
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <motion.div
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-card border border-border rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 w-full sm:max-w-lg max-h-[85vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-foreground">Add Content</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-5">
           {(["file", "text", "image"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              {t === "file" ? "Upload File" : t === "text" ? "Paste Text" : "Upload Image"}
+            <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2.5 px-2 rounded-md text-xs font-medium transition-colors ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              {t === "file" ? "📄 File" : t === "text" ? "📝 Text" : "🖼️ Image"}
             </button>
           ))}
         </div>
@@ -609,13 +659,13 @@ const UploadModal = ({ onClose, onFileUpload, onTextUpload, onImageUpload }: { o
           <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
             <Upload className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
             <p className="text-muted-foreground text-sm mb-3">Upload a PDF, DOCX, or text file</p>
-            <label className="btn-testio-primary text-sm !py-2 !px-6 cursor-pointer">Choose File<input type="file" accept=".pdf,.txt,.docx,.md" onChange={onFileUpload} className="hidden" /></label>
+            <label className="btn-testio-primary text-sm !py-2.5 !px-6 cursor-pointer">Choose File<input type="file" accept=".pdf,.txt,.docx,.md" onChange={onFileUpload} className="hidden" /></label>
           </div>
         )}
         {tab === "text" && (
           <div className="space-y-3">
             <input type="text" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            <textarea placeholder="Paste your text content here..." value={text} onChange={(e) => setText(e.target.value)} rows={6} className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" />
+            <textarea placeholder="Paste your text content here..." value={text} onChange={(e) => setText(e.target.value)} rows={5} className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" />
             <button onClick={() => onTextUpload(text, title)} disabled={!text.trim()} className="w-full btn-testio-primary text-sm !py-2.5 disabled:opacity-50">Process with AI</button>
           </div>
         )}
@@ -623,10 +673,9 @@ const UploadModal = ({ onClose, onFileUpload, onTextUpload, onImageUpload }: { o
           <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
             <Image className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
             <p className="text-muted-foreground text-sm mb-3">Upload an image to extract text via AI</p>
-            <label className="btn-testio-primary text-sm !py-2 !px-6 cursor-pointer">Choose Image<input type="file" accept="image/*" onChange={onImageUpload} className="hidden" /></label>
+            <label className="btn-testio-primary text-sm !py-2.5 !px-6 cursor-pointer">Choose Image<input type="file" accept="image/*" onChange={onImageUpload} className="hidden" /></label>
           </div>
         )}
-        <button onClick={onClose} className="w-full mt-4 text-center text-sm text-muted-foreground hover:text-foreground">Cancel</button>
       </motion.div>
     </div>
   );
