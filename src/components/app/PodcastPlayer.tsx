@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Play, Pause, SkipBack, SkipForward, Volume2, Loader2, Mic } from "lucide-react";
 
@@ -25,9 +25,13 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   const [script, setScript] = useState<PodcastSegment[]>([]);
   const [playbackRate, setPlaybackRate] = useState(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const animFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     fetchPodcast();
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
   }, [documentId]);
 
   const fetchPodcast = async () => {
@@ -50,40 +54,69 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
     setLoading(false);
   };
 
-  const togglePlay = () => {
-    if (!audioRef.current) return;
-    if (playing) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
+  // Use requestAnimationFrame for smooth time updates
+  const startTimeTracking = useCallback(() => {
+    const update = () => {
+      if (audioRef.current && !audioRef.current.paused) {
+        setCurrentTime(audioRef.current.currentTime);
+        animFrameRef.current = requestAnimationFrame(update);
+      }
+    };
+    animFrameRef.current = requestAnimationFrame(update);
+  }, []);
+
+  const stopTimeTracking = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
     }
-    setPlaying(!playing);
-  };
+  }, []);
 
-  const skip = (seconds: number) => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime + seconds);
-  };
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) {
+      audio.pause();
+      stopTimeTracking();
+      setPlaying(false);
+    } else {
+      audio.play().then(() => {
+        setPlaying(true);
+        startTimeTracking();
+      }).catch(console.error);
+    }
+  }, [playing, startTimeTracking, stopTimeTracking]);
 
-  const handleTimeUpdate = () => {
-    if (!audioRef.current) return;
-    setCurrentTime(audioRef.current.currentTime);
-  };
+  const skip = useCallback((seconds: number) => {
+    const audio = audioRef.current;
+    if (!audio || !isFinite(audio.duration)) return;
+    const newTime = Math.min(Math.max(0, audio.currentTime + seconds), audio.duration);
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  }, []);
 
-  const handleLoadedMetadata = () => {
-    if (!audioRef.current) return;
-    setDuration(audioRef.current.duration);
-  };
+  const handleLoadedMetadata = useCallback(() => {
+    if (audioRef.current && isFinite(audioRef.current.duration)) {
+      setDuration(audioRef.current.duration);
+    }
+  }, []);
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEnded = useCallback(() => {
+    setPlaying(false);
+    stopTimeTracking();
+  }, [stopTimeTracking]);
+
+  const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
+    const audio = audioRef.current;
+    if (audio && isFinite(time)) {
+      audio.currentTime = time;
       setCurrentTime(time);
     }
-  };
+  }, []);
 
   const formatTime = (s: number) => {
+    if (!isFinite(s)) return "0:00";
     const min = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
     return `${min}:${sec.toString().padStart(2, "0")}`;
@@ -116,9 +149,11 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
         <audio
           ref={audioRef}
           src={podcast.audio_url}
-          onTimeUpdate={handleTimeUpdate}
+          preload="auto"
           onLoadedMetadata={handleLoadedMetadata}
-          onEnded={() => setPlaying(false)}
+          onEnded={handleEnded}
+          onPause={() => { setPlaying(false); stopTimeTracking(); }}
+          onPlay={() => { setPlaying(true); startTimeTracking(); }}
         />
 
         <div className="flex items-center gap-4 mb-4">
@@ -137,6 +172,7 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
             type="range"
             min={0}
             max={duration || 0}
+            step={0.1}
             value={currentTime}
             onChange={handleSeek}
             className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
