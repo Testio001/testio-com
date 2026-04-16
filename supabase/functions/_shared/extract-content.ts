@@ -338,7 +338,13 @@ function extractPdfTextRegex(rawText: string): string {
 /**
  * Use OpenAI to extract text from a PDF file (OCR/vision fallback).
  */
-async function extractWithOpenAI(uint8Array: Uint8Array, title: string, openaiKey: string): Promise<string> {
+async function extractWithGemini(uint8Array: Uint8Array, title: string): Promise<string> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    console.error("LOVABLE_API_KEY not configured, cannot use Gemini for OCR");
+    return "";
+  }
+
   let binary = "";
   const chunkSize = 8192;
   for (let i = 0; i < uint8Array.length; i += chunkSize) {
@@ -346,16 +352,16 @@ async function extractWithOpenAI(uint8Array: Uint8Array, title: string, openaiKe
   }
   const pdfBase64 = btoa(binary);
 
-  const ocrRes = await fetch("https://api.openai.com/v1/chat/completions", {
+  const ocrRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model: "google/gemini-2.5-flash-lite",
       messages: [{
         role: "user",
         content: [
           { type: "text", text: "Extract ALL text content from this PDF document. Return every word, heading, paragraph, bullet point, table entry, and piece of text exactly as it appears. Preserve the document structure with headings and paragraphs. Do NOT add commentary, do NOT describe the document, do NOT summarize - just output the raw text content. If the document is completely blank or unreadable, respond with exactly one word: EXTRACTION_FAILED" },
-          { type: "file", file: { filename: `${title}.pdf`, file_data: `data:application/pdf;base64,${pdfBase64}` } },
+          { type: "image_url", image_url: { url: `data:application/pdf;base64,${pdfBase64}` } },
         ],
       }],
       max_tokens: 16000,
@@ -363,7 +369,7 @@ async function extractWithOpenAI(uint8Array: Uint8Array, title: string, openaiKe
   });
 
   if (!ocrRes.ok) {
-    console.error("OpenAI OCR failed:", ocrRes.status, await ocrRes.text());
+    console.error("Gemini OCR failed:", ocrRes.status, await ocrRes.text());
     return "";
   }
 
@@ -374,7 +380,13 @@ async function extractWithOpenAI(uint8Array: Uint8Array, title: string, openaiKe
 /**
  * Use OpenAI Vision to extract text from an image.
  */
-async function extractFromImage(uint8Array: Uint8Array, mimeType: string, openaiKey: string): Promise<string> {
+async function extractFromImage(uint8Array: Uint8Array, mimeType: string): Promise<string> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    console.error("LOVABLE_API_KEY not configured, cannot use Gemini for vision");
+    return "";
+  }
+
   let binary = "";
   const chunkSize = 8192;
   for (let i = 0; i < uint8Array.length; i += chunkSize) {
@@ -382,11 +394,11 @@ async function extractFromImage(uint8Array: Uint8Array, mimeType: string, openai
   }
   const base64 = btoa(binary);
 
-  const visionRes = await fetch("https://api.openai.com/v1/chat/completions", {
+  const visionRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "google/gemini-2.5-flash-lite",
       messages: [{
         role: "user",
         content: [
@@ -399,7 +411,7 @@ async function extractFromImage(uint8Array: Uint8Array, mimeType: string, openai
   });
 
   if (!visionRes.ok) {
-    console.error("Vision API error:", await visionRes.text());
+    console.error("Gemini Vision API error:", await visionRes.text());
     return "";
   }
 
@@ -464,7 +476,7 @@ async function extractDocxWithOpenAI(uint8Array: Uint8Array, title: string, open
 
 interface ExtractionResult {
   content: string;
-  method: "existing" | "regex" | "openai_ocr" | "openai_vision" | "text_file" | "docx_local" | "docx_openai";
+  method: "existing" | "regex" | "gemini_ocr" | "gemini_vision" | "text_file" | "docx_local" | "docx_openai";
   success: boolean;
   error?: string;
 }
@@ -509,11 +521,11 @@ export async function extractDocumentContent(params: ExtractParams): Promise<Ext
     const uint8Array = new Uint8Array(arrayBuffer);
     const mimeType = fileExt === "jpg" || fileExt === "jpeg" ? "image/jpeg" : fileExt === "png" ? "image/png" : fileExt === "webp" ? "image/webp" : "image/png";
 
-    const imageText = await extractFromImage(uint8Array, mimeType, openaiKey);
+    const imageText = await extractFromImage(uint8Array, mimeType);
     if (imageText && isQualityContent(imageText)) {
-      return { content: sanitizeForDb(imageText), method: "openai_vision", success: true };
+      return { content: sanitizeForDb(imageText), method: "gemini_vision", success: true };
     }
-    return { content: "", method: "openai_vision", success: false, error: "Could not extract readable text from this image." };
+    return { content: "", method: "gemini_vision", success: false, error: "Could not extract readable text from this image." };
   }
 
   // 5. Handle DOCX files
@@ -555,22 +567,22 @@ export async function extractDocumentContent(params: ExtractParams): Promise<Ext
       return { content: sanitizeForDb(regexContent.substring(0, 50000)), method: "regex", success: true };
     }
 
-    console.log("Regex extraction failed quality check, using OpenAI OCR...");
-    const ocrContent = await extractWithOpenAI(uint8Array, doc.title, openaiKey);
-    console.log(`OpenAI OCR extraction: ${ocrContent.length} chars`);
+    console.log("Regex extraction failed quality check, using Gemini OCR...");
+    const ocrContent = await extractWithGemini(uint8Array, doc.title);
+    console.log(`Gemini OCR extraction: ${ocrContent.length} chars`);
 
     // Check for explicit failure sentinel
     if (ocrContent.trim() === "EXTRACTION_FAILED") {
-      console.log("OpenAI reported EXTRACTION_FAILED");
-      return { content: "", method: "openai_ocr", success: false, error: "We couldn't extract readable text from this PDF. Try uploading a clearer version." };
+      console.log("Gemini reported EXTRACTION_FAILED");
+      return { content: "", method: "gemini_ocr", success: false, error: "We couldn't extract readable text from this PDF. Try uploading a clearer version." };
     }
 
     // Also reject if the AI returned a meta-description about PDFs instead of actual content
     if (ocrContent && isQualityContent(ocrContent) && !isCorruptedContent(ocrContent)) {
-      return { content: sanitizeForDb(ocrContent.substring(0, 50000)), method: "openai_ocr", success: true };
+      return { content: sanitizeForDb(ocrContent.substring(0, 50000)), method: "gemini_ocr", success: true };
     }
 
-    return { content: "", method: "openai_ocr", success: false, error: "We couldn't extract readable text from this PDF. Try uploading a clearer version." };
+    return { content: "", method: "gemini_ocr", success: false, error: "We couldn't extract readable text from this PDF. Try uploading a clearer version." };
   }
 
   // 7. Handle text files - but check if it's actually a misclassified DOCX
