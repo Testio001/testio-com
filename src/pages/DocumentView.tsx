@@ -215,6 +215,20 @@ const DocumentView = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Processing Banner */}
+      {doc.status === "processing" && (
+        <div className="bg-primary/10 border-b border-primary/30 px-4 py-3">
+          <div className="max-w-6xl mx-auto flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-primary">Processing your document...</p>
+              <p className="text-xs text-muted-foreground">We're extracting text from your file. This usually takes 10-30 seconds.</p>
+            </div>
+          </div>
+          <Progress value={undefined} className="h-1.5 mt-2 max-w-6xl mx-auto animate-pulse" />
+        </div>
+      )}
+
       <header className="border-b border-border/50 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -223,7 +237,7 @@ const DocumentView = () => {
             </button>
             <div>
               <h1 className="text-lg font-bold text-foreground">{doc.title}</h1>
-              <p className="text-xs text-muted-foreground">{doc.source_type.toUpperCase()} · {doc.status}</p>
+              <p className="text-xs text-muted-foreground">{doc.source_type.toUpperCase()} · {doc.status === "processing" ? "Processing..." : doc.status}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
