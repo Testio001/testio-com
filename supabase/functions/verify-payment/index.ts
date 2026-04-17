@@ -9,6 +9,7 @@ const corsHeaders = {
 const VARIANT_TO_PLAN: Record<number, string> = {
   1504464: "basic",
   1504491: "pro",
+  1537626: "scholar",
   1519137: "podcast_addon",
 };
 
