@@ -111,11 +111,14 @@ serve(async (req) => {
 
       const { transcript, audioData } = await callAudioAPI(OPENAI_API_KEY, systemContent, voice);
 
-      if (transcript) {
-        conversation.push({ speaker, text: transcript });
-      }
-      if (audioData) {
+      // Only commit BOTH transcript and audio together — keeps script perfectly in sync with audio
+      // and prevents "speaker cut off mid-sentence" skipping when one part is missing.
+      // Also require a minimum audio size (~5KB) to skip near-empty MP3 chunks that cause glitches.
+      if (transcript && transcript.trim().length >= 10 && audioData && audioData.length > 5000) {
+        conversation.push({ speaker, text: transcript.trim() });
         audioChunks.push(audioData);
+      } else {
+        console.warn(`Skipping exchange ${i} (speaker=${speaker}): transcript=${transcript?.length || 0} chars, audio=${audioData?.length || 0} bytes`);
       }
     }
 
