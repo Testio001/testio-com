@@ -149,11 +149,17 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
         <audio
           ref={audioRef}
           src={podcast.audio_url}
-          preload="auto"
+          preload="metadata"
+          controlsList="nodownload"
+          crossOrigin="anonymous"
           onLoadedMetadata={handleLoadedMetadata}
+          onDurationChange={handleLoadedMetadata}
           onEnded={handleEnded}
           onPause={() => { setPlaying(false); stopTimeTracking(); }}
           onPlay={() => { setPlaying(true); startTimeTracking(); }}
+          onSeeked={() => {
+            if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+          }}
         />
 
         <div className="flex items-center gap-4 mb-4">

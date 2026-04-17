@@ -13,16 +13,19 @@ import QuizViewer from "@/components/app/QuizViewer";
 import ChatPanel from "@/components/app/ChatPanel";
 import PodcastPlayer from "@/components/app/PodcastPlayer";
 import PodcastLimitModal from "@/components/app/PodcastLimitModal";
+import ProcessingOverlay from "@/components/app/ProcessingOverlay";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 
 type Document = Tables<"documents">;
 type Note = Tables<"notes">;
 
+// Monthly podcast limits per plan (matches Pricing/Home)
 const PODCAST_LIMITS: Record<string, number> = {
-  free: 2,
-  basic: 5,
-  pro: 12,
+  free: 1,
+  basic: 3,
+  pro: 6,
+  scholar: 12,
 };
 
 const DocumentView = () => {
@@ -30,7 +33,7 @@ const DocumentView = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { FREE_PODCAST_MAX_EXCHANGES, BASIC_PODCAST_MAX_EXCHANGES, PRO_PODCAST_MAX_EXCHANGES, FREE_QUIZ_MAX_QUESTIONS } = useGamification();
+  const { FREE_PODCAST_MAX_EXCHANGES, BASIC_PODCAST_MAX_EXCHANGES, PRO_PODCAST_MAX_EXCHANGES, SCHOLAR_PODCAST_MAX_EXCHANGES, FREE_QUIZ_MAX_QUESTIONS } = useGamification();
   const [doc, setDoc] = useState<Document | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeTab, setActiveTab] = useState<"notes" | "flashcards" | "quiz" | "chat" | "podcast">("notes");
@@ -171,7 +174,9 @@ const DocumentView = () => {
     setGenerating("podcast");
     try {
       const body: any = { documentId: id };
-      if (subscriptionPlan === "pro") {
+      if (subscriptionPlan === "scholar") {
+        body.maxExchanges = SCHOLAR_PODCAST_MAX_EXCHANGES;
+      } else if (subscriptionPlan === "pro") {
         body.maxExchanges = PRO_PODCAST_MAX_EXCHANGES;
       } else if (subscriptionPlan === "basic") {
         body.maxExchanges = BASIC_PODCAST_MAX_EXCHANGES;
