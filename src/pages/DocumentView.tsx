@@ -218,21 +218,27 @@ const DocumentView = () => {
   const podcastLimitTotal = getPodcastLimit();
   const podcastsRemaining = Math.max(0, podcastLimitTotal - podcastCount);
 
+  const generationTitles: Record<string, { title: string; subtitle: string }> = {
+    notes: { title: "Generating your notes…", subtitle: "AI is summarising the key points. This usually takes 30–60 seconds." },
+    flashcards: { title: "Building flashcards…", subtitle: "Crafting question/answer cards from your notes." },
+    quiz: { title: "Creating your quiz…", subtitle: "Designing multiple-choice questions tailored to your content." },
+    podcast: { title: "Recording your podcast…", subtitle: "Two AI hosts are recording — this can take 3–5 minutes. Don't close this page." },
+  };
+  const genInfo = generating ? generationTitles[generating] : null;
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Processing Banner */}
-      {doc.status === "processing" && (
-        <div className="bg-primary/10 border-b border-primary/30 px-4 py-3">
-          <div className="max-w-6xl mx-auto flex items-center gap-3">
-            <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-primary">Processing your document...</p>
-              <p className="text-xs text-muted-foreground">We're extracting text from your file. This usually takes 10-30 seconds.</p>
-            </div>
-          </div>
-          <Progress value={undefined} className="h-1.5 mt-2 max-w-6xl mx-auto animate-pulse" />
-        </div>
-      )}
+      {/* Big half-screen processing overlay */}
+      <ProcessingOverlay
+        open={doc.status === "processing"}
+        title="Processing your document…"
+        subtitle="We're extracting and analysing your content. This usually takes 10–30 seconds."
+      />
+      <ProcessingOverlay
+        open={!!genInfo}
+        title={genInfo?.title}
+        subtitle={genInfo?.subtitle}
+      />
 
       <header className="border-b border-border/50 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">

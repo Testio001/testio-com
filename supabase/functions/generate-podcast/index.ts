@@ -62,7 +62,8 @@ serve(async (req) => {
 
   try {
     const { documentId, maxExchanges } = await req.json();
-    const exchangeLimit = maxExchanges || 24;
+    // Cap at 30 exchanges (~15 min) for Scholar plan
+    const exchangeLimit = Math.min(Math.max(maxExchanges || 24, 4), 30);
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
@@ -77,7 +78,7 @@ serve(async (req) => {
 
     if (!sourceContent.trim()) throw new Error("No content available to generate podcast. Generate notes first.");
 
-    const needsUpgradeCTA = exchangeLimit < 24;
+    const needsUpgradeCTA = exchangeLimit < 24; // Free + Basic only
     const conversation: Array<{ speaker: string; text: string }> = [];
     const audioChunks: Uint8Array[] = [];
     const materialContext = sourceContent.substring(0, 8000);
