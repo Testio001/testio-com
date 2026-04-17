@@ -13,16 +13,19 @@ import QuizViewer from "@/components/app/QuizViewer";
 import ChatPanel from "@/components/app/ChatPanel";
 import PodcastPlayer from "@/components/app/PodcastPlayer";
 import PodcastLimitModal from "@/components/app/PodcastLimitModal";
+import ProcessingOverlay from "@/components/app/ProcessingOverlay";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 
 type Document = Tables<"documents">;
 type Note = Tables<"notes">;
 
+// Monthly podcast limits per plan (matches Pricing/Home)
 const PODCAST_LIMITS: Record<string, number> = {
-  free: 2,
-  basic: 5,
-  pro: 12,
+  free: 1,
+  basic: 3,
+  pro: 6,
+  scholar: 12,
 };
 
 const DocumentView = () => {
@@ -30,7 +33,7 @@ const DocumentView = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { FREE_PODCAST_MAX_EXCHANGES, BASIC_PODCAST_MAX_EXCHANGES, PRO_PODCAST_MAX_EXCHANGES, FREE_QUIZ_MAX_QUESTIONS } = useGamification();
+  const { FREE_PODCAST_MAX_EXCHANGES, BASIC_PODCAST_MAX_EXCHANGES, PRO_PODCAST_MAX_EXCHANGES, SCHOLAR_PODCAST_MAX_EXCHANGES, FREE_QUIZ_MAX_QUESTIONS } = useGamification();
   const [doc, setDoc] = useState<Document | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeTab, setActiveTab] = useState<"notes" | "flashcards" | "quiz" | "chat" | "podcast">("notes");
@@ -171,7 +174,9 @@ const DocumentView = () => {
     setGenerating("podcast");
     try {
       const body: any = { documentId: id };
-      if (subscriptionPlan === "pro") {
+      if (subscriptionPlan === "scholar") {
+        body.maxExchanges = SCHOLAR_PODCAST_MAX_EXCHANGES;
+      } else if (subscriptionPlan === "pro") {
         body.maxExchanges = PRO_PODCAST_MAX_EXCHANGES;
       } else if (subscriptionPlan === "basic") {
         body.maxExchanges = BASIC_PODCAST_MAX_EXCHANGES;
@@ -213,21 +218,27 @@ const DocumentView = () => {
   const podcastLimitTotal = getPodcastLimit();
   const podcastsRemaining = Math.max(0, podcastLimitTotal - podcastCount);
 
+  const generationTitles: Record<string, { title: string; subtitle: string }> = {
+    notes: { title: "Generating your notes…", subtitle: "AI is summarising the key points. This usually takes 30–60 seconds." },
+    flashcards: { title: "Building flashcards…", subtitle: "Crafting question/answer cards from your notes." },
+    quiz: { title: "Creating your quiz…", subtitle: "Designing multiple-choice questions tailored to your content." },
+    podcast: { title: "Recording your podcast…", subtitle: "Two AI hosts are recording — this can take 3–5 minutes. Don't close this page." },
+  };
+  const genInfo = generating ? generationTitles[generating] : null;
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Processing Banner */}
-      {doc.status === "processing" && (
-        <div className="bg-primary/10 border-b border-primary/30 px-4 py-3">
-          <div className="max-w-6xl mx-auto flex items-center gap-3">
-            <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-primary">Processing your document...</p>
-              <p className="text-xs text-muted-foreground">We're extracting text from your file. This usually takes 10-30 seconds.</p>
-            </div>
-          </div>
-          <Progress value={undefined} className="h-1.5 mt-2 max-w-6xl mx-auto animate-pulse" />
-        </div>
-      )}
+      {/* Big half-screen processing overlay */}
+      <ProcessingOverlay
+        open={doc.status === "processing"}
+        title="Processing your document…"
+        subtitle="We're extracting and analysing your content. This usually takes 10–30 seconds."
+      />
+      <ProcessingOverlay
+        open={!!genInfo}
+        title={genInfo?.title}
+        subtitle={genInfo?.subtitle}
+      />
 
       <header className="border-b border-border/50 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">

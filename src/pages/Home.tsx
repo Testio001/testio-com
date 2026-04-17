@@ -26,44 +26,60 @@ const features = [
 
 const plans = [
   {
-    name: "Free Forever",
+    name: "Free",
     price: "$0",
     period: "",
     features: [
-      "3 uploads/month",
+      "3 uploads / month",
       "AI Summaries & Flashcards",
       "AI Quizzes (20 questions)",
-      "4-minute Study Podcasts",
-      "AI Tutor (5 questions/doc)",
-      "Earn bonus uploads via referrals",
+      "1 Study Podcast (4 min)",
+      "AI Tutor (5 q's per doc)",
+      "Bonus uploads via referrals",
     ],
     highlight: false,
     cta: "Start Free",
   },
   {
-    name: "Testio Basic",
+    name: "Basic",
     price: "$4.99",
-    period: "/month",
+    period: "/mo",
     features: [
-      "12 uploads/month",
-      "Summary + Quiz + Flashcards",
-      "AI Tutor (21 questions/doc)",
-      "Podcast (Max 7 mins, 5/month)",
+      "15 uploads / month",
+      "AI Summaries & Flashcards",
+      "AI Quizzes (20 questions)",
+      "3 Podcasts / month (7 min)",
+      "AI Tutor (21 q's per doc)",
     ],
     highlight: false,
     cta: "Subscribe",
   },
   {
-    name: "Testio Pro Unlimited",
+    name: "Pro",
     price: "$9.99",
-    period: "/month",
+    period: "/mo",
     features: [
-      "Unlimited uploads*",
-      "12 Podcasts/month (Max 12 mins)",
-      "AI Tutor (41 questions/doc)",
+      "40 uploads / month",
+      "Unlimited AI Quizzes",
+      "6 Podcasts / month (12 min)",
+      "AI Tutor (41 q's per doc)",
       "Priority processing",
     ],
     highlight: true,
+    cta: "Subscribe",
+  },
+  {
+    name: "Scholar",
+    price: "$14.99",
+    period: "/mo",
+    features: [
+      "Unlimited uploads*",
+      "Unlimited AI Quizzes",
+      "12 Podcasts / month (15 min)",
+      "Unlimited AI Tutor",
+      "Early access to new features",
+    ],
+    highlight: false,
     cta: "Subscribe",
   },
 ];
@@ -158,7 +174,7 @@ const Home = () => {
           <p className="text-center text-gray-500 mb-14 max-w-md mx-auto">
             Choose the plan that fits your study needs. Cancel anytime.
           </p>
-          <div className="grid sm:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {plans.map((plan) => (
               <div
                 key={plan.name}

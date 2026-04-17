@@ -7,8 +7,9 @@ const corsHeaders = {
 };
 
 const FREE_UPLOAD_LIMIT = 3;
-const BASIC_UPLOAD_LIMIT = 12;
-const PRO_UPLOAD_LIMIT = 100;
+const BASIC_UPLOAD_LIMIT = 15;
+const PRO_UPLOAD_LIMIT = 40;
+const SCHOLAR_UPLOAD_LIMIT = 80; // Hard cap (UI says unlimited, backend enforces fair-use)
 const MAX_REFERRALS_PER_MONTH = 5;
 const STREAK_BONUS_INTERVAL = 10;
 
@@ -48,7 +49,7 @@ async function getActivePlan(supabaseAdmin: any, userId: string) {
     : null;
 
   const isPaidPlanActive =
-    (data.subscription_plan === "basic" || data.subscription_plan === "pro") &&
+    ["basic", "pro", "scholar"].includes(data.subscription_plan) &&
     (!!expiresAt && expiresAt.getTime() > Date.now());
 
   return isPaidPlanActive ? data.subscription_plan : "free";
@@ -60,6 +61,8 @@ function getUploadLimitForPlan(plan: string) {
       return BASIC_UPLOAD_LIMIT;
     case "pro":
       return PRO_UPLOAD_LIMIT;
+    case "scholar":
+      return SCHOLAR_UPLOAD_LIMIT;
     default:
       return FREE_UPLOAD_LIMIT;
   }

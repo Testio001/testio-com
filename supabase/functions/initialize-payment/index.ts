@@ -8,6 +8,7 @@ const corsHeaders = {
 const PLAN_VARIANTS: Record<string, { variant_id: number; product_id: number }> = {
   basic: { variant_id: 1504464, product_id: 957604 },
   pro: { variant_id: 1504491, product_id: 957624 },
+  scholar: { variant_id: 1537626, product_id: 979773 },
   podcast_addon: { variant_id: 1519137, product_id: 967498 },
 };
 
@@ -35,7 +36,7 @@ Deno.serve(async (req) => {
 
     const { plan } = await req.json();
     if (!plan || !PLAN_VARIANTS[plan]) {
-      return new Response(JSON.stringify({ error: "Invalid plan. Must be 'basic', 'pro', or 'podcast_addon'." }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Invalid plan. Must be 'basic', 'pro', 'scholar', or 'podcast_addon'." }), { status: 400, headers: corsHeaders });
     }
 
     const lsKey = Deno.env.get("LEMONSQUEEZY_API_KEY");

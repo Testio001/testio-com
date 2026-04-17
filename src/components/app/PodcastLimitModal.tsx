@@ -6,13 +6,14 @@ import { Mic, Zap, Crown, Loader2, X, Sparkles } from "lucide-react";
 interface PodcastLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  subscriptionPlan: string;
+  subscriptionPlan: string; // free | basic | pro | scholar
 }
 
 const PodcastLimitModal = ({ isOpen, onClose, subscriptionPlan }: PodcastLimitModalProps) => {
   const navigate = useNavigate();
   const [loadingAddon, setLoadingAddon] = useState(false);
-  const isPro = subscriptionPlan === "pro";
+  const isFree = subscriptionPlan === "free";
+  const isPaid = ["basic", "pro", "scholar"].includes(subscriptionPlan);
 
   const handleBuyAddon = async () => {
     setLoadingAddon(true);
@@ -21,9 +22,7 @@ const PodcastLimitModal = ({ isOpen, onClose, subscriptionPlan }: PodcastLimitMo
         body: { plan: "podcast_addon" },
       });
       if (error) throw error;
-      if (data?.checkout_url) {
-        window.location.href = data.checkout_url;
-      }
+      if (data?.checkout_url) window.location.href = data.checkout_url;
     } catch {
       setLoadingAddon(false);
     }
@@ -44,55 +43,66 @@ const PodcastLimitModal = ({ isOpen, onClose, subscriptionPlan }: PodcastLimitMo
           </div>
           <h2 className="text-xl font-bold text-foreground mb-2">Podcast Limit Reached</h2>
           <p className="text-muted-foreground text-sm">
-            You've used all your podcast credits. Get more to keep learning on the go!
+            {isFree
+              ? "Free plan only includes 1 podcast. Upgrade to keep listening!"
+              : "You've used all your podcast credits for this month. Top up to keep learning on the go!"}
           </p>
         </div>
 
         <div className="space-y-3">
-          {/* Always show the addon option */}
-          <button
-            onClick={handleBuyAddon}
-            disabled={loadingAddon}
-            className={`w-full rounded-xl p-4 border transition-all text-left ${
-              isPro
-                ? "bg-primary/5 border-primary/30 hover:border-primary/50"
-                : "bg-secondary border-border hover:border-primary/30"
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
-                {loadingAddon ? <Loader2 className="w-5 h-5 text-primary animate-spin" /> : <Sparkles className="w-5 h-5 text-primary" />}
-              </div>
-              <div>
-                <p className="font-semibold text-foreground text-sm">
-                  {isPro ? "The Offer" : "The Quick Fix"}
-                </p>
-                <p className="text-muted-foreground text-xs mt-0.5">
-                  Add 5 more Podcasts for <span className="font-bold text-foreground">$2.99</span>
-                </p>
-                <p className="text-muted-foreground text-[10px] mt-1">One-time purchase · Instant access</p>
-              </div>
-            </div>
-          </button>
+          {/* Free users: only show upgrade options (no top-up) */}
+          {isFree && (
+            <>
+              <button
+                onClick={() => navigate("/pricing")}
+                className="w-full rounded-xl p-4 border bg-secondary border-border hover:border-primary/40 transition-all text-left"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                    <Crown className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground text-sm">Upgrade to Basic — $4.99/mo</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">3 podcasts/month (7 min) + 15 uploads</p>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => navigate("/pricing")}
+                className="w-full rounded-xl p-4 border bg-primary/5 border-primary/30 hover:border-primary/50 transition-all text-left"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                    <Zap className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground text-sm">Upgrade to Pro — $9.99/mo</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">6 podcasts/month (12 min) + 40 uploads</p>
+                  </div>
+                </div>
+              </button>
+            </>
+          )}
 
-          {/* Show upgrade option only for non-Pro users */}
-          {!isPro && (
+          {/* Paid users only: top-up addon */}
+          {isPaid && (
             <button
-              onClick={() => navigate("/pricing")}
+              onClick={handleBuyAddon}
+              disabled={loadingAddon}
               className="w-full rounded-xl p-4 border bg-primary/5 border-primary/30 hover:border-primary/50 transition-all text-left"
             >
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <Crown className="w-5 h-5 text-primary" />
+                  {loadingAddon ? <Loader2 className="w-5 h-5 text-primary animate-spin" /> : <Sparkles className="w-5 h-5 text-primary" />}
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground text-sm flex items-center gap-1.5">
-                    <Zap className="w-3.5 h-3.5 text-primary" /> The Smart Move
-                  </p>
+                  <p className="font-semibold text-foreground text-sm">Get More Podcasts</p>
                   <p className="text-muted-foreground text-xs mt-0.5">
-                    Upgrade to Pro for <span className="font-bold text-foreground">$9.99/mo</span>
+                    Add <span className="font-bold text-foreground">5 podcasts</span> for <span className="font-bold text-foreground">$4.99</span>
                   </p>
-                  <p className="text-muted-foreground text-[10px] mt-1">12 Podcasts + unlimited uploads & AI Tutor</p>
+                  <p className="text-muted-foreground text-[10px] mt-1 italic">
+                    One-time top-up · Adds 5 podcast credits only (no other features)
+                  </p>
                 </div>
               </div>
             </button>
