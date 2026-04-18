@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Play, Pause, SkipBack, SkipForward, Loader2, Mic, Download, AlertCircle } from "lucide-react";
+import { Loader2, Mic, Download, AlertCircle, Play, Pause, SkipBack, SkipForward } from "lucide-react";
 
 interface PodcastSegment {
   speaker: string;
@@ -16,23 +16,6 @@ interface Podcast {
   created_at: string;
 }
 
-/**
- * Isolated audio element. Renders ONCE and never reacts to parent state changes.
- * The parent imperatively sets src via the ref provided in onReady.
- * This prevents React re-renders from resetting playback on seek/play/pause.
- */
-const StableAudio = memo(
-  ({ onReady }: { onReady: (el: HTMLAudioElement) => void }) => {
-    const ref = useRef<HTMLAudioElement | null>(null);
-    useEffect(() => {
-      if (ref.current) onReady(ref.current);
-    }, [onReady]);
-    return <audio ref={ref} preload="metadata" controlsList="nodownload" crossOrigin="anonymous" />;
-  },
-  () => true, // never re-render — fully imperative
-);
-StableAudio.displayName = "StableAudio";
-
 const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   const [podcast, setPodcast] = useState<Podcast | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,23 +23,12 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [script, setScript] = useState<PodcastSegment[]>([]);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [script, setScript] = useState<PodcastSegment[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const animFrameRef = useRef<number | null>(null);
-  const currentSrcRef = useRef<string | null>(null);
-  // FIX: flag to pause rAF updates while the user is seeking
-  const isSeekingRef = useRef(false);
-  // FIX: tracks the exact time the user requested so we can verify the seek landed
-  const seekTargetRef = useRef<number | null>(null);
-  const seekSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchPodcast();
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      if (seekSettleTimerRef.current) clearTimeout(seekSettleTimerRef.current);
-    };
   }, [documentId]);
 
   const fetchPodcast = async () => {
@@ -78,99 +50,6 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
     }
     setLoading(false);
   };
-
-  const startTimeTracking = useCallback(() => {
-    const update = () => {
-      // FIX: skip rAF update while seeking to prevent overwriting the seek position
-      if (audioRef.current && !audioRef.current.paused && !isSeekingRef.current) {
-        setCurrentTime(audioRef.current.currentTime);
-        animFrameRef.current = requestAnimationFrame(update);
-      }
-    };
-    animFrameRef.current = requestAnimationFrame(update);
-  }, []);
-
-  const stopTimeTracking = useCallback(() => {
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
-  }, []);
-
-  // Imperatively wire up the audio element ONCE — no re-renders touch it
-  const handleAudioReady = useCallback(
-    (el: HTMLAudioElement) => {
-      audioRef.current = el;
-
-      el.addEventListener("loadedmetadata", () => {
-        if (isFinite(el.duration)) setDuration(el.duration);
-      });
-      el.addEventListener("durationchange", () => {
-        if (isFinite(el.duration)) setDuration(el.duration);
-      });
-      el.addEventListener("play", () => {
-        setPlaying(true);
-        startTimeTracking();
-      });
-      el.addEventListener("pause", () => {
-        setPlaying(false);
-        stopTimeTracking();
-      });
-      el.addEventListener("ended", () => {
-        setPlaying(false);
-        stopTimeTracking();
-      });
-      // FIX: when browser fires 'seeking', lock out rAF immediately
-      el.addEventListener("seeking", () => {
-        isSeekingRef.current = true;
-        if (seekSettleTimerRef.current) clearTimeout(seekSettleTimerRef.current);
-      });
-
-      // FIX: 'seeked' fires when the browser *starts* seeking, not when audio is ready.
-      // Poll readyState until HAVE_FUTURE_DATA (3) so currentTime is actually accurate,
-      // especially for large forward seeks that require buffering.
-      el.addEventListener("seeked", () => {
-        if (seekSettleTimerRef.current) clearTimeout(seekSettleTimerRef.current);
-
-        const settle = () => {
-          // readyState 3 = HAVE_FUTURE_DATA — enough data to play from this position
-          if (el.readyState >= 3 || el.paused) {
-            isSeekingRef.current = false;
-            seekTargetRef.current = null;
-            setCurrentTime(el.currentTime);
-            if (!el.paused) startTimeTracking();
-          } else {
-            // Not buffered yet — check again in 50ms
-            seekSettleTimerRef.current = setTimeout(settle, 50);
-          }
-        };
-        settle();
-      });
-      el.addEventListener("timeupdate", () => {
-        // Light backup; main updates come from rAF loop
-        // FIX: also skip timeupdate while seeking
-        if (el.paused && !isSeekingRef.current) setCurrentTime(el.currentTime);
-      });
-
-      // Set src ONCE if podcast already loaded
-      if (podcast?.audio_url && currentSrcRef.current !== podcast.audio_url) {
-        currentSrcRef.current = podcast.audio_url;
-        el.src = podcast.audio_url;
-        el.load();
-      }
-    },
-    [], // intentional — we don't re-attach listeners
-  );
-
-  // When podcast becomes available AFTER audio element exists, set src once
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el || !podcast?.audio_url) return;
-    if (currentSrcRef.current === podcast.audio_url) return;
-    currentSrcRef.current = podcast.audio_url;
-    el.src = podcast.audio_url;
-    el.load();
-  }, [podcast?.audio_url]);
 
   const handleDownload = async () => {
     if (!podcast?.audio_url) return;
@@ -195,50 +74,45 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
     }
   };
 
-  const togglePlay = useCallback(() => {
+  const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
-      audio.play().catch((e) => console.error("Play failed:", e));
+      audio.play().catch(console.error);
     } else {
       audio.pause();
     }
-  }, []);
+  };
 
-  const skip = useCallback((seconds: number) => {
+  const skip = (seconds: number) => {
     const audio = audioRef.current;
     if (!audio || !isFinite(audio.duration)) return;
-    const newTime = Math.min(Math.max(0, audio.currentTime + seconds), audio.duration);
-    // FIX: use seeking flag for skip buttons too
-    isSeekingRef.current = true;
-    seekTargetRef.current = newTime;
-    audio.currentTime = newTime;
-    setCurrentTime(newTime);
-  }, []);
+    audio.currentTime = Math.min(Math.max(0, audio.currentTime + seconds), audio.duration);
+  };
 
-  // FIX: set seeking flag on pointer down, BEFORE onChange fires
-  const handleSeekStart = useCallback(() => {
-    isSeekingRef.current = true;
-    stopTimeTracking();
-  }, [stopTimeTracking]);
-
-  const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value);
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const audio = audioRef.current;
+    const time = parseFloat(e.target.value);
     if (audio && isFinite(time)) {
-      // isSeekingRef is already true from onPointerDown
-      seekTargetRef.current = time;
       audio.currentTime = time;
-      setCurrentTime(time);
     }
-  }, []);
+  };
+
+  const cyclePlaybackRate = () => {
+    const rates = [0.5, 0.75, 1, 1.25, 1.5, 2];
+    const next = rates[(rates.indexOf(playbackRate) + 1) % rates.length];
+    setPlaybackRate(next);
+    if (audioRef.current) audioRef.current.playbackRate = next;
+  };
 
   const formatTime = (s: number) => {
-    if (!isFinite(s)) return "0:00";
+    if (!isFinite(s) || s < 0) return "0:00";
     const min = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
     return `${min}:${sec.toString().padStart(2, "0")}`;
   };
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   if (loading) {
     return (
@@ -262,11 +136,25 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
 
   return (
     <div className="space-y-6">
-      {/* Audio Player */}
-      <div className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 rounded-2xl p-6">
-        {/* Stable, isolated audio element — never re-renders */}
-        <StableAudio onReady={handleAudioReady} />
+      {/* Native audio element — let the browser handle all seeking/buffering */}
+      <audio
+        key={podcast.audio_url}
+        ref={audioRef}
+        src={podcast.audio_url}
+        preload="auto"
+        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onDurationChange={(e) => {
+          if (isFinite(e.currentTarget.duration)) setDuration(e.currentTarget.duration);
+        }}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+      />
 
+      {/* Custom UI */}
+      <div className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 rounded-2xl p-6">
+        {/* Header */}
         <div className="flex items-center gap-4 mb-4">
           <div className="w-14 h-14 rounded-xl bg-primary/30 flex items-center justify-center">
             <Mic className="w-7 h-7 text-primary" />
@@ -295,8 +183,10 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
             step={0.1}
             value={currentTime}
             onChange={handleSeek}
-            onPointerDown={handleSeekStart} // FIX: lock out rAF before drag begins
-            className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
+            style={{
+              background: `linear-gradient(to right, var(--primary) ${progress}%, hsl(var(--border)) ${progress}%)`,
+            }}
           />
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span>{formatTime(currentTime)}</span>
@@ -307,13 +197,7 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
         {/* Controls */}
         <div className="flex items-center justify-center gap-6">
           <button
-            onClick={() => {
-              const rates = [0.5, 0.75, 1, 1.25, 1.5, 2];
-              const idx = rates.indexOf(playbackRate);
-              const next = rates[(idx + 1) % rates.length];
-              setPlaybackRate(next);
-              if (audioRef.current) audioRef.current.playbackRate = next;
-            }}
+            onClick={cyclePlaybackRate}
             className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors w-10 text-center"
           >
             {playbackRate}x
