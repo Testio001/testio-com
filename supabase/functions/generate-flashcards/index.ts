@@ -10,17 +10,13 @@ const corsHeaders = {
 function extractSummary(noteContent: string): string {
   const overviewMatch = noteContent.match(/## Brief Overview[\s\S]*?(?=\n## |$)/);
   const keyPointsMatch = noteContent.match(/## Key Points[\s\S]*?(?=\n## |$)/);
-
   let summary = "";
   if (overviewMatch) summary += overviewMatch[0].trim() + "\n\n";
   if (keyPointsMatch) summary += keyPointsMatch[0].trim() + "\n\n";
-
-  // Also grab section headings and first paragraphs for richer context
   const sectionMatches = noteContent.match(/## .+[\s\S]*?(?=\n## |$)/g);
   if (sectionMatches && !summary) {
     summary = sectionMatches.map(s => s.substring(0, 500)).join("\n\n");
   }
-
   return summary || noteContent.substring(0, 4000);
 }
 
@@ -50,8 +46,11 @@ serve(async (req) => {
       existingFronts = existing?.map((c: any) => c.front) || [];
     }
 
+    // Pass ALL existing fronts to the AI (truncated to ~3000 chars), not just last 30
+    const existingJoined = existingFronts.join("\n");
+    const truncatedExisting = existingJoined.length > 3000 ? existingJoined.substring(existingJoined.length - 3000) : existingJoined;
     const avoidPrompt = existingFronts.length > 0
-      ? `\n\nIMPORTANT: Do NOT repeat these existing flashcard questions:\n${existingFronts.slice(-30).join("\n")}`
+      ? `\n\nCRITICAL: You MUST create flashcards covering DIFFERENT subtopics, terms, or details than the ones below. Do NOT repeat or rephrase any of these — pick fresh angles, deeper concepts, or new sections.\n\nALREADY CREATED (do NOT repeat or rephrase):\n${truncatedExisting}`
       : "";
 
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -59,8 +58,9 @@ serve(async (req) => {
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "gpt-4o-mini",
+        temperature: 0.85,
         messages: [
-          { role: "system", content: "Generate flashcards from the provided study summary. Return ONLY valid JSON." },
+          { role: "system", content: "Generate flashcards from the provided study summary. Cover DIFFERENT angles each time. Return ONLY valid JSON." },
           { role: "user", content: `Create ${cardCount} NEW unique flashcards from this content summary. Return JSON array with objects having "front" (question) and "back" (answer) fields.${avoidPrompt}\n\nContent Summary:\n${sourceContent}` }
         ],
         tools: [{
@@ -89,7 +89,11 @@ serve(async (req) => {
 
     const aiData = await aiResponse.json();
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    const cards = JSON.parse(toolCall?.function?.arguments || "{}").cards || [];
+    let cards = JSON.parse(toolCall?.function?.arguments || "{}").cards || [];
+
+    // Client-side dedupe: drop any card whose front matches an existing one
+    const existingLower = new Set(existingFronts.map((f: string) => f.toLowerCase().trim()));
+    cards = cards.filter((c: any) => !existingLower.has(c.front.toLowerCase().trim()));
 
     const { data: set } = await supabase.from("flashcard_sets").insert({
       user_id: doc.user_id, document_id: documentId, title: `Flashcards: ${doc.title}`,
