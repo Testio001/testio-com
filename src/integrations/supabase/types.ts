@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_history: {
+        Row: {
+          deleted_at: string
+          email_hash: string
+          email_lower: string
+          id: string
+          last_plan: string | null
+        }
+        Insert: {
+          deleted_at?: string
+          email_hash: string
+          email_lower: string
+          id?: string
+          last_plan?: string | null
+        }
+        Update: {
+          deleted_at?: string
+          email_hash?: string
+          email_lower?: string
+          id?: string
+          last_plan?: string | null
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -370,6 +394,7 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          previously_deleted: boolean
           subscription_expires_at: string | null
           subscription_plan: string
           user_id: string
@@ -379,6 +404,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          previously_deleted?: boolean
           subscription_expires_at?: string | null
           subscription_plan?: string
           user_id: string
@@ -388,6 +414,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          previously_deleted?: boolean
           subscription_expires_at?: string | null
           subscription_plan?: string
           user_id?: string
@@ -594,6 +621,7 @@ export type Database = {
           created_at: string
           current_streak: number
           id: string
+          is_seeded_user: boolean
           last_upload_date: string | null
           longest_streak: number
           referral_code: string
@@ -610,6 +638,7 @@ export type Database = {
           created_at?: string
           current_streak?: number
           id?: string
+          is_seeded_user?: boolean
           last_upload_date?: string | null
           longest_streak?: number
           referral_code: string
@@ -626,6 +655,7 @@ export type Database = {
           created_at?: string
           current_streak?: number
           id?: string
+          is_seeded_user?: boolean
           last_upload_date?: string | null
           longest_streak?: number
           referral_code?: string
@@ -643,6 +673,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bump_seeded_streaks: { Args: never; Returns: undefined }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
