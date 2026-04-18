@@ -540,13 +540,21 @@ export async function extractDocumentContent(params: ExtractParams): Promise<Ext
   if (doc.source_type === "image" || ["jpg", "jpeg", "png", "webp", "gif"].includes(fileExt || "")) {
     const arrayBuffer = await fileData.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
-    const mimeType = fileExt === "jpg" || fileExt === "jpeg" ? "image/jpeg" : fileExt === "png" ? "image/png" : fileExt === "webp" ? "image/webp" : "image/png";
+    const mimeType = fileExt === "jpg" || fileExt === "jpeg" ? "image/jpeg" : fileExt === "png" ? "image/png" : fileExt === "webp" ? "image/webp" : fileExt === "gif" ? "image/gif" : "image/png";
 
     const imageText = await extractFromImage(uint8Array, mimeType);
-    if (imageText && isQualityContent(imageText)) {
+
+    // Explicit failure sentinel
+    if (imageText.trim() === "EXTRACTION_FAILED") {
+      return { content: "", method: "gemini_vision", success: false, error: "We couldn't find any readable text in this image. Please upload a clearer image with visible text." };
+    }
+
+    // Allow shorter content for images (handwritten notes, single labels, etc.)
+    if (imageText && imageText.trim().length >= 15 && !isCorruptedContent(imageText)) {
       return { content: sanitizeForDb(imageText), method: "gemini_vision", success: true };
     }
-    return { content: "", method: "gemini_vision", success: false, error: "Could not extract readable text from this image." };
+    console.error(`Image extraction returned insufficient content: ${imageText.length} chars`);
+    return { content: "", method: "gemini_vision", success: false, error: "We couldn't extract readable text from this image. Try a clearer photo with better lighting." };
   }
 
   // 5. Handle DOCX files
