@@ -62,8 +62,9 @@ serve(async (req) => {
 
   try {
     const { documentId, maxExchanges } = await req.json();
-    // Cap at 30 exchanges (~15 min) for Scholar plan
-    const exchangeLimit = Math.min(Math.max(maxExchanges || 24, 4), 30);
+    // maxExchanges is the CAP per plan (not a target). We compute the actual
+    // target based on document length so small docs get short podcasts.
+    const exchangeCap = Math.min(Math.max(maxExchanges || 24, 4), 30);
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
@@ -78,7 +79,12 @@ serve(async (req) => {
 
     if (!sourceContent.trim()) throw new Error("No content available to generate podcast. Generate notes first.");
 
-    const needsUpgradeCTA = exchangeLimit < 24; // Free + Basic only
+    // Length-based target: ~600 chars of source per exchange, min 4, capped by plan
+    const naturalTarget = Math.max(4, Math.floor(sourceContent.length / 600));
+    const exchangeLimit = Math.min(exchangeCap, naturalTarget);
+    console.log(`Podcast: source=${sourceContent.length} chars, naturalTarget=${naturalTarget}, cap=${exchangeCap}, using=${exchangeLimit}`);
+
+    const needsUpgradeCTA = exchangeCap < 24; // Free + Basic only
     const conversation: Array<{ speaker: string; text: string }> = [];
     const audioChunks: Uint8Array[] = [];
     const materialContext = sourceContent.substring(0, 8000);
@@ -129,13 +135,19 @@ serve(async (req) => {
     let offset = 0;
     for (const chunk of audioChunks) { combinedAudio.set(chunk, offset); offset += chunk.length; }
 
+    // Upload to PUBLIC podcasts bucket so the audio URL is stable and supports byte-range
+    // requests (required for native browser seeking without restart).
     const fileName = `${doc.user_id}/podcast_${documentId}_${Date.now()}.mp3`;
-    const { error: uploadError } = await supabase.storage.from("documents").upload(fileName, combinedAudio.buffer, { contentType: "audio/mpeg", upsert: true });
+    const { error: uploadError } = await supabase.storage.from("podcasts").upload(fileName, combinedAudio.buffer, {
+      contentType: "audio/mpeg",
+      upsert: true,
+      cacheControl: "3600",
+    });
     if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-    const { data: signedUrlData } = await supabase.storage.from("documents").createSignedUrl(fileName, 60 * 60 * 24 * 7);
-    const { data: urlData } = supabase.storage.from("documents").getPublicUrl(fileName);
-    const audioUrl = signedUrlData?.signedUrl || urlData?.publicUrl || "";
+    const { data: urlData } = supabase.storage.from("podcasts").getPublicUrl(fileName);
+    const audioUrl = urlData?.publicUrl || "";
+    if (!audioUrl) throw new Error("Failed to get public URL for podcast");
 
     await supabase.from("podcasts").insert({
       document_id: documentId, user_id: doc.user_id, title: `Podcast: ${doc.title}`,

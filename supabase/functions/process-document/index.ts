@@ -61,6 +61,24 @@ serve(async (req) => {
 
     console.log("Document content saved successfully");
 
+    // 🔥 Auto-generate notes (summary) immediately so quizzes/flashcards/podcast/chat
+    // can use the summary instead of the full document — saves AI cost on every
+    // future feature click. Fire-and-forget but await briefly so the dashboard
+    // sees the notes when it refreshes.
+    try {
+      console.log("Auto-invoking generate-notes for document", documentId);
+      const { error: notesErr } = await supabase.functions.invoke("generate-notes", {
+        body: { documentId },
+      });
+      if (notesErr) {
+        console.warn("Auto-generate-notes failed (non-fatal):", notesErr);
+      } else {
+        console.log("Auto-generate-notes succeeded");
+      }
+    } catch (e) {
+      console.warn("Auto-generate-notes threw (non-fatal):", e);
+    }
+
     return new Response(JSON.stringify({ success: true, contentLength: result.content.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

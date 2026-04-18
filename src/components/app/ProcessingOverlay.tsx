@@ -17,6 +17,9 @@ const TIPS = [
   "⚡ Pro users get priority processing and longer podcasts (12 min).",
   "📚 Upload clear, text-based PDFs for the best summaries.",
   "🏆 Climb the leaderboard by maintaining your study streak.",
+  "☕ Did you know you can become a top student for less than the price of a weekly coffee?",
+  "🚀 Scholar plan unlocks unlimited AI Tutor — never get stuck again.",
+  "🎯 Top students study 30 min daily with AI flashcards. Join them on Pro.",
 ];
 
 const ProcessingOverlay = ({ open, title = "Processing your document...", subtitle = "We're extracting and analysing your content. This usually takes 10–30 seconds." }: ProcessingOverlayProps) => {

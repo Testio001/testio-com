@@ -387,6 +387,7 @@ async function extractFromImage(uint8Array: Uint8Array, mimeType: string): Promi
     return "";
   }
 
+  console.log(`Image OCR via Gemini: ${uint8Array.length} bytes, mime=${mimeType}`);
   let binary = "";
   const chunkSize = 8192;
   for (let i = 0; i < uint8Array.length; i += chunkSize) {
@@ -394,29 +395,49 @@ async function extractFromImage(uint8Array: Uint8Array, mimeType: string): Promi
   }
   const base64 = btoa(binary);
 
-  const visionRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash-lite",
-      messages: [{
-        role: "user",
-        content: [
-          { type: "text", text: "Extract ALL text content from this image. Include every word, number, heading, label, and piece of text you can see. Preserve the structure and formatting as much as possible." },
-          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
-        ],
-      }],
-      max_tokens: 4096,
-    }),
-  });
+  // Retry up to 2 times on transient failures
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const visionRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [{
+            role: "user",
+            content: [
+              { type: "text", text: "Extract ALL text content from this image. Include every word, number, heading, label, equation, table cell, and piece of text you can see. Preserve the structure and reading order. Do NOT add commentary, do NOT describe the image visually — just output the raw text content. If the image is completely blank or has no text, respond with exactly: EXTRACTION_FAILED" },
+              { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
+            ],
+          }],
+          max_tokens: 8000,
+        }),
+      });
 
-  if (!visionRes.ok) {
-    console.error("Gemini Vision API error:", await visionRes.text());
-    return "";
+      if (!visionRes.ok) {
+        const errText = await visionRes.text();
+        console.error(`Gemini Vision API error (attempt ${attempt}): ${visionRes.status} - ${errText}`);
+        if (attempt === 0 && (visionRes.status === 429 || visionRes.status >= 500)) {
+          await new Promise(r => setTimeout(r, 1500));
+          continue;
+        }
+        return "";
+      }
+
+      const visionData = await visionRes.json();
+      const content = visionData.choices?.[0]?.message?.content || "";
+      console.log(`Gemini Vision returned ${content.length} chars`);
+      return content;
+    } catch (e) {
+      console.error(`Gemini Vision threw (attempt ${attempt}):`, e);
+      if (attempt === 0) {
+        await new Promise(r => setTimeout(r, 1500));
+        continue;
+      }
+      return "";
+    }
   }
-
-  const visionData = await visionRes.json();
-  return visionData.choices?.[0]?.message?.content || "";
+  return "";
 }
 
 /**
@@ -519,13 +540,21 @@ export async function extractDocumentContent(params: ExtractParams): Promise<Ext
   if (doc.source_type === "image" || ["jpg", "jpeg", "png", "webp", "gif"].includes(fileExt || "")) {
     const arrayBuffer = await fileData.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
-    const mimeType = fileExt === "jpg" || fileExt === "jpeg" ? "image/jpeg" : fileExt === "png" ? "image/png" : fileExt === "webp" ? "image/webp" : "image/png";
+    const mimeType = fileExt === "jpg" || fileExt === "jpeg" ? "image/jpeg" : fileExt === "png" ? "image/png" : fileExt === "webp" ? "image/webp" : fileExt === "gif" ? "image/gif" : "image/png";
 
     const imageText = await extractFromImage(uint8Array, mimeType);
-    if (imageText && isQualityContent(imageText)) {
+
+    // Explicit failure sentinel
+    if (imageText.trim() === "EXTRACTION_FAILED") {
+      return { content: "", method: "gemini_vision", success: false, error: "We couldn't find any readable text in this image. Please upload a clearer image with visible text." };
+    }
+
+    // Allow shorter content for images (handwritten notes, single labels, etc.)
+    if (imageText && imageText.trim().length >= 15 && !isCorruptedContent(imageText)) {
       return { content: sanitizeForDb(imageText), method: "gemini_vision", success: true };
     }
-    return { content: "", method: "gemini_vision", success: false, error: "Could not extract readable text from this image." };
+    console.error(`Image extraction returned insufficient content: ${imageText.length} chars`);
+    return { content: "", method: "gemini_vision", success: false, error: "We couldn't extract readable text from this image. Try a clearer photo with better lighting." };
   }
 
   // 5. Handle DOCX files

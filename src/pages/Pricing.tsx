@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, Crown, ArrowLeft, Loader2, Zap, Sparkles, GraduationCap } from "lucide-react";
 import { motion } from "framer-motion";
 import testioLogo from "@/assets/testio-logo.png";
+import ElitePricingBanner from "@/components/app/ElitePricingBanner";
 
 type PlanId = "free" | "basic" | "pro" | "scholar";
 
@@ -30,10 +31,10 @@ const plans: Array<{
     period: "Forever free",
     blurb: "Less than nothing",
     features: [
-      "📄 3 uploads / month",
+      "📄 3 uploads (lifetime)",
       "📝 AI Summaries & Flashcards",
       "🧠 AI Quizzes (20 questions)",
-      "🎙️ 1 Study Podcast (4 min)",
+      "🎙️ 1 Study Podcast (4 min, lifetime)",
       "🤖 AI Tutor (5 q's per doc)",
       "🎁 Bonus uploads via referrals",
     ],
@@ -190,6 +191,7 @@ const Pricing = () => {
       </header>
 
       <div className="max-w-6xl mx-auto px-6 py-10">
+        <ElitePricingBanner />
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-xs font-semibold mb-4">
             <Sparkles className="w-3.5 h-3.5" /> Choose Your Plan
