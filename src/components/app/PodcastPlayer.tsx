@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Mic, Download, AlertCircle, Play, Pause, SkipBack, SkipForward } from "lucide-react";
+import { Loader2, Mic, Download, Play, Pause, SkipBack, SkipForward } from "lucide-react";
 
 interface PodcastSegment {
   speaker: string;
@@ -90,14 +90,6 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
     audio.currentTime = Math.min(Math.max(0, audio.currentTime + seconds), audio.duration);
   };
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const audio = audioRef.current;
-    const time = parseFloat(e.target.value);
-    if (audio && isFinite(time)) {
-      audio.currentTime = time;
-    }
-  };
-
   const cyclePlaybackRate = () => {
     const rates = [0.5, 0.75, 1, 1.25, 1.5, 2];
     const next = rates[(rates.indexOf(playbackRate) + 1) % rates.length];
@@ -136,7 +128,6 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
 
   return (
     <div className="space-y-6">
-      {/* Native audio element — let the browser handle all seeking/buffering */}
       <audio
         key={podcast.audio_url}
         ref={audioRef}
@@ -152,7 +143,6 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
         onEnded={() => setPlaying(false)}
       />
 
-      {/* Custom UI */}
       <div className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 rounded-2xl p-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-4">
@@ -163,31 +153,16 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
             <h3 className="text-foreground font-bold text-sm truncate">{podcast.title}</h3>
             <p className="text-muted-foreground text-xs">Alex & Sam · AI Generated</p>
           </div>
-          <button
-            onClick={handleDownload}
-            disabled={downloading}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-xs font-semibold transition-colors disabled:opacity-50"
-            title="Download MP3"
-          >
-            {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            <span className="hidden sm:inline">MP3</span>
-          </button>
         </div>
 
-        {/* Progress bar */}
+        {/* Visual-only progress bar — no seek interaction */}
         <div className="mb-4">
-          <input
-            type="range"
-            min={0}
-            max={duration || 0}
-            step={0.1}
-            value={currentTime}
-            onChange={handleSeek}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
-            style={{
-              background: `linear-gradient(to right, var(--primary) ${progress}%, hsl(var(--border)) ${progress}%)`,
-            }}
-          />
+          <div className="w-full h-1.5 rounded-full bg-border overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
@@ -216,15 +191,19 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
           </button>
         </div>
 
-        {/* Playback help */}
-        <div className="mt-4 pt-4 border-t border-border/50 flex items-start gap-2 text-xs text-muted-foreground">
-          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-          <span>
-            Issues with playback?{" "}
-            <button onClick={handleDownload} className="text-primary hover:underline font-medium">
-              Download the audio here.
-            </button>
-          </span>
+        {/* Prominent download CTA */}
+        <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {downloading ? "Downloading..." : "Download MP3"}
+          </button>
+          <p className="text-xs text-muted-foreground text-center">
+            Download to listen in your podcast app with full seeking support
+          </p>
         </div>
       </div>
 
