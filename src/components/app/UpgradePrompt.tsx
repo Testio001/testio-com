@@ -1,4 +1,4 @@
-import { Crown, Gift, Share2, Flame } from "lucide-react";
+import { Crown, Gift, Flame, GraduationCap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 
@@ -7,33 +7,58 @@ interface UpgradePromptProps {
   onUpgrade?: () => void;
   type?: "upload" | "podcast" | "quiz";
   streakBroken?: boolean;
+  /** User's current plan: free | basic | pro | scholar */
+  currentPlan?: string;
 }
 
-const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken }: UpgradePromptProps) => {
+const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken, currentPlan = "free" }: UpgradePromptProps) => {
   const navigate = useNavigate();
   const isAndroidApp = useIsAndroidApp();
-  const messages = {
-    upload: {
-      title: "Upload limit reached",
-      description: "You've used all your free uploads. Upgrade starting at $4.99/mo for more access or refer a friend to earn 1 bonus upload.",
+
+  // Scholar users see no upgrade CTA (top plan)
+  const isTopPlan = currentPlan === "scholar";
+
+  // Tier escalation
+  const upgradeCopy: Record<string, { title: string; description: string; cta: string; pressure: "high" | "medium" | "soft" }> = {
+    free: {
+      title: type === "upload" ? "Upload limit reached" : type === "podcast" ? "Free podcast preview" : "Quiz question limit",
+      description:
+        type === "upload"
+          ? "You've used all your free uploads. Upgrade starting at $4.99/mo for more access or refer a friend to earn 1 bonus upload."
+          : type === "podcast"
+          ? "Free plans include a 5-minute podcast preview. Upgrade for full-length podcasts with unlimited depth."
+          : "Free plans allow up to 20 quiz questions. Upgrade for unlimited questions per document.",
+      cta: "Upgrade to Pro",
+      pressure: "high",
     },
-    podcast: {
-      title: "Free podcast preview",
-      description: "Free plans include a 5-minute podcast preview. Upgrade for full-length podcasts with unlimited depth.",
+    basic: {
+      title: "Ready for more?",
+      description: "Pro gives you 40 uploads/month, 6 long-form podcasts, and 41 AI Tutor questions per doc — only $9.99/mo.",
+      cta: "Upgrade to Pro",
+      pressure: "medium",
     },
-    quiz: {
-      title: "Quiz question limit",
-      description: "Free plans allow up to 20 quiz questions. Upgrade for unlimited questions per document.",
+    pro: {
+      title: "Need even more?",
+      description: "Scholar unlocks unlimited AI Tutor, 12 podcasts/month at 15 min each, and early access to new features.",
+      cta: "Upgrade to Scholar",
+      pressure: "soft",
+    },
+    scholar: {
+      title: "You're on the top plan 👑",
+      description: "Thanks for being a Scholar member! You have access to everything Testio offers.",
+      cta: "",
+      pressure: "soft",
     },
   };
 
-  const msg = messages[type];
+  const msg = upgradeCopy[currentPlan] || upgradeCopy.free;
+  const Icon = currentPlan === "pro" ? GraduationCap : Crown;
 
   return (
-    <div className="bg-testio-card rounded-xl p-5 border border-primary/20">
+    <div className={`bg-testio-card rounded-xl p-5 border ${msg.pressure === "high" ? "border-primary/30" : msg.pressure === "medium" ? "border-primary/20" : "border-border"}`}>
       <div className="flex items-center gap-2 mb-2">
         <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-          <Crown className="w-4 h-4 text-primary" />
+          <Icon className="w-4 h-4 text-primary" />
         </div>
         <h3 className="text-foreground font-semibold text-sm">{msg.title}</h3>
       </div>
@@ -48,22 +73,24 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken }: Up
         </div>
       )}
 
-      <div className="flex gap-2">
-        {!isAndroidApp && (
+      {!isTopPlan && (
+        <div className="flex gap-2">
+          {!isAndroidApp && msg.cta && (
+            <button
+              onClick={() => navigate("/pricing")}
+              className={`flex-1 text-xs !py-2.5 flex items-center justify-center gap-1.5 ${msg.pressure === "soft" ? "py-2.5 bg-secondary hover:bg-secondary/80 rounded-full font-medium text-foreground transition-colors" : "btn-testio-primary"}`}
+            >
+              <Icon className="w-3.5 h-3.5" /> {msg.cta}
+            </button>
+          )}
           <button
-            onClick={() => navigate("/pricing")}
-            className="flex-1 btn-testio-primary text-xs !py-2.5 flex items-center justify-center gap-1.5"
+            onClick={onRefer}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-secondary hover:bg-secondary/80 rounded-full text-xs font-medium text-foreground transition-colors"
           >
-            <Crown className="w-3.5 h-3.5" /> Upgrade
+            <Gift className="w-3.5 h-3.5" /> Refer a Friend
           </button>
-        )}
-        <button
-          onClick={onRefer}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-secondary hover:bg-secondary/80 rounded-full text-xs font-medium text-foreground transition-colors"
-        >
-          <Gift className="w-3.5 h-3.5" /> Refer a Friend
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 };
