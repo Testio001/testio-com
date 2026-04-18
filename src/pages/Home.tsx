@@ -30,10 +30,10 @@ const plans = [
     price: "$0",
     period: "",
     features: [
-      "3 uploads / month",
+      "3 uploads (lifetime)",
       "AI Summaries & Flashcards",
       "AI Quizzes (20 questions)",
-      "1 Study Podcast (4 min)",
+      "1 Study Podcast (4 min, lifetime)",
       "AI Tutor (5 q's per doc)",
       "Bonus uploads via referrals",
     ],
