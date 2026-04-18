@@ -27,16 +27,9 @@ const StableAudio = memo(
     useEffect(() => {
       if (ref.current) onReady(ref.current);
     }, [onReady]);
-    return (
-      <audio
-        ref={ref}
-        preload="metadata"
-        controlsList="nodownload"
-        crossOrigin="anonymous"
-      />
-    );
+    return <audio ref={ref} preload="metadata" controlsList="nodownload" crossOrigin="anonymous" />;
   },
-  () => true // never re-render — fully imperative
+  () => true, // never re-render — fully imperative
 );
 StableAudio.displayName = "StableAudio";
 
@@ -52,6 +45,8 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const currentSrcRef = useRef<string | null>(null);
+  // FIX: flag to pause rAF updates while the user is seeking
+  const isSeekingRef = useRef(false);
 
   useEffect(() => {
     fetchPodcast();
@@ -80,6 +75,24 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
     setLoading(false);
   };
 
+  const startTimeTracking = useCallback(() => {
+    const update = () => {
+      // FIX: skip rAF update while seeking to prevent overwriting the seek position
+      if (audioRef.current && !audioRef.current.paused && !isSeekingRef.current) {
+        setCurrentTime(audioRef.current.currentTime);
+        animFrameRef.current = requestAnimationFrame(update);
+      }
+    };
+    animFrameRef.current = requestAnimationFrame(update);
+  }, []);
+
+  const stopTimeTracking = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+  }, []);
+
   // Imperatively wire up the audio element ONCE — no re-renders touch it
   const handleAudioReady = useCallback(
     (el: HTMLAudioElement) => {
@@ -103,12 +116,19 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
         setPlaying(false);
         stopTimeTracking();
       });
+      // FIX: clear the seeking flag and sync time only after the browser confirms the seek
       el.addEventListener("seeked", () => {
+        isSeekingRef.current = false;
         setCurrentTime(el.currentTime);
+        // Resume rAF loop if audio is still playing after seek
+        if (!el.paused) {
+          startTimeTracking();
+        }
       });
       el.addEventListener("timeupdate", () => {
         // Light backup; main updates come from rAF loop
-        if (el.paused) setCurrentTime(el.currentTime);
+        // FIX: also skip timeupdate while seeking
+        if (el.paused && !isSeekingRef.current) setCurrentTime(el.currentTime);
       });
 
       // Set src ONCE if podcast already loaded
@@ -118,7 +138,7 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
         el.load();
       }
     },
-    [] // intentional — we don't re-attach listeners
+    [], // intentional — we don't re-attach listeners
   );
 
   // When podcast becomes available AFTER audio element exists, set src once
@@ -154,23 +174,6 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
     }
   };
 
-  const startTimeTracking = useCallback(() => {
-    const update = () => {
-      if (audioRef.current && !audioRef.current.paused) {
-        setCurrentTime(audioRef.current.currentTime);
-        animFrameRef.current = requestAnimationFrame(update);
-      }
-    };
-    animFrameRef.current = requestAnimationFrame(update);
-  }, []);
-
-  const stopTimeTracking = useCallback(() => {
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
-  }, []);
-
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -185,14 +188,23 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
     const audio = audioRef.current;
     if (!audio || !isFinite(audio.duration)) return;
     const newTime = Math.min(Math.max(0, audio.currentTime + seconds), audio.duration);
+    // FIX: use seeking flag for skip buttons too
+    isSeekingRef.current = true;
     audio.currentTime = newTime;
     setCurrentTime(newTime);
   }, []);
+
+  // FIX: set seeking flag on pointer down, BEFORE onChange fires
+  const handleSeekStart = useCallback(() => {
+    isSeekingRef.current = true;
+    stopTimeTracking();
+  }, [stopTimeTracking]);
 
   const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value);
     const audio = audioRef.current;
     if (audio && isFinite(time)) {
+      // isSeekingRef is already true from onPointerDown
       audio.currentTime = time;
       setCurrentTime(time);
     }
@@ -260,6 +272,7 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
             step={0.1}
             value={currentTime}
             onChange={handleSeek}
+            onPointerDown={handleSeekStart} // FIX: lock out rAF before drag begins
             className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
           />
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
@@ -316,18 +329,14 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
             <div key={i} className={`flex gap-3 ${segment.speaker === "Alex" ? "" : "flex-row-reverse"}`}>
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  segment.speaker === "Alex"
-                    ? "bg-primary/20 text-primary"
-                    : "bg-testio-green/20 text-testio-green"
+                  segment.speaker === "Alex" ? "bg-primary/20 text-primary" : "bg-testio-green/20 text-testio-green"
                 }`}
               >
                 {segment.speaker[0]}
               </div>
               <div
                 className={`rounded-xl px-4 py-2.5 max-w-[80%] text-sm ${
-                  segment.speaker === "Alex"
-                    ? "bg-secondary text-foreground"
-                    : "bg-primary/10 text-foreground"
+                  segment.speaker === "Alex" ? "bg-secondary text-foreground" : "bg-primary/10 text-foreground"
                 }`}
               >
                 <span className="font-semibold text-xs text-muted-foreground block mb-0.5">{segment.speaker}</span>
