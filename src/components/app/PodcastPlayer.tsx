@@ -47,11 +47,15 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   const currentSrcRef = useRef<string | null>(null);
   // FIX: flag to pause rAF updates while the user is seeking
   const isSeekingRef = useRef(false);
+  // FIX: tracks the exact time the user requested so we can verify the seek landed
+  const seekTargetRef = useRef<number | null>(null);
+  const seekSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchPodcast();
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (seekSettleTimerRef.current) clearTimeout(seekSettleTimerRef.current);
     };
   }, [documentId]);
 
@@ -116,14 +120,31 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
         setPlaying(false);
         stopTimeTracking();
       });
-      // FIX: clear the seeking flag and sync time only after the browser confirms the seek
+      // FIX: when browser fires 'seeking', lock out rAF immediately
+      el.addEventListener("seeking", () => {
+        isSeekingRef.current = true;
+        if (seekSettleTimerRef.current) clearTimeout(seekSettleTimerRef.current);
+      });
+
+      // FIX: 'seeked' fires when the browser *starts* seeking, not when audio is ready.
+      // Poll readyState until HAVE_FUTURE_DATA (3) so currentTime is actually accurate,
+      // especially for large forward seeks that require buffering.
       el.addEventListener("seeked", () => {
-        isSeekingRef.current = false;
-        setCurrentTime(el.currentTime);
-        // Resume rAF loop if audio is still playing after seek
-        if (!el.paused) {
-          startTimeTracking();
-        }
+        if (seekSettleTimerRef.current) clearTimeout(seekSettleTimerRef.current);
+
+        const settle = () => {
+          // readyState 3 = HAVE_FUTURE_DATA — enough data to play from this position
+          if (el.readyState >= 3 || el.paused) {
+            isSeekingRef.current = false;
+            seekTargetRef.current = null;
+            setCurrentTime(el.currentTime);
+            if (!el.paused) startTimeTracking();
+          } else {
+            // Not buffered yet — check again in 50ms
+            seekSettleTimerRef.current = setTimeout(settle, 50);
+          }
+        };
+        settle();
       });
       el.addEventListener("timeupdate", () => {
         // Light backup; main updates come from rAF loop
@@ -190,6 +211,7 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
     const newTime = Math.min(Math.max(0, audio.currentTime + seconds), audio.duration);
     // FIX: use seeking flag for skip buttons too
     isSeekingRef.current = true;
+    seekTargetRef.current = newTime;
     audio.currentTime = newTime;
     setCurrentTime(newTime);
   }, []);
@@ -205,6 +227,7 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
     const audio = audioRef.current;
     if (audio && isFinite(time)) {
       // isSeekingRef is already true from onPointerDown
+      seekTargetRef.current = time;
       audio.currentTime = time;
       setCurrentTime(time);
     }
