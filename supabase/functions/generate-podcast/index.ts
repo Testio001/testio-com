@@ -89,42 +89,60 @@ serve(async (req) => {
     const audioChunks: Uint8Array[] = [];
     const materialContext = sourceContent.substring(0, 8000);
 
-    for (let i = 0; i < exchangeLimit; i++) {
-      const speaker = i % 2 === 0 ? "Alex" : "Sam";
+    // We always reserve the LAST exchange for a proper sign-off ("pleasantries" close).
+    // Total = (exchangeLimit - 1) substantive exchanges + 1 outro.
+    const substantiveCount = Math.max(2, exchangeLimit - 1);
+    const totalExchanges = substantiveCount + 1; // +1 for outro
+
+    for (let i = 0; i < totalExchanges; i++) {
+      const isOutro = i === totalExchanges - 1;
+      // Outro is always spoken by Alex (host) for a clean, consistent close.
+      const speaker = isOutro ? "Alex" : (i % 2 === 0 ? "Alex" : "Sam");
       const voice = speaker === "Alex" ? "onyx" : "nova";
       const isFirst = i === 0;
-      const isLast = i === exchangeLimit - 1;
 
-      // Only include last 4 exchanges as context to save tokens
-      const recentConvo = conversation.slice(-4).map(c => `${c.speaker}: ${c.text}`).join("\n");
+      // Include FULL conversation so far so the next speaker waits for the previous to finish
+      // and explicitly references what was just said. Prevents "talking over" / overlap.
+      const fullConvo = conversation.map(c => `${c.speaker}: ${c.text}`).join("\n");
+      const lastLine = conversation.length > 0 ? conversation[conversation.length - 1] : null;
 
       let instruction: string;
       if (isFirst) {
-        instruction = `You are Alex, a knowledgeable and enthusiastic podcast host. Start the podcast by warmly introducing the topic from the study material below. Set the scene, explain why this topic matters, and give a preview of what you'll cover. Speak in 3-5 detailed sentences. Be engaging, natural, and conversational.`;
-      } else if (isLast) {
+        instruction = `You are Alex, the host of a friendly study podcast. Open warmly: greet the listener, introduce yourself AND your co-host Sam by name, then introduce the topic from the study material. Preview what you'll cover. Speak in 3-5 detailed sentences. End with a natural handoff like "Sam, what's your take?" so Sam knows it's their turn.`;
+      } else if (isOutro) {
+        // Last 5+ seconds = pleasantries / proper sign-off (NOT new content).
         if (needsUpgradeCTA) {
-          instruction = `You are ${speaker}. Give a brief but meaningful summary of what was discussed, then end by saying exactly: "Want the full deep dive? Upgrade to Testio Premium for complete, uncut podcasts!" Speak in 3-4 sentences.`;
+          instruction = `You are Alex, wrapping up the podcast. This is the OUTRO — do NOT introduce new ideas. Briefly thank Sam and the listener for joining, give a one-sentence recap, then say exactly: "Want the full deep dive? Upgrade to Testio Premium for complete, uncut podcasts!" End with: "Thanks for listening — until next time, keep studying smart!" Speak in 4-5 sentences total.`;
         } else {
-          instruction = `You are ${speaker}. Give a thoughtful, comprehensive conclusion summarizing the key takeaways from this entire conversation. Mention the most important insights and leave the listener with something actionable. Speak in 3-5 sentences.`;
+          instruction = `You are Alex, wrapping up the podcast. This is the OUTRO — do NOT introduce new ideas or new topics. Briefly thank Sam for the great discussion, thank the listener for joining, give a one-sentence recap of the single biggest takeaway, then sign off warmly with something like: "That's it for today — thanks for listening, keep studying smart, and we'll catch you in the next one!" Speak in 4-5 sentences. Make the ending feel like a real podcast close (pleasantries, not new content).`;
         }
       } else if (speaker === "Sam") {
-        instruction = `You are Sam, a curious and deeply engaged learner. React substantively to what Alex just said — show that you understood it, then ask a thoughtful follow-up question that digs deeper into the study material. Add your own perspective or relate it to a real-world example. Speak in 3-5 detailed sentences. Be natural and conversational.`;
+        instruction = `You are Sam, Alex's co-host and a curious learner. WAIT for Alex to finish — Alex JUST said: "${lastLine?.text || ''}". Start by briefly acknowledging or reacting to Alex's exact point (e.g. "That's a great point about X..." or "So if I'm understanding correctly..."), then ask a thoughtful follow-up question that digs deeper into the study material. Speak in 3-5 detailed sentences. Do NOT repeat what Alex just said verbatim. End with a clear question so Alex knows it's their turn.`;
       } else {
-        instruction = `You are Alex, a knowledgeable expert and engaging teacher. Answer Sam's question thoroughly and clearly using the study material. Provide examples, analogies, or interesting details to make the explanation memorable. Speak in 3-5 detailed sentences. Be natural and conversational.`;
+        instruction = `You are Alex, the host and expert. WAIT for Sam to finish — Sam JUST asked: "${lastLine?.text || ''}". Directly answer Sam's question using the study material. Provide examples or analogies. Speak in 3-5 detailed sentences. End naturally — either by inviting Sam's reaction ("Does that make sense, Sam?") or pivoting to the next sub-topic.`;
       }
 
-      const systemContent = `${instruction}\n\nIMPORTANT: You MUST speak in at least 3 full sentences with real substance. Never give one-liners.\n\nStudy material:\n${materialContext}${recentConvo ? `\n\nRecent conversation:\n${recentConvo}` : ""}`;
+      const systemContent = `${instruction}\n\nCRITICAL RULES:\n- You MUST speak in at least 3 full sentences with real substance.\n- You MUST NOT start mid-sentence or talk over the previous speaker — they have completely finished.\n- Do NOT use stage directions like [pause] or *laughs*.\n- Speak ONLY your own lines — do not voice the other person.\n\nStudy material:\n${materialContext}${fullConvo ? `\n\nFull conversation so far (the other speaker has FINISHED their last line):\n${fullConvo}` : ""}`;
 
       const { transcript, audioData } = await callAudioAPI(OPENAI_API_KEY, systemContent, voice);
 
       // Only commit BOTH transcript and audio together — keeps script perfectly in sync with audio
       // and prevents "speaker cut off mid-sentence" skipping when one part is missing.
-      // Also require a minimum audio size (~5KB) to skip near-empty MP3 chunks that cause glitches.
+      // Require minimum audio size (~5KB) to skip near-empty MP3 chunks that cause glitches.
       if (transcript && transcript.trim().length >= 10 && audioData && audioData.length > 5000) {
         conversation.push({ speaker, text: transcript.trim() });
         audioChunks.push(audioData);
       } else {
-        console.warn(`Skipping exchange ${i} (speaker=${speaker}): transcript=${transcript?.length || 0} chars, audio=${audioData?.length || 0} bytes`);
+        console.warn(`Skipping exchange ${i} (speaker=${speaker}, isOutro=${isOutro}): transcript=${transcript?.length || 0} chars, audio=${audioData?.length || 0} bytes`);
+        // If outro failed, retry once with a simpler prompt so the podcast always has a proper close.
+        if (isOutro) {
+          const fallbackOutro = `You are Alex. Say exactly this as a warm podcast sign-off, in your own natural voice: "Thanks so much for studying with us today, Sam — and thank you for listening. Keep up the great work, and we'll catch you on the next one. Bye for now!"`;
+          const retry = await callAudioAPI(OPENAI_API_KEY, fallbackOutro, "onyx");
+          if (retry.audioData && retry.audioData.length > 5000) {
+            conversation.push({ speaker: "Alex", text: retry.transcript.trim() });
+            audioChunks.push(retry.audioData);
+          }
+        }
       }
     }
 
