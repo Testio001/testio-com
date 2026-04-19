@@ -124,9 +124,7 @@ const Leaderboard = () => {
       {user && !entries.some(e => e.user_id === user.id) && (
         <div className="mt-4 text-center py-3 px-4 rounded-lg bg-muted/50 border border-border/50">
           <p className="text-sm text-muted-foreground">
-            {userRank
-              ? `You're #${userRank} — keep studying to break into the top 10! 🔥`
-              : "Start a streak to appear on the leaderboard! 📚"}
+            You're not in the Top 10,000 yet — keep studying to reach there! 📚
           </p>
         </div>
       )}
