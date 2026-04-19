@@ -16,6 +16,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
 import StudyMusicModal from "@/components/app/StudyMusicModal";
+import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
 
 type Document = Tables<"documents">;
 
@@ -487,6 +488,7 @@ const Dashboard = () => {
                       setShowReferral(false);
                     }}
                     streakBroken={gamification.stats?.current_streak === 0 && (gamification.stats?.longest_streak || 0) > 0}
+                    currentPlan={userPlan || "free"}
                   />
                 </motion.div>
               </div>
@@ -625,6 +627,9 @@ const Dashboard = () => {
           ))}
         </div>
       </nav>
+
+      {/* Recurring "Did you know?" upsell banner — free users only, every ~5 min */}
+      <RecurringUpsellBanner userPlan={userPlan} />
     </div>
   );
 };
