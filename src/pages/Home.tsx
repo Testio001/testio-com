@@ -1,5 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
+import { Moon, Sun } from "lucide-react";
 
 const features = [
   {
@@ -86,21 +88,36 @@ const plans = [
 
 const Home = () => {
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === "dark";
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div className={`min-h-screen transition-colors ${isDark ? "bg-gray-950 text-gray-100" : "bg-white text-gray-900"}`}>
       {/* Navbar */}
-      <nav className="border-b border-gray-100 px-6 py-4">
+      <nav className={`border-b px-6 py-4 ${isDark ? "border-gray-800" : "border-gray-100"}`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <span className="text-xl font-bold tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#4f46e5" }}>
             testio
           </span>
-          <button
-            onClick={() => navigate("/auth")}
-            className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            Get Started
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              aria-label="Toggle theme"
+              className={`w-9 h-9 rounded-lg border flex items-center justify-center transition-colors ${
+                isDark
+                  ? "border-gray-700 text-gray-300 hover:bg-gray-800"
+                  : "border-gray-200 text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={() => navigate("/auth")}
+              className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
+            >
+              Get Started
+            </button>
+          </div>
         </div>
       </nav>
 
