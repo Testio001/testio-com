@@ -691,6 +691,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      grant_top10_daily_bonus: { Args: never; Returns: undefined }
       move_to_dlq: {
         Args: {
           dlq_name: string

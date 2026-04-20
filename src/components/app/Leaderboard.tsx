@@ -124,7 +124,10 @@ const Leaderboard = () => {
       {user && !entries.some(e => e.user_id === user.id) && (
         <div className="mt-4 text-center py-3 px-4 rounded-lg bg-muted/50 border border-border/50">
           <p className="text-sm text-muted-foreground">
-            You're not in the Top 10,000 yet — keep studying to reach there! 📚
+            You're not in the Top 1,000 yet — keep studying to reach there! 📚
+          </p>
+          <p className="text-xs text-primary mt-1.5 font-medium">
+            🏆 Top 10 students earn +2 bonus uploads every day!
           </p>
         </div>
       )}
