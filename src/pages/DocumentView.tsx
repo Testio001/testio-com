@@ -26,7 +26,7 @@ const PODCAST_LIMITS: Record<string, number> = {
   free: 1,
   basic: 3,
   pro: 6,
-  scholar: 12,
+  scholar: 9,
 };
 
 const DocumentView = () => {

@@ -10,7 +10,7 @@ const corsHeaders = {
 const QUESTION_LIMITS: Record<string, number> = {
   free: 5,
   basic: 21,
-  pro: 41,
+  pro: 21,
 };
 
 function extractSummary(noteContent: string): string {
@@ -69,10 +69,8 @@ serve(async (req) => {
       const limit = QUESTION_LIMITS[plan] || 5;
       if ((count ?? 0) >= limit) {
         const upgradeMsg = plan === "free"
-          ? "You've used all 5 free questions for this document. Upgrade to Basic for 21 questions or Pro for 41 questions per document."
-          : plan === "basic"
-          ? "You've used all 21 questions for this document. Upgrade to Pro for 41 questions per document."
-          : "You've reached the 41-question limit for this document.";
+          ? "You've used all 5 free questions for this document. Upgrade to Basic or Pro for 21 questions per document."
+          : "You've reached the 21-question limit for this document.";
         return new Response(JSON.stringify({ error: upgradeMsg, limitReached: true }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

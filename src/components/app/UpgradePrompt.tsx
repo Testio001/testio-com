@@ -39,7 +39,7 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken, curr
     },
     pro: {
       title: "Need even more?",
-      description: "Scholar unlocks unlimited AI Tutor, 12 podcasts/month at 15 min each, and early access to new features.",
+      description: "Scholar unlocks unlimited AI Tutor, 9 podcasts/month at 15 min each, and early access to new features.",
       cta: "Upgrade to Scholar",
       pressure: "soft",
     },

@@ -44,7 +44,7 @@ const PodcastLimitModal = ({ isOpen, onClose, subscriptionPlan }: PodcastLimitMo
           <h2 className="text-xl font-bold text-foreground mb-2">Podcast Limit Reached</h2>
           <p className="text-muted-foreground text-sm">
             {isFree
-              ? "Free plan only includes 1 podcast. Upgrade to keep listening!"
+              ? "Free plan only includes 1 podcast. Referral bonuses give extra uploads — podcasts require an upgrade or top-up."
               : "You've used all your podcast credits for this month. Top up to keep learning on the go!"}
           </p>
         </div>

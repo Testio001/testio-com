@@ -62,7 +62,7 @@ const plans = [
       "40 uploads / month",
       "Unlimited AI Quizzes",
       "6 Podcasts / month (12 min)",
-      "AI Tutor (41 q's per doc)",
+      "AI Tutor (21 q's per doc)",
       "Priority processing",
     ],
     highlight: true,

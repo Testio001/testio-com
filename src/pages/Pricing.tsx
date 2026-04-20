@@ -90,7 +90,7 @@ const plans: Array<{
       "♾️ Unlimited uploads*",
       "📝 AI Summaries & Flashcards",
       "🧠 Unlimited AI Quizzes",
-      "🎙️ 12 Podcasts / month (15 min)",
+      "🎙️ 9 Podcasts / month (15 min)",
       "🤖 Unlimited AI Tutor",
       "⚡ Priority processing",
       "🔬 Early access to new features",

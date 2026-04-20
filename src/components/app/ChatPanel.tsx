@@ -10,7 +10,7 @@ type ChatMessage = Tables<"chat_messages">;
 const QUESTION_LIMITS: Record<string, number> = {
   free: 5,
   basic: 21,
-  pro: 41,
+  pro: 21,
 };
 
 const ChatPanel = ({ documentId, subscriptionPlan = "free" }: { documentId: string; subscriptionPlan?: string }) => {
