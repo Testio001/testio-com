@@ -1,5 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
+import { Moon, Sun } from "lucide-react";
 
 const features = [
   {
@@ -86,32 +88,47 @@ const plans = [
 
 const Home = () => {
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === "dark";
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div className={`min-h-screen transition-colors ${isDark ? "bg-gray-950 text-gray-100" : "bg-white text-gray-900"}`}>
       {/* Navbar */}
-      <nav className="border-b border-gray-100 px-6 py-4">
+      <nav className={`border-b px-6 py-4 ${isDark ? "border-gray-800" : "border-gray-100"}`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <span className="text-xl font-bold tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#4f46e5" }}>
             testio
           </span>
-          <button
-            onClick={() => navigate("/auth")}
-            className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            Get Started
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              aria-label="Toggle theme"
+              className={`w-9 h-9 rounded-lg border flex items-center justify-center transition-colors ${
+                isDark
+                  ? "border-gray-700 text-gray-300 hover:bg-gray-800"
+                  : "border-gray-200 text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={() => navigate("/auth")}
+              className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
+            >
+              Get Started
+            </button>
+          </div>
         </div>
       </nav>
 
       {/* Hero Section */}
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-gray-900 mb-6 leading-tight">
+          <h1 className={`text-5xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight ${isDark ? "text-white" : "text-gray-900"}`}>
             Master Your Studies{" "}
             <span className="text-indigo-600">with AI</span>
           </h1>
-          <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10">
+          <p className={`text-xl max-w-2xl mx-auto mb-10 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
             Turn PDFs into summaries, quizzes, and podcasts in seconds. Study smarter, not harder.
           </p>
           <button
@@ -124,24 +141,29 @@ const Home = () => {
       </section>
 
       {/* Features Grid */}
-      <section className="py-20 px-6 bg-gray-50">
+      <section className={`py-20 px-6 ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Everything You Need to Study Smarter</h2>
-          <p className="text-center text-gray-500 mb-14 max-w-xl mx-auto">
+          <h2 className={`text-3xl font-bold text-center mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>Everything You Need to Study Smarter</h2>
+          <p className={`text-center mb-14 max-w-xl mx-auto ${isDark ? "text-gray-400" : "text-gray-500"}`}>
             Powerful AI tools that transform how you learn and retain information.
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature) => (
-              <div
+              <button
                 key={feature.title}
-                className="bg-white rounded-2xl p-6 border border-gray-200 hover:border-indigo-300 hover:shadow-lg transition-all"
+                onClick={() => navigate("/auth")}
+                className={`text-left rounded-2xl p-6 border transition-all ${
+                  isDark
+                    ? "bg-gray-950 border-gray-800 hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-900/30"
+                    : "bg-white border-gray-200 hover:border-indigo-300 hover:shadow-lg"
+                }`}
               >
-                <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center mb-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${isDark ? "bg-indigo-950" : "bg-indigo-50"}`}>
                   <feature.icon className="w-6 h-6 text-indigo-600" />
                 </div>
-                <h3 className="font-bold text-gray-900 text-lg mb-2">{feature.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{feature.description}</p>
-              </div>
+                <h3 className={`font-bold text-lg mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>{feature.title}</h3>
+                <p className={`text-sm leading-relaxed ${isDark ? "text-gray-400" : "text-gray-500"}`}>{feature.description}</p>
+              </button>
             ))}
           </div>
         </div>
@@ -150,8 +172,8 @@ const Home = () => {
       {/* Product Walkthrough */}
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">See Testio in Action</h2>
-          <p className="text-gray-500 mb-10 max-w-2xl mx-auto">
+          <h2 className={`text-3xl font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>See Testio in Action</h2>
+          <p className={`mb-10 max-w-2xl mx-auto ${isDark ? "text-gray-400" : "text-gray-500"}`}>
             Watch a full 7-minute deep dive into how Testio transforms your study materials.
           </p>
           <div className="w-full max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-xl">
@@ -170,8 +192,8 @@ const Home = () => {
       {/* Pricing Section */}
       <section className="py-20 px-6">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Simple, Transparent Pricing</h2>
-          <p className="text-center text-gray-500 mb-14 max-w-md mx-auto">
+          <h2 className={`text-3xl font-bold text-center mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>Simple, Transparent Pricing</h2>
+          <p className={`text-center mb-14 max-w-md mx-auto ${isDark ? "text-gray-400" : "text-gray-500"}`}>
             Choose the plan that fits your study needs. Cancel anytime.
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -180,8 +202,12 @@ const Home = () => {
                 key={plan.name}
                 className={`relative rounded-2xl p-7 border ${
                   plan.highlight
-                    ? "bg-indigo-50 border-indigo-300 shadow-xl"
-                    : "bg-white border-gray-200"
+                    ? isDark
+                      ? "bg-indigo-950/40 border-indigo-700 shadow-xl"
+                      : "bg-indigo-50 border-indigo-300 shadow-xl"
+                    : isDark
+                      ? "bg-gray-900 border-gray-800"
+                      : "bg-white border-gray-200"
                 }`}
               >
                 {plan.highlight && (
@@ -189,14 +215,14 @@ const Home = () => {
                     MOST POPULAR
                   </div>
                 )}
-                <h3 className="font-bold text-gray-900 text-xl mb-1">{plan.name}</h3>
+                <h3 className={`font-bold text-xl mb-1 ${isDark ? "text-white" : "text-gray-900"}`}>{plan.name}</h3>
                 <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-extrabold text-gray-900">{plan.price}</span>
-                  {plan.period && <span className="text-gray-500 text-sm">{plan.period}</span>}
+                  <span className={`text-4xl font-extrabold ${isDark ? "text-white" : "text-gray-900"}`}>{plan.price}</span>
+                  {plan.period && <span className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>{plan.period}</span>}
                 </div>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2.5 text-sm text-gray-700">
+                    <li key={feature} className={`flex items-start gap-2.5 text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
                       <Check className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                       {feature}
                     </li>
@@ -207,7 +233,9 @@ const Home = () => {
                   className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${
                     plan.highlight
                       ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
-                      : "bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-200"
+                      : isDark
+                        ? "bg-gray-800 text-white hover:bg-gray-700 border border-gray-700"
+                        : "bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-200"
                   }`}
                 >
                   {plan.cta}
@@ -219,16 +247,16 @@ const Home = () => {
       </section>
 
       {/* Referral Section */}
-      <section className="py-20 px-6 bg-indigo-50">
+      <section className={`py-20 px-6 ${isDark ? "bg-indigo-950/30" : "bg-indigo-50"}`}>
         <div className="max-w-4xl mx-auto text-center">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center mx-auto mb-6">
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${isDark ? "bg-indigo-900/50" : "bg-indigo-100"}`}>
             <Gift className="w-8 h-8 text-indigo-600" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Invite Friends, Earn Free Uploads</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto mb-10 text-lg">
+          <h2 className={`text-3xl font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>Invite Friends, Earn Free Uploads</h2>
+          <p className={`max-w-2xl mx-auto mb-10 text-lg ${isDark ? "text-gray-300" : "text-gray-600"}`}>
             Love Testio? Share it with your classmates! For every friend who signs up using your referral link, 
-            you both get <span className="font-bold text-indigo-600">bonus uploads</span> and 
-            <span className="font-bold text-indigo-600"> streak rewards</span>. The more you share, the more you earn.
+            you both get <span className="font-bold text-indigo-500">bonus uploads</span> and 
+            <span className="font-bold text-indigo-500"> streak rewards</span>. The more you share, the more you earn.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 max-w-3xl mx-auto mb-10">
             <div className="bg-white rounded-xl p-6 border border-indigo-100">
@@ -254,25 +282,25 @@ const Home = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 py-12 px-6 bg-gray-50">
+      <footer className={`border-t py-12 px-6 ${isDark ? "border-gray-800 bg-gray-900" : "border-gray-200 bg-gray-50"}`}>
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div>
               <span className="text-lg font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#4f46e5" }}>
                 testio
               </span>
-              <p className="text-gray-500 text-sm mt-1">AI-powered study tools for students.</p>
+              <p className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>AI-powered study tools for students.</p>
             </div>
-            <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600">
-              <a href="/terms" className="hover:text-indigo-600 transition-colors">Terms of Service</a>
-              <a href="/terms" className="hover:text-indigo-600 transition-colors">Privacy Policy</a>
-              <a href="/terms" className="hover:text-indigo-600 transition-colors">Refund Policy</a>
-              <a href="mailto:support@testio.online" className="hover:text-indigo-600 transition-colors">Contact Us</a>
+            <div className={`flex flex-wrap items-center gap-6 text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+              <a href="/terms" className="hover:text-indigo-500 transition-colors">Terms of Service</a>
+              <a href="/terms" className="hover:text-indigo-500 transition-colors">Privacy Policy</a>
+              <a href="/terms" className="hover:text-indigo-500 transition-colors">Refund Policy</a>
+              <a href="mailto:support@testio.online" className="hover:text-indigo-500 transition-colors">Contact Us</a>
             </div>
           </div>
           <div className="mt-8 flex flex-col items-center gap-1">
-            <p className="text-gray-400 text-xs">© 2025 Testio. All rights reserved.</p>
-            <p className="text-gray-400 text-[10px]">Created by <span className="font-semibold text-gray-500">TechWorld</span></p>
+            <p className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>© 2025 Testio. All rights reserved.</p>
+            <p className={`text-[10px] ${isDark ? "text-gray-600" : "text-gray-400"}`}>Created by <span className={`font-semibold ${isDark ? "text-gray-400" : "text-gray-500"}`}>TechWorld</span></p>
           </div>
         </div>
       </footer>
