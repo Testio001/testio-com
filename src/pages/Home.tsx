@@ -124,11 +124,11 @@ const Home = () => {
       {/* Hero Section */}
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-gray-900 mb-6 leading-tight">
+          <h1 className={`text-5xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight ${isDark ? "text-white" : "text-gray-900"}`}>
             Master Your Studies{" "}
             <span className="text-indigo-600">with AI</span>
           </h1>
-          <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10">
+          <p className={`text-xl max-w-2xl mx-auto mb-10 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
             Turn PDFs into summaries, quizzes, and podcasts in seconds. Study smarter, not harder.
           </p>
           <button
@@ -141,24 +141,29 @@ const Home = () => {
       </section>
 
       {/* Features Grid */}
-      <section className="py-20 px-6 bg-gray-50">
+      <section className={`py-20 px-6 ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Everything You Need to Study Smarter</h2>
-          <p className="text-center text-gray-500 mb-14 max-w-xl mx-auto">
+          <h2 className={`text-3xl font-bold text-center mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>Everything You Need to Study Smarter</h2>
+          <p className={`text-center mb-14 max-w-xl mx-auto ${isDark ? "text-gray-400" : "text-gray-500"}`}>
             Powerful AI tools that transform how you learn and retain information.
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature) => (
-              <div
+              <button
                 key={feature.title}
-                className="bg-white rounded-2xl p-6 border border-gray-200 hover:border-indigo-300 hover:shadow-lg transition-all"
+                onClick={() => navigate("/auth")}
+                className={`text-left rounded-2xl p-6 border transition-all ${
+                  isDark
+                    ? "bg-gray-950 border-gray-800 hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-900/30"
+                    : "bg-white border-gray-200 hover:border-indigo-300 hover:shadow-lg"
+                }`}
               >
-                <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center mb-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${isDark ? "bg-indigo-950" : "bg-indigo-50"}`}>
                   <feature.icon className="w-6 h-6 text-indigo-600" />
                 </div>
-                <h3 className="font-bold text-gray-900 text-lg mb-2">{feature.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{feature.description}</p>
-              </div>
+                <h3 className={`font-bold text-lg mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>{feature.title}</h3>
+                <p className={`text-sm leading-relaxed ${isDark ? "text-gray-400" : "text-gray-500"}`}>{feature.description}</p>
+              </button>
             ))}
           </div>
         </div>
@@ -167,8 +172,8 @@ const Home = () => {
       {/* Product Walkthrough */}
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">See Testio in Action</h2>
-          <p className="text-gray-500 mb-10 max-w-2xl mx-auto">
+          <h2 className={`text-3xl font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>See Testio in Action</h2>
+          <p className={`mb-10 max-w-2xl mx-auto ${isDark ? "text-gray-400" : "text-gray-500"}`}>
             Watch a full 7-minute deep dive into how Testio transforms your study materials.
           </p>
           <div className="w-full max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-xl">
