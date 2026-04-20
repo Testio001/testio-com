@@ -192,8 +192,8 @@ const Home = () => {
       {/* Pricing Section */}
       <section className="py-20 px-6">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Simple, Transparent Pricing</h2>
-          <p className="text-center text-gray-500 mb-14 max-w-md mx-auto">
+          <h2 className={`text-3xl font-bold text-center mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>Simple, Transparent Pricing</h2>
+          <p className={`text-center mb-14 max-w-md mx-auto ${isDark ? "text-gray-400" : "text-gray-500"}`}>
             Choose the plan that fits your study needs. Cancel anytime.
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -202,8 +202,12 @@ const Home = () => {
                 key={plan.name}
                 className={`relative rounded-2xl p-7 border ${
                   plan.highlight
-                    ? "bg-indigo-50 border-indigo-300 shadow-xl"
-                    : "bg-white border-gray-200"
+                    ? isDark
+                      ? "bg-indigo-950/40 border-indigo-700 shadow-xl"
+                      : "bg-indigo-50 border-indigo-300 shadow-xl"
+                    : isDark
+                      ? "bg-gray-900 border-gray-800"
+                      : "bg-white border-gray-200"
                 }`}
               >
                 {plan.highlight && (
@@ -211,14 +215,14 @@ const Home = () => {
                     MOST POPULAR
                   </div>
                 )}
-                <h3 className="font-bold text-gray-900 text-xl mb-1">{plan.name}</h3>
+                <h3 className={`font-bold text-xl mb-1 ${isDark ? "text-white" : "text-gray-900"}`}>{plan.name}</h3>
                 <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-extrabold text-gray-900">{plan.price}</span>
-                  {plan.period && <span className="text-gray-500 text-sm">{plan.period}</span>}
+                  <span className={`text-4xl font-extrabold ${isDark ? "text-white" : "text-gray-900"}`}>{plan.price}</span>
+                  {plan.period && <span className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>{plan.period}</span>}
                 </div>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2.5 text-sm text-gray-700">
+                    <li key={feature} className={`flex items-start gap-2.5 text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
                       <Check className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                       {feature}
                     </li>
@@ -229,7 +233,9 @@ const Home = () => {
                   className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${
                     plan.highlight
                       ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
-                      : "bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-200"
+                      : isDark
+                        ? "bg-gray-800 text-white hover:bg-gray-700 border border-gray-700"
+                        : "bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-200"
                   }`}
                 >
                   {plan.cta}
@@ -241,16 +247,16 @@ const Home = () => {
       </section>
 
       {/* Referral Section */}
-      <section className="py-20 px-6 bg-indigo-50">
+      <section className={`py-20 px-6 ${isDark ? "bg-indigo-950/30" : "bg-indigo-50"}`}>
         <div className="max-w-4xl mx-auto text-center">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center mx-auto mb-6">
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${isDark ? "bg-indigo-900/50" : "bg-indigo-100"}`}>
             <Gift className="w-8 h-8 text-indigo-600" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Invite Friends, Earn Free Uploads</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto mb-10 text-lg">
+          <h2 className={`text-3xl font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>Invite Friends, Earn Free Uploads</h2>
+          <p className={`max-w-2xl mx-auto mb-10 text-lg ${isDark ? "text-gray-300" : "text-gray-600"}`}>
             Love Testio? Share it with your classmates! For every friend who signs up using your referral link, 
-            you both get <span className="font-bold text-indigo-600">bonus uploads</span> and 
-            <span className="font-bold text-indigo-600"> streak rewards</span>. The more you share, the more you earn.
+            you both get <span className="font-bold text-indigo-500">bonus uploads</span> and 
+            <span className="font-bold text-indigo-500"> streak rewards</span>. The more you share, the more you earn.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 max-w-3xl mx-auto mb-10">
             <div className="bg-white rounded-xl p-6 border border-indigo-100">
@@ -276,25 +282,25 @@ const Home = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 py-12 px-6 bg-gray-50">
+      <footer className={`border-t py-12 px-6 ${isDark ? "border-gray-800 bg-gray-900" : "border-gray-200 bg-gray-50"}`}>
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div>
               <span className="text-lg font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#4f46e5" }}>
                 testio
               </span>
-              <p className="text-gray-500 text-sm mt-1">AI-powered study tools for students.</p>
+              <p className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>AI-powered study tools for students.</p>
             </div>
-            <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600">
-              <a href="/terms" className="hover:text-indigo-600 transition-colors">Terms of Service</a>
-              <a href="/terms" className="hover:text-indigo-600 transition-colors">Privacy Policy</a>
-              <a href="/terms" className="hover:text-indigo-600 transition-colors">Refund Policy</a>
-              <a href="mailto:support@testio.online" className="hover:text-indigo-600 transition-colors">Contact Us</a>
+            <div className={`flex flex-wrap items-center gap-6 text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+              <a href="/terms" className="hover:text-indigo-500 transition-colors">Terms of Service</a>
+              <a href="/terms" className="hover:text-indigo-500 transition-colors">Privacy Policy</a>
+              <a href="/terms" className="hover:text-indigo-500 transition-colors">Refund Policy</a>
+              <a href="mailto:support@testio.online" className="hover:text-indigo-500 transition-colors">Contact Us</a>
             </div>
           </div>
           <div className="mt-8 flex flex-col items-center gap-1">
-            <p className="text-gray-400 text-xs">© 2025 Testio. All rights reserved.</p>
-            <p className="text-gray-400 text-[10px]">Created by <span className="font-semibold text-gray-500">TechWorld</span></p>
+            <p className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>© 2025 Testio. All rights reserved.</p>
+            <p className={`text-[10px] ${isDark ? "text-gray-600" : "text-gray-400"}`}>Created by <span className={`font-semibold ${isDark ? "text-gray-400" : "text-gray-500"}`}>TechWorld</span></p>
           </div>
         </div>
       </footer>
