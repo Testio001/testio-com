@@ -38,6 +38,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage_log: {
+        Row: {
+          created_at: string
+          function_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          function_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          function_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -670,10 +691,28 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          display_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          display_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          display_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       bump_seeded_streaks: { Args: never; Returns: undefined }
+      check_ai_rate_limit: {
+        Args: { _function_name: string; _user_id: string }
+        Returns: Json
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -681,6 +720,13 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      get_display_names: {
+        Args: { _user_ids: string[] }
+        Returns: {
+          display_name: string
+          user_id: string
+        }[]
       }
       get_leaderboard: {
         Args: { limit_count?: number }
