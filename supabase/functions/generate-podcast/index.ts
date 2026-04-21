@@ -72,6 +72,19 @@ serve(async (req) => {
 
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
 
+    // Rate limit check (per-user, per-function)
+    const { data: rl } = await supabase.rpc("check_ai_rate_limit", {
+      _user_id: doc.user_id, _function_name: "generate-podcast",
+    });
+    if (rl && rl.allowed === false) {
+      return new Response(JSON.stringify({
+        error: rl.reason === "hourly_limit"
+          ? `Hourly limit reached (${rl.limit}/hr on ${rl.plan} plan). Try again in an hour.`
+          : `Daily limit reached (${rl.limit}/day on ${rl.plan} plan). Try again tomorrow or upgrade.`,
+        rateLimited: true, ...rl,
+      }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Use notes only if not corrupted
     const { data: notes } = await supabase.from("notes").select("content").eq("document_id", documentId);
     const noteContent = notes?.map((n: any) => n.content).filter((c: string) => !isCorruptedNotes(c)).join("\n\n");

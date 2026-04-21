@@ -51,6 +51,19 @@ serve(async (req) => {
 
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
 
+    // Rate limit check (per-user, per-function)
+    const { data: rl } = await supabase.rpc("check_ai_rate_limit", {
+      _user_id: doc.user_id, _function_name: "generate-quiz",
+    });
+    if (rl && rl.allowed === false) {
+      return new Response(JSON.stringify({
+        error: rl.reason === "hourly_limit"
+          ? `Hourly limit reached (${rl.limit}/hr on ${rl.plan} plan). Try again in an hour.`
+          : `Daily limit reached (${rl.limit}/day on ${rl.plan} plan). Try again tomorrow or upgrade.`,
+        rateLimited: true, ...rl,
+      }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Enforce per-plan cap on TOTAL questions for this document
     const plan = await getActivePlan(supabase, doc.user_id);
     const cap = getQuizCapForPlan(plan);
@@ -153,6 +166,8 @@ serve(async (req) => {
         }))
       );
     }
+
+    await supabase.from("ai_usage_log").insert({ user_id: doc.user_id, function_name: "generate-quiz" });
 
     return new Response(JSON.stringify({ success: true, count: questions.length, capRemaining: remainingCapacity - questions.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
