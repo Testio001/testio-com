@@ -32,6 +32,14 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
     fetchPodcast();
   }, [documentId]);
 
+  // Extract storage path from either a raw path or a legacy public URL
+  const toStoragePath = (val: string): string => {
+    if (!val.startsWith("http")) return val;
+    const marker = "/podcasts/";
+    const idx = val.indexOf(marker);
+    return idx >= 0 ? val.substring(idx + marker.length) : val;
+  };
+
   const fetchPodcast = async () => {
     const { data } = await supabase
       .from("podcasts")
@@ -48,17 +56,14 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
       } catch {
         setScript([]);
       }
-      // audio_url may be either a legacy public URL (http...) or a storage path.
-      // For storage paths, generate a signed URL valid for 1 hour.
+      // Bucket is now private — always generate a signed URL.
+      // Handles both new path-only values and legacy public-URL values.
       if (p.audio_url) {
-        if (p.audio_url.startsWith("http")) {
-          setSignedUrl(p.audio_url);
-        } else {
-          const { data: signed } = await supabase.storage
-            .from("podcasts")
-            .createSignedUrl(p.audio_url, 3600);
-          if (signed?.signedUrl) setSignedUrl(signed.signedUrl);
-        }
+        const path = toStoragePath(p.audio_url);
+        const { data: signed } = await supabase.storage
+          .from("podcasts")
+          .createSignedUrl(path, 3600);
+        if (signed?.signedUrl) setSignedUrl(signed.signedUrl);
       }
     }
     setLoading(false);
@@ -66,14 +71,12 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
 
   const handleDownload = async () => {
     if (!podcast?.audio_url) return;
-    // Always re-sign for download to ensure fresh URL
-    let url = signedUrl;
-    if (!podcast.audio_url.startsWith("http")) {
-      const { data: signed } = await supabase.storage
-        .from("podcasts")
-        .createSignedUrl(podcast.audio_url, 3600);
-      if (signed?.signedUrl) url = signed.signedUrl;
-    }
+    // Always re-sign for download to ensure a fresh URL
+    const path = toStoragePath(podcast.audio_url);
+    const { data: signed } = await supabase.storage
+      .from("podcasts")
+      .createSignedUrl(path, 3600);
+    const url = signed?.signedUrl || signedUrl;
     if (!url) return;
     setDownloading(true);
     const filename = `${podcast.title.replace(/[^a-z0-9]/gi, "_")}.mp3`;
