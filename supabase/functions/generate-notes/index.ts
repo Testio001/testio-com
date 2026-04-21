@@ -20,6 +20,19 @@ serve(async (req) => {
     // Get validated content using shared helper (auto re-extracts if needed)
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
 
+    // Rate limit check (per-user, per-function)
+    const { data: rl } = await supabase.rpc("check_ai_rate_limit", {
+      _user_id: doc.user_id, _function_name: "generate-notes",
+    });
+    if (rl && rl.allowed === false) {
+      return new Response(JSON.stringify({
+        error: rl.reason === "hourly_limit"
+          ? `Hourly limit reached (${rl.limit}/hr on ${rl.plan} plan). Try again in an hour.`
+          : `Daily limit reached (${rl.limit}/day on ${rl.plan} plan). Try again tomorrow or upgrade.`,
+        rateLimited: true, ...rl,
+      }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
@@ -72,6 +85,9 @@ The notes should be detailed, well-structured, and visually appealing when rende
     });
 
     await supabase.from("documents").update({ status: "completed" }).eq("id", documentId);
+
+    // Log successful AI usage for rate limiting
+    await supabase.from("ai_usage_log").insert({ user_id: doc.user_id, function_name: "generate-notes" });
 
     return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {

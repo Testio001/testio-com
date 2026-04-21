@@ -18,6 +18,7 @@ interface Podcast {
 
 const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   const [podcast, setPodcast] = useState<Podcast | null>(null);
+  const [signedUrl, setSignedUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -30,6 +31,14 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   useEffect(() => {
     fetchPodcast();
   }, [documentId]);
+
+  // Extract storage path from either a raw path or a legacy public URL
+  const toStoragePath = (val: string): string => {
+    if (!val.startsWith("http")) return val;
+    const marker = "/podcasts/";
+    const idx = val.indexOf(marker);
+    return idx >= 0 ? val.substring(idx + marker.length) : val;
+  };
 
   const fetchPodcast = async () => {
     const { data } = await supabase
@@ -47,16 +56,32 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
       } catch {
         setScript([]);
       }
+      // Bucket is now private — always generate a signed URL.
+      // Handles both new path-only values and legacy public-URL values.
+      if (p.audio_url) {
+        const path = toStoragePath(p.audio_url);
+        const { data: signed } = await supabase.storage
+          .from("podcasts")
+          .createSignedUrl(path, 3600);
+        if (signed?.signedUrl) setSignedUrl(signed.signedUrl);
+      }
     }
     setLoading(false);
   };
 
   const handleDownload = async () => {
     if (!podcast?.audio_url) return;
+    // Always re-sign for download to ensure a fresh URL
+    const path = toStoragePath(podcast.audio_url);
+    const { data: signed } = await supabase.storage
+      .from("podcasts")
+      .createSignedUrl(path, 3600);
+    const url = signed?.signedUrl || signedUrl;
+    if (!url) return;
     setDownloading(true);
     const filename = `${podcast.title.replace(/[^a-z0-9]/gi, "_")}.mp3`;
     try {
-      const res = await fetch(podcast.audio_url);
+      const res = await fetch(url);
       if (!res.ok) throw new Error("download failed");
       const blob = await res.blob();
       const objUrl = URL.createObjectURL(blob);
@@ -68,7 +93,7 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
     } catch {
-      window.open(podcast.audio_url, "_blank");
+      window.open(url, "_blank");
     } finally {
       setDownloading(false);
     }
@@ -129,9 +154,9 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   return (
     <div className="space-y-6">
       <audio
-        key={podcast.audio_url}
+        key={signedUrl}
         ref={audioRef}
-        src={podcast.audio_url}
+        src={signedUrl}
         preload="auto"
         onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}

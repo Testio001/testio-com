@@ -72,6 +72,19 @@ serve(async (req) => {
 
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
 
+    // Rate limit check (per-user, per-function)
+    const { data: rl } = await supabase.rpc("check_ai_rate_limit", {
+      _user_id: doc.user_id, _function_name: "generate-podcast",
+    });
+    if (rl && rl.allowed === false) {
+      return new Response(JSON.stringify({
+        error: rl.reason === "hourly_limit"
+          ? `Hourly limit reached (${rl.limit}/hr on ${rl.plan} plan). Try again in an hour.`
+          : `Daily limit reached (${rl.limit}/day on ${rl.plan} plan). Try again tomorrow or upgrade.`,
+        rateLimited: true, ...rl,
+      }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Use notes only if not corrupted
     const { data: notes } = await supabase.from("notes").select("content").eq("document_id", documentId);
     const noteContent = notes?.map((n: any) => n.content).filter((c: string) => !isCorruptedNotes(c)).join("\n\n");
@@ -153,8 +166,8 @@ serve(async (req) => {
     let offset = 0;
     for (const chunk of audioChunks) { combinedAudio.set(chunk, offset); offset += chunk.length; }
 
-    // Upload to PUBLIC podcasts bucket so the audio URL is stable and supports byte-range
-    // requests (required for native browser seeking without restart).
+    // Upload to PRIVATE podcasts bucket. We store only the storage path in the DB
+    // and generate short-lived signed URLs at playback/download time.
     const fileName = `${doc.user_id}/podcast_${documentId}_${Date.now()}.mp3`;
     const { error: uploadError } = await supabase.storage.from("podcasts").upload(fileName, combinedAudio.buffer, {
       contentType: "audio/mpeg",
@@ -163,14 +176,15 @@ serve(async (req) => {
     });
     if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-    const { data: urlData } = supabase.storage.from("podcasts").getPublicUrl(fileName);
-    const audioUrl = urlData?.publicUrl || "";
-    if (!audioUrl) throw new Error("Failed to get public URL for podcast");
+    // Store the storage path (not a URL) so we can re-sign on demand.
+    const audioUrl = fileName;
 
     await supabase.from("podcasts").insert({
       document_id: documentId, user_id: doc.user_id, title: `Podcast: ${doc.title}`,
       script: JSON.stringify(conversation), audio_url: audioUrl, status: "completed",
     });
+
+    await supabase.from("ai_usage_log").insert({ user_id: doc.user_id, function_name: "generate-podcast" });
 
     return new Response(JSON.stringify({ success: true, audioUrl, script: conversation }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {

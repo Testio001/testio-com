@@ -27,26 +27,21 @@ const Leaderboard = () => {
     const { data: statsData } = await supabase.rpc("get_leaderboard", { limit_count: 10 });
 
     if (statsData && statsData.length > 0) {
-      // Fetch display names for all leaderboard users
+      // Fetch display names via security-definer RPC (no email leak)
       const userIds = statsData.map(s => s.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, email")
-        .in("user_id", userIds);
+      const { data: names } = await supabase.rpc("get_display_names", { _user_ids: userIds });
 
-      const profileMap = new Map(profiles?.map(p => [p.user_id, { display_name: p.display_name, email: p.email }]) || []);
+      const profileMap = new Map((names ?? []).map((n: any) => [n.user_id, n.display_name]));
 
       const getDisplayName = (userId: string) => {
-        const profile = profileMap.get(userId);
-        if (profile?.display_name) return profile.display_name;
-        if (profile?.email) return profile.email.split("@")[0];
-        return "Student";
+        const name = profileMap.get(userId);
+        return name || "Student";
       };
 
       const mapped = statsData.map(s => ({
         ...s,
         display_name: getDisplayName(s.user_id),
-        email: profileMap.get(s.user_id)?.email || null,
+        email: null,
       }));
 
       setEntries(mapped);
