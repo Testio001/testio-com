@@ -32,12 +32,33 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
     fetchPodcast();
   }, [documentId]);
 
-  // Extract storage path from either a raw path or a legacy public URL
-  const toStoragePath = (val: string): string => {
-    if (!val.startsWith("http")) return val;
-    const marker = "/podcasts/";
-    const idx = val.indexOf(marker);
-    return idx >= 0 ? val.substring(idx + marker.length) : val;
+  // Detect bucket + path from raw path, public URL, or legacy signed URL.
+  // Legacy podcasts may live in the "documents" bucket; new ones in "podcasts".
+  const resolveAudio = (val: string): { bucket: "podcasts" | "documents"; path: string; legacyUrl?: string } => {
+    if (!val.startsWith("http")) {
+      return { bucket: "podcasts", path: val };
+    }
+    // Strip query string before parsing path
+    const noQuery = val.split("?")[0];
+    const podMarker = "/podcasts/";
+    const docMarker = "/documents/";
+    const pIdx = noQuery.indexOf(podMarker);
+    if (pIdx >= 0) {
+      return { bucket: "podcasts", path: noQuery.substring(pIdx + podMarker.length), legacyUrl: val };
+    }
+    const dIdx = noQuery.indexOf(docMarker);
+    if (dIdx >= 0) {
+      return { bucket: "documents", path: noQuery.substring(dIdx + docMarker.length), legacyUrl: val };
+    }
+    return { bucket: "podcasts", path: val, legacyUrl: val };
+  };
+
+  const signAudio = async (val: string): Promise<string> => {
+    const { bucket, path, legacyUrl } = resolveAudio(val);
+    const { data: signed } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+    if (signed?.signedUrl) return signed.signedUrl;
+    // Fallback: legacy signed URL still works until it expires
+    return legacyUrl || "";
   };
 
   const fetchPodcast = async () => {
@@ -56,14 +77,11 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
       } catch {
         setScript([]);
       }
-      // Bucket is now private — always generate a signed URL.
-      // Handles both new path-only values and legacy public-URL values.
+      // Bucket is now private — always generate a fresh signed URL.
+      // Handles new path-only values, legacy public URLs, and legacy URLs in the documents bucket.
       if (p.audio_url) {
-        const path = toStoragePath(p.audio_url);
-        const { data: signed } = await supabase.storage
-          .from("podcasts")
-          .createSignedUrl(path, 3600);
-        if (signed?.signedUrl) setSignedUrl(signed.signedUrl);
+        const url = await signAudio(p.audio_url);
+        if (url) setSignedUrl(url);
       }
     }
     setLoading(false);
@@ -72,11 +90,7 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   const handleDownload = async () => {
     if (!podcast?.audio_url) return;
     // Always re-sign for download to ensure a fresh URL
-    const path = toStoragePath(podcast.audio_url);
-    const { data: signed } = await supabase.storage
-      .from("podcasts")
-      .createSignedUrl(path, 3600);
-    const url = signed?.signedUrl || signedUrl;
+    const url = (await signAudio(podcast.audio_url)) || signedUrl;
     if (!url) return;
     setDownloading(true);
     const filename = `${podcast.title.replace(/[^a-z0-9]/gi, "_")}.mp3`;
