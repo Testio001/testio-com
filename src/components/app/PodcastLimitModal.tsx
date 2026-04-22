@@ -24,8 +24,8 @@ const PodcastLimitModal = ({ isOpen, onClose, subscriptionPlan }: PodcastLimitMo
   const handleBuyAddon = async () => {
     setLoadingAddon(true);
     try {
-      const fnName = currency === "NGN" ? "korapay-initialize" : "initialize-payment";
-      const { data, error } = await supabase.functions.invoke(fnName, {
+      // Podcast top-up runs on Lemon Squeezy (USD) for now — Korapay top-up not yet enabled.
+      const { data, error } = await supabase.functions.invoke("initialize-payment", {
         body: { plan: "podcast_addon" },
       });
       if (error) throw error;
