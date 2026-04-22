@@ -283,8 +283,28 @@ const Pricing = () => {
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Pick the plan that fits you</h1>
           <p className="text-muted-foreground text-sm max-w-md mx-auto">
-            Start free. Upgrade any time. Cancel any time.
+            Start free. Upgrade any time. {currency === "NGN" ? "One-off payment, valid 30 days." : "Cancel any time."}
           </p>
+
+          {/* Currency toggle */}
+          <div className="mt-5 inline-flex items-center bg-secondary rounded-full p-1 border border-border">
+            <button
+              onClick={() => toggleCurrency("USD")}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                currency === "USD" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🌍 USD
+            </button>
+            <button
+              onClick={() => toggleCurrency("NGN")}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                currency === "NGN" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🇳🇬 NGN
+            </button>
+          </div>
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -319,10 +339,18 @@ const Pricing = () => {
               </div>
 
               <div className="mb-1 flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-foreground">{plan.price}</span>
-                <span className="text-muted-foreground text-xs">{plan.period}</span>
+                <span className="text-3xl font-bold text-foreground">
+                  {currency === "NGN" && plan.id !== "free"
+                    ? formatNgn(NGN_PRICES[plan.id as Exclude<PlanId, "free">])
+                    : plan.price}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {plan.id === "free" ? plan.period : currency === "NGN" ? "/30 days" : plan.period}
+                </span>
               </div>
-              <p className="text-muted-foreground text-[11px] italic mb-5">{plan.blurb}</p>
+              <p className="text-muted-foreground text-[11px] italic mb-5">
+                {currency === "NGN" && plan.id !== "free" ? "One-off payment · renew when it expires" : plan.blurb}
+              </p>
 
               <ul className="space-y-2.5 mb-6 flex-1">
                 {plan.features.map((feature) => (
@@ -352,7 +380,11 @@ const Pricing = () => {
 
         <div className="text-center mt-8 space-y-1">
           <p className="text-muted-foreground text-xs">*Scholar fair-usage cap: 80 uploads/month to prevent abuse.</p>
-          <p className="text-muted-foreground text-xs">Secure payment powered by Lemon Squeezy. Cancel anytime.</p>
+          <p className="text-muted-foreground text-xs">
+            {currency === "NGN"
+              ? "Secure payment powered by Korapay (Nigeria). One-off — no auto-renew."
+              : "Secure payment powered by Lemon Squeezy. Cancel anytime."}
+          </p>
           <p className="text-muted-foreground text-[10px]">Created by <span className="font-semibold">TechWorld</span></p>
         </div>
       </div>
