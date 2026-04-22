@@ -17,6 +17,7 @@ import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
 import StudyMusicModal from "@/components/app/StudyMusicModal";
 import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
+import { useCurrency, priceFor, periodFor } from "@/hooks/useCurrency";
 
 type Document = Tables<"documents">;
 
