@@ -223,18 +223,28 @@ Deno.serve(async (req) => {
           .order("created_at", { ascending: false });
 
         const totalUploadsAllowed = getUploadLimitForPlan(activePlan) + (stats.bonus_uploads || 0);
-        const uploadsRemaining = Math.max(0, totalUploadsAllowed - (stats.uploads_used || 0));
+        // Abuse-flagged users on the free plan get NO free uploads — only paid bonuses count.
+        const isAbuseFlagged = !!stats.is_abuse_flagged;
+        const effectiveTotal =
+          isAbuseFlagged && activePlan === "free"
+            ? Math.max(0, stats.bonus_uploads || 0)
+            : totalUploadsAllowed;
+        const uploadsRemaining = Math.max(0, effectiveTotal - (stats.uploads_used || 0));
 
         result = {
           stats,
           activePlan,
           badges: badges || [],
           referrals: referrals || [],
-          totalUploadsAllowed,
+          totalUploadsAllowed: effectiveTotal,
           uploadsRemaining,
           canUpload: uploadsRemaining > 0,
           referralsRemaining: MAX_REFERRALS_PER_MONTH - (stats.referrals_this_month || 0),
-          canRefer: (MAX_REFERRALS_PER_MONTH - (stats.referrals_this_month || 0)) > 0,
+          canRefer:
+            !isAbuseFlagged &&
+            (MAX_REFERRALS_PER_MONTH - (stats.referrals_this_month || 0)) > 0,
+          isAbuseFlagged,
+          abuseReason: stats.abuse_reason || null,
         };
         break;
       }
@@ -339,6 +349,21 @@ Deno.serve(async (req) => {
           break;
         }
 
+        // Block abuse-flagged accounts from triggering a referral reward
+        const { data: myStatsRow } = await supabaseAdmin
+          .from("user_stats")
+          .select("is_abuse_flagged")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (myStatsRow?.is_abuse_flagged) {
+          result = {
+            success: false,
+            message:
+              "You've already claimed your free trial and referral reward on this device. Upgrade to keep using Testio.",
+          };
+          break;
+        }
+
         const { data: existing } = await supabaseAdmin
           .from("referrals")
           .select("id")
@@ -367,6 +392,36 @@ Deno.serve(async (req) => {
         if (referrer.user_id === userId) {
           result = { success: false, message: "Cannot refer yourself" };
           break;
+        }
+
+        // Block same-device referrals: if referrer and referred share any fingerprint, void the reward
+        const { data: myFps } = await supabaseAdmin
+          .from("device_fingerprints")
+          .select("fingerprint")
+          .eq("user_id", userId);
+        const myFpSet = new Set((myFps || []).map((r: any) => r.fingerprint));
+        if (myFpSet.size > 0) {
+          const { data: refFps } = await supabaseAdmin
+            .from("device_fingerprints")
+            .select("fingerprint")
+            .eq("user_id", referrer.user_id);
+          const sharesDevice = (refFps || []).some((r: any) => myFpSet.has(r.fingerprint));
+          if (sharesDevice) {
+            // Flag this account silently and refuse the reward
+            await supabaseAdmin
+              .from("user_stats")
+              .update({
+                is_abuse_flagged: true,
+                abuse_reason: "same_device_referral",
+              })
+              .eq("user_id", userId);
+            result = {
+              success: false,
+              message:
+                "Referral reward not available — this device has already been used for another account.",
+            };
+            break;
+          }
         }
 
         if (referrer.referrals_this_month >= MAX_REFERRALS_PER_MONTH) {
