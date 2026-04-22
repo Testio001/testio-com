@@ -17,12 +17,14 @@ import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
 import StudyMusicModal from "@/components/app/StudyMusicModal";
 import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
+import { useCurrency, priceFor, periodFor } from "@/hooks/useCurrency";
 
 type Document = Tables<"documents">;
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { currency } = useCurrency();
   const { toast } = useToast();
   const gamification = useGamification();
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -437,7 +439,7 @@ const Dashboard = () => {
                       Upgrade to Pro — Unlock Everything
                     </h3>
                     <p className="text-muted-foreground text-[10px] sm:text-xs mt-0.5">
-                      Unlimited uploads, full podcasts & AI Tutor — starting at <span className="text-primary font-bold">$4.99/mo</span>
+                      Unlimited uploads, full podcasts & AI Tutor — starting at <span className="text-primary font-bold">{priceFor("basic", currency)}{periodFor(currency)}</span>
                     </p>
                   </div>
                   <div className="hidden sm:block shrink-0 bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-full">
@@ -459,7 +461,7 @@ const Dashboard = () => {
                   </div>
                   <h3 className="text-foreground font-bold text-lg mb-2">Unlock the Full Testio Experience</h3>
                   <p className="text-muted-foreground text-sm mb-1">Get unlimited uploads, full-length podcasts, unlimited quizzes & flashcards.</p>
-                  <p className="text-primary font-bold text-lg mb-4">Starting at $4.99/mo</p>
+                  <p className="text-primary font-bold text-lg mb-4">Starting at {priceFor("basic", currency)}{periodFor(currency)}</p>
                   <button onClick={() => { setShowPeriodicUpgrade(false); navigate("/pricing"); }} className="w-full btn-testio-primary text-sm !py-3 flex items-center justify-center gap-2 mb-2">
                     <Crown className="w-4 h-4" /> Upgrade Now
                   </button>
