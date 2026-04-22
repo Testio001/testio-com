@@ -37,3 +37,11 @@ project_id = "kjdduozjlfhgznrcsoxr"
     verify_jwt = false
   [functions.initialize-payment]
     verify_jwt = false
+  [functions.korapay-initialize]
+    verify_jwt = false
+  [functions.korapay-verify]
+    verify_jwt = false
+  [functions.korapay-webhook]
+    verify_jwt = false
+  [functions.detect-country]
+    verify_jwt = false
