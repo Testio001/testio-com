@@ -18,15 +18,15 @@ const PodcastLimitModal = ({ isOpen, onClose, subscriptionPlan }: PodcastLimitMo
   const { currency } = useCurrency();
   const basicPrice = priceFor("basic", currency);
   const proPrice = priceFor("pro", currency);
-  // Podcast addon is USD-only (Lemon Squeezy)
-  const addonPrice = "$4.99";
+  const addonPrice = priceFor("podcast_addon", currency);
   const period = periodFor(currency);
 
   const handleBuyAddon = async () => {
     setLoadingAddon(true);
     try {
-      // Podcast top-up runs on Lemon Squeezy (USD) for now — Korapay top-up not yet enabled.
-      const { data, error } = await supabase.functions.invoke("initialize-payment", {
+      // NGN → Korapay (₦7,800), USD → Lemon Squeezy ($4.99)
+      const fnName = currency === "NGN" ? "korapay-initialize" : "initialize-payment";
+      const { data, error } = await supabase.functions.invoke(fnName, {
         body: { plan: "podcast_addon" },
       });
       if (error) throw error;
