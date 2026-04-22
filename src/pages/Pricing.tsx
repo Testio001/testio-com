@@ -8,17 +8,9 @@ import { Check, Crown, ArrowLeft, Loader2, Zap, Sparkles, GraduationCap } from "
 import { motion } from "framer-motion";
 import testioLogo from "@/assets/testio-logo.png";
 import ElitePricingBanner from "@/components/app/ElitePricingBanner";
+import { useCurrency, NGN_PRICES, formatNgn, type Currency } from "@/hooks/useCurrency";
 
 type PlanId = "free" | "basic" | "pro" | "scholar";
-type Currency = "USD" | "NGN";
-
-const NGN_PRICES: Record<Exclude<PlanId, "free">, number> = {
-  basic: 7800,
-  pro: 14990,
-  scholar: 22990,
-};
-
-const formatNgn = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
 const plans: Array<{
   id: PlanId;
@@ -118,37 +110,8 @@ const Pricing = () => {
   const isAndroidApp = useIsAndroidApp();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
-  const [currency, setCurrency] = useState<Currency>("USD");
-  const [countryDetected, setCountryDetected] = useState(false);
-
-  // Auto-detect country on mount
-  useEffect(() => {
-    if (countryDetected) return;
-    const stored = localStorage.getItem("testio_currency") as Currency | null;
-    if (stored === "NGN" || stored === "USD") {
-      setCurrency(stored);
-      setCountryDetected(true);
-      return;
-    }
-    (async () => {
-      try {
-        const { data } = await supabase.functions.invoke("detect-country", { body: {} });
-        if (data?.country === "NG") {
-          setCurrency("NGN");
-          localStorage.setItem("testio_currency", "NGN");
-        }
-      } catch {
-        // ignore — defaults to USD
-      } finally {
-        setCountryDetected(true);
-      }
-    })();
-  }, [countryDetected]);
-
-  const toggleCurrency = (c: Currency) => {
-    setCurrency(c);
-    localStorage.setItem("testio_currency", c);
-  };
+  const { currency, setCurrency } = useCurrency();
+  const toggleCurrency = (c: Currency) => setCurrency(c);
 
   useEffect(() => {
     if (searchParams.get("payment") === "success" && user) {
