@@ -23,3 +23,13 @@ type: feature
 
 ## Podcast generation cap
 - generate-podcast clamps maxExchanges to [4, 30] regardless of client value.
+
+## Korapay (Nigeria) — one-off payments
+- Country detection: edge function `detect-country` uses ipapi.co. NG users default to NGN.
+- Manual currency toggle on /pricing (USD ↔ NGN), persisted to `localStorage.testio_currency`.
+- NGN prices (one-off, 30 days access): basic ₦7,800 · pro ₦14,990 · scholar ₦22,990.
+- Edge functions: `korapay-initialize`, `korapay-verify`, `korapay-webhook` (verify_jwt=false on webhook).
+- Webhook signature: HMAC SHA256 of `data` JSON with `KORAPAY_WEBHOOK_SECRET`, header `x-korapay-signature`.
+- Tracking table: `korapay_transactions` (reference, plan, amount_ngn, status, expires_at).
+- On success → sets `profiles.subscription_plan` + `subscription_expires_at = now()+30 days`. NO auto-renew.
+- Webhook URL to register in Korapay dashboard: `https://kjdduozjlfhgznrcsoxr.supabase.co/functions/v1/korapay-webhook`
