@@ -247,7 +247,8 @@ const Pricing = () => {
     }
     setLoadingPlan(plan.id);
     try {
-      const { data, error } = await supabase.functions.invoke("initialize-payment", {
+      const fnName = currency === "NGN" ? "korapay-initialize" : "initialize-payment";
+      const { data, error } = await supabase.functions.invoke(fnName, {
         body: { plan: plan.id },
       });
       if (error) throw error;
