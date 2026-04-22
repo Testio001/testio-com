@@ -7,7 +7,7 @@ export const NGN_PRICES = {
   basic: 7800,
   pro: 14990,
   scholar: 22990,
-  podcast_addon: 2990,
+  podcast_addon: 7800,
 } as const;
 
 export const USD_PRICES = {
