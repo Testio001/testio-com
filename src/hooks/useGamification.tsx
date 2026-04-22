@@ -41,6 +41,8 @@ export interface GamificationData {
   referralsRemaining: number;
   canRefer: boolean;
   daysUntilReferralReset: number;
+  isAbuseFlagged: boolean;
+  abuseReason: string | null;
   recordUpload: () => Promise<{ bonusEarned: boolean; newStreak: number; isNewDay: boolean } | undefined>;
   getReferralLink: () => string;
   processReferral: (code: string) => Promise<{ success: boolean; message: string }>;
@@ -95,6 +97,8 @@ export function useGamification(): GamificationData {
   const [canUpload, setCanUpload] = useState(true);
   const [referralsRemaining, setReferralsRemaining] = useState(MAX_REFERRALS_PER_MONTH);
   const [canRefer, setCanRefer] = useState(true);
+  const [isAbuseFlagged, setIsAbuseFlagged] = useState(false);
+  const [abuseReason, setAbuseReason] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
     if (!user) return;
@@ -108,6 +112,8 @@ export function useGamification(): GamificationData {
       setCanUpload(data.canUpload);
       setReferralsRemaining(data.referralsRemaining);
       setCanRefer(data.canRefer);
+      setIsAbuseFlagged(!!data.isAbuseFlagged);
+      setAbuseReason(data.abuseReason ?? null);
     } catch {
       // Silent fail on stats fetch
     } finally {
@@ -184,6 +190,8 @@ export function useGamification(): GamificationData {
     referralsRemaining,
     canRefer,
     daysUntilReferralReset,
+    isAbuseFlagged,
+    abuseReason,
     recordUpload,
     getReferralLink,
     processReferral,
