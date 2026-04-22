@@ -24,6 +24,7 @@ type Document = Tables<"documents">;
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { currency } = useCurrency();
   const { toast } = useToast();
   const gamification = useGamification();
   const [documents, setDocuments] = useState<Document[]>([]);
