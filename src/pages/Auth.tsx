@@ -7,6 +7,8 @@ import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Gift, Loader2 } from "lucide
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import testioLogo from "@/assets/testio-logo.png";
+import { getDeviceFingerprint } from "@/hooks/useDeviceFingerprint";
+import { isDisposableEmail } from "@/lib/disposableEmails";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -53,8 +55,17 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        // Register device fingerprint for this session (best-effort)
+        try {
+          const fp = await getDeviceFingerprint();
+          await supabase.functions.invoke("check-signup-abuse", { body: { fingerprint: fp } });
+        } catch {}
         navigate("/dashboard");
       } else {
+        // Pre-check: block obvious disposable emails before creating the account
+        if (isDisposableEmail(email)) {
+          throw new Error("Please use a permanent email address to sign up.");
+        }
         const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
@@ -63,6 +74,11 @@ const Auth = () => {
           },
         });
         if (error) throw error;
+        // Run anti-abuse check (silently flags account if duplicate device/email)
+        try {
+          const fp = await getDeviceFingerprint();
+          await supabase.functions.invoke("check-signup-abuse", { body: { fingerprint: fp } });
+        } catch {}
         navigate("/verify-email", { state: { email } });
       }
     } catch (error: any) {
