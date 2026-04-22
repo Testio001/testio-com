@@ -18,7 +18,8 @@ const PodcastLimitModal = ({ isOpen, onClose, subscriptionPlan }: PodcastLimitMo
   const { currency } = useCurrency();
   const basicPrice = priceFor("basic", currency);
   const proPrice = priceFor("pro", currency);
-  const addonPrice = priceFor("podcast_addon", currency);
+  // Podcast addon is USD-only (Lemon Squeezy)
+  const addonPrice = "$4.99";
   const period = periodFor(currency);
 
   const handleBuyAddon = async () => {
