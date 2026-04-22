@@ -10,6 +10,15 @@ import testioLogo from "@/assets/testio-logo.png";
 import ElitePricingBanner from "@/components/app/ElitePricingBanner";
 
 type PlanId = "free" | "basic" | "pro" | "scholar";
+type Currency = "USD" | "NGN";
+
+const NGN_PRICES: Record<Exclude<PlanId, "free">, number> = {
+  basic: 7800,
+  pro: 14990,
+  scholar: 22990,
+};
+
+const formatNgn = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
 const plans: Array<{
   id: PlanId;
