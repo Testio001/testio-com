@@ -10,6 +10,7 @@ const PLAN_NGN: Record<string, number> = {
   basic: 7800,
   pro: 14990,
   scholar: 22990,
+  podcast_addon: 7800,
 };
 
 Deno.serve(async (req) => {
@@ -34,7 +35,7 @@ Deno.serve(async (req) => {
 
     const { plan } = await req.json();
     if (!plan || !PLAN_NGN[plan]) {
-      return new Response(JSON.stringify({ error: "Invalid plan. Must be 'basic', 'pro', or 'scholar'." }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Invalid plan. Must be 'basic', 'pro', 'scholar', or 'podcast_addon'." }), { status: 400, headers: corsHeaders });
     }
 
     const koraSecret = Deno.env.get("KORAPAY_SECRET_KEY");
@@ -44,7 +45,9 @@ Deno.serve(async (req) => {
 
     const amountNgn = PLAN_NGN[plan];
     const reference = `kp_${user.id.slice(0, 8)}_${Date.now()}`;
-    const redirectUrl = `https://testio-com.lovable.app/pricing?korapay=success&reference=${reference}`;
+    const redirectUrl = plan === "podcast_addon"
+      ? `https://testio-com.lovable.app/dashboard?korapay=success&reference=${reference}`
+      : `https://testio-com.lovable.app/pricing?korapay=success&reference=${reference}`;
 
     // Insert pending transaction
     const { error: insertErr } = await admin.from("korapay_transactions").insert({
@@ -70,7 +73,9 @@ Deno.serve(async (req) => {
         amount: amountNgn,
         currency: "NGN",
         reference,
-        narration: `Testio ${plan} plan (30 days)`,
+        narration: plan === "podcast_addon"
+          ? "Testio podcast top-up (5 credits)"
+          : `Testio ${plan} plan (30 days)`,
         notification_url: `${supabaseUrl}/functions/v1/korapay-webhook`,
         redirect_url: redirectUrl,
         customer: {

@@ -65,6 +65,16 @@ Deno.serve(async (req) => {
 
     const status = verifyData.data?.status;
     if (status === "success") {
+      if (tx.plan === "podcast_addon") {
+        await admin.from("korapay_transactions").update({ status: "success" }).eq("reference", reference);
+        const { data: stats } = await admin.from("user_stats").select("bonus_podcasts").eq("user_id", user.id).maybeSingle();
+        const current = stats?.bonus_podcasts ?? 0;
+        await admin.from("user_stats").update({ bonus_podcasts: current + 5 }).eq("user_id", user.id);
+        return new Response(JSON.stringify({ success: true, plan: tx.plan, addon: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
       await admin.from("korapay_transactions").update({ status: "success", expires_at: expiresAt }).eq("reference", reference);
       await admin.from("profiles").update({

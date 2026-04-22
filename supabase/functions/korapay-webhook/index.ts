@@ -52,12 +52,19 @@ Deno.serve(async (req) => {
 
     if (eventType === "charge.success" || data.status === "success") {
       if (tx.status !== "success") {
-        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-        await admin.from("korapay_transactions").update({ status: "success", expires_at: expiresAt }).eq("reference", reference);
-        await admin.from("profiles").update({
-          subscription_plan: tx.plan,
-          subscription_expires_at: expiresAt,
-        }).eq("user_id", tx.user_id);
+        if (tx.plan === "podcast_addon") {
+          await admin.from("korapay_transactions").update({ status: "success" }).eq("reference", reference);
+          const { data: stats } = await admin.from("user_stats").select("bonus_podcasts").eq("user_id", tx.user_id).maybeSingle();
+          const current = stats?.bonus_podcasts ?? 0;
+          await admin.from("user_stats").update({ bonus_podcasts: current + 5 }).eq("user_id", tx.user_id);
+        } else {
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          await admin.from("korapay_transactions").update({ status: "success", expires_at: expiresAt }).eq("reference", reference);
+          await admin.from("profiles").update({
+            subscription_plan: tx.plan,
+            subscription_expires_at: expiresAt,
+          }).eq("user_id", tx.user_id);
+        }
       }
     } else if (eventType === "charge.failed" || data.status === "failed") {
       await admin.from("korapay_transactions").update({ status: "failed" }).eq("reference", reference);
