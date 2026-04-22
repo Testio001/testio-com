@@ -207,10 +207,44 @@ const Home = () => {
         <div className="max-w-3xl mx-auto">
           <h2 className={`text-3xl font-bold text-center mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>Simple, Transparent Pricing</h2>
           <p className={`text-center mb-14 max-w-md mx-auto ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-            Choose the plan that fits your study needs. Cancel anytime.
+            Choose the plan that fits your study needs. {currency === "NGN" ? "One-off payment, valid 30 days." : "Cancel anytime."}
           </p>
+
+          {/* Currency toggle */}
+          <div className="flex justify-center mb-10">
+            <div className={`inline-flex items-center rounded-full p-1 border ${isDark ? "bg-gray-900 border-gray-800" : "bg-gray-100 border-gray-200"}`}>
+              <button
+                onClick={() => setCurrency("USD")}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  currency === "USD"
+                    ? "bg-indigo-600 text-white shadow"
+                    : isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                🌍 USD
+              </button>
+              <button
+                onClick={() => setCurrency("NGN")}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  currency === "NGN"
+                    ? "bg-indigo-600 text-white shadow"
+                    : isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                🇳🇬 NGN
+              </button>
+            </div>
+          </div>
+
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {plans.map((plan) => (
+            {plans.map((plan) => {
+              const usd = USD_LABELS[plan.id];
+              const isNgnPaid = currency === "NGN" && plan.id !== "free";
+              const displayPrice = isNgnPaid
+                ? formatNgn(NGN_PRICES[plan.id as "basic" | "pro" | "scholar"])
+                : usd.price;
+              const displayPeriod = plan.id === "free" ? usd.period : currency === "NGN" ? "/30 days" : usd.period;
+              return (
               <div
                 key={plan.name}
                 className={`relative rounded-2xl p-7 border ${
@@ -230,8 +264,8 @@ const Home = () => {
                 )}
                 <h3 className={`font-bold text-xl mb-1 ${isDark ? "text-white" : "text-gray-900"}`}>{plan.name}</h3>
                 <div className="flex items-baseline gap-1 mb-6">
-                  <span className={`text-4xl font-extrabold ${isDark ? "text-white" : "text-gray-900"}`}>{plan.price}</span>
-                  {plan.period && <span className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>{plan.period}</span>}
+                  <span className={`text-4xl font-extrabold ${isDark ? "text-white" : "text-gray-900"}`}>{displayPrice}</span>
+                  {displayPeriod && <span className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>{displayPeriod}</span>}
                 </div>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((feature) => (
@@ -254,7 +288,8 @@ const Home = () => {
                   {plan.cta}
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
