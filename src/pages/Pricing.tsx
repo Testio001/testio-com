@@ -118,6 +118,37 @@ const Pricing = () => {
   const isAndroidApp = useIsAndroidApp();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
+  const [currency, setCurrency] = useState<Currency>("USD");
+  const [countryDetected, setCountryDetected] = useState(false);
+
+  // Auto-detect country on mount
+  useEffect(() => {
+    if (countryDetected) return;
+    const stored = localStorage.getItem("testio_currency") as Currency | null;
+    if (stored === "NGN" || stored === "USD") {
+      setCurrency(stored);
+      setCountryDetected(true);
+      return;
+    }
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke("detect-country", { body: {} });
+        if (data?.country === "NG") {
+          setCurrency("NGN");
+          localStorage.setItem("testio_currency", "NGN");
+        }
+      } catch {
+        // ignore — defaults to USD
+      } finally {
+        setCountryDetected(true);
+      }
+    })();
+  }, [countryDetected]);
+
+  const toggleCurrency = (c: Currency) => {
+    setCurrency(c);
+    localStorage.setItem("testio_currency", c);
+  };
 
   useEffect(() => {
     if (searchParams.get("payment") === "success" && user) {
@@ -145,6 +176,50 @@ const Pricing = () => {
         }
       };
       verifyPayment();
+    }
+  }, [searchParams, user]);
+
+  // Korapay payment success handler
+  useEffect(() => {
+    const reference = searchParams.get("reference");
+    if (searchParams.get("korapay") === "success" && user && reference) {
+      (async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke("korapay-verify", {
+            body: { reference },
+          });
+          if (error) throw error;
+          if (data?.success) {
+            toast({
+              title: "🎉 Payment Successful!",
+              description: `Your ${data.plan} plan is active for 30 days. Renew anytime.`,
+            });
+            navigate("/dashboard", { replace: true });
+          } else {
+            // retry once after delay (webhook may complete shortly)
+            setTimeout(async () => {
+              const { data: retry } = await supabase.functions.invoke("korapay-verify", {
+                body: { reference },
+              });
+              if (retry?.success) {
+                toast({ title: "🎉 Payment Successful!", description: `Your plan is now active!` });
+                navigate("/dashboard", { replace: true });
+              } else {
+                toast({
+                  title: "Payment pending",
+                  description: "We're confirming your payment. This may take a moment.",
+                });
+              }
+            }, 5000);
+          }
+        } catch (err: any) {
+          toast({
+            title: "Verification error",
+            description: err.message || "Could not verify payment. Contact support if charged.",
+            variant: "destructive",
+          });
+        }
+      })();
     }
   }, [searchParams, user]);
 
