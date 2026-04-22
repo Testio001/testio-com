@@ -66,6 +66,15 @@ serve(async (req) => {
 
     await supabase.from("notes").delete().eq("user_id", userId);
     await supabase.from("documents").delete().eq("user_id", userId);
+
+    // Capture device fingerprints BEFORE we wipe them, to remember the device in account_history
+    const { data: fps } = await supabase
+      .from("device_fingerprints")
+      .select("fingerprint")
+      .eq("user_id", userId);
+    const primaryFp = fps && fps.length > 0 ? fps[0].fingerprint : null;
+    await supabase.from("device_fingerprints").delete().eq("user_id", userId);
+
     await supabase.from("profiles").delete().eq("user_id", userId);
 
     // Record account history BEFORE deleting auth user — so re-signups can't reclaim free trial
@@ -76,6 +85,7 @@ serve(async (req) => {
           email_hash: emailHash,
           email_lower: userEmail.toLowerCase().trim(),
           last_plan: lastPlan,
+          device_fingerprint: primaryFp,
         });
         console.log(`Recorded account_history for ${userEmail}`);
       } catch (e) {

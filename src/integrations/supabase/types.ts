@@ -17,6 +17,7 @@ export type Database = {
       account_history: {
         Row: {
           deleted_at: string
+          device_fingerprint: string | null
           email_hash: string
           email_lower: string
           id: string
@@ -24,6 +25,7 @@ export type Database = {
         }
         Insert: {
           deleted_at?: string
+          device_fingerprint?: string | null
           email_hash: string
           email_lower: string
           id?: string
@@ -31,6 +33,7 @@ export type Database = {
         }
         Update: {
           deleted_at?: string
+          device_fingerprint?: string | null
           email_hash?: string
           email_lower?: string
           id?: string
@@ -93,6 +96,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      device_fingerprints: {
+        Row: {
+          created_at: string
+          fingerprint: string
+          id: string
+          ip_hash: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fingerprint: string
+          id?: string
+          ip_hash?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fingerprint?: string
+          id?: string
+          ip_hash?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       documents: {
         Row: {
@@ -673,11 +700,13 @@ export type Database = {
       }
       user_stats: {
         Row: {
+          abuse_reason: string | null
           bonus_podcasts: number
           bonus_uploads: number
           created_at: string
           current_streak: number
           id: string
+          is_abuse_flagged: boolean
           is_seeded_user: boolean
           last_upload_date: string | null
           longest_streak: number
@@ -690,11 +719,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          abuse_reason?: string | null
           bonus_podcasts?: number
           bonus_uploads?: number
           created_at?: string
           current_streak?: number
           id?: string
+          is_abuse_flagged?: boolean
           is_seeded_user?: boolean
           last_upload_date?: string | null
           longest_streak?: number
@@ -707,11 +738,13 @@ export type Database = {
           user_id: string
         }
         Update: {
+          abuse_reason?: string | null
           bonus_podcasts?: number
           bonus_uploads?: number
           created_at?: string
           current_streak?: number
           id?: string
+          is_abuse_flagged?: boolean
           is_seeded_user?: boolean
           last_upload_date?: string | null
           longest_streak?: number
@@ -747,6 +780,10 @@ export type Database = {
       bump_seeded_streaks: { Args: never; Returns: undefined }
       check_ai_rate_limit: {
         Args: { _function_name: string; _user_id: string }
+        Returns: Json
+      }
+      check_device_abuse: {
+        Args: { _email: string; _fingerprint: string }
         Returns: Json
       }
       delete_email: {

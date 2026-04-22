@@ -390,6 +390,32 @@ const Dashboard = () => {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Main content */}
           <div className="flex-1 min-w-0">
+            {gamification.isAbuseFlagged && (!userPlan || userPlan === "free") && (
+              <div className="mb-6 rounded-2xl border border-primary/30 bg-primary/10 p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                    <Crown className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm sm:text-base font-semibold text-foreground">
+                      You've already claimed your free trial and referral reward
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                      It looks like this device or email has previously used Testio's free plan. To
+                      keep generating notes, flashcards, quizzes and podcasts, please upgrade to a
+                      paid plan — starting at {priceFor("basic", currency)}{periodFor(currency)}.
+                    </p>
+                    <button
+                      onClick={() => navigate("/pricing")}
+                      className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-medium hover:opacity-90 transition-opacity"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      Upgrade to keep using Testio
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
               <div>
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">My Documents</h1>
