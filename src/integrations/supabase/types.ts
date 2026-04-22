@@ -330,6 +330,42 @@ export type Database = {
           },
         ]
       }
+      korapay_transactions: {
+        Row: {
+          amount_ngn: number
+          created_at: string
+          expires_at: string | null
+          id: string
+          plan: string
+          reference: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_ngn: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          plan: string
+          reference: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_ngn?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          plan?: string
+          reference?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           content: string

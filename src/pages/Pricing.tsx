@@ -10,6 +10,15 @@ import testioLogo from "@/assets/testio-logo.png";
 import ElitePricingBanner from "@/components/app/ElitePricingBanner";
 
 type PlanId = "free" | "basic" | "pro" | "scholar";
+type Currency = "USD" | "NGN";
+
+const NGN_PRICES: Record<Exclude<PlanId, "free">, number> = {
+  basic: 7800,
+  pro: 14990,
+  scholar: 22990,
+};
+
+const formatNgn = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
 const plans: Array<{
   id: PlanId;
@@ -109,6 +118,37 @@ const Pricing = () => {
   const isAndroidApp = useIsAndroidApp();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
+  const [currency, setCurrency] = useState<Currency>("USD");
+  const [countryDetected, setCountryDetected] = useState(false);
+
+  // Auto-detect country on mount
+  useEffect(() => {
+    if (countryDetected) return;
+    const stored = localStorage.getItem("testio_currency") as Currency | null;
+    if (stored === "NGN" || stored === "USD") {
+      setCurrency(stored);
+      setCountryDetected(true);
+      return;
+    }
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke("detect-country", { body: {} });
+        if (data?.country === "NG") {
+          setCurrency("NGN");
+          localStorage.setItem("testio_currency", "NGN");
+        }
+      } catch {
+        // ignore — defaults to USD
+      } finally {
+        setCountryDetected(true);
+      }
+    })();
+  }, [countryDetected]);
+
+  const toggleCurrency = (c: Currency) => {
+    setCurrency(c);
+    localStorage.setItem("testio_currency", c);
+  };
 
   useEffect(() => {
     if (searchParams.get("payment") === "success" && user) {
@@ -139,6 +179,50 @@ const Pricing = () => {
     }
   }, [searchParams, user]);
 
+  // Korapay payment success handler
+  useEffect(() => {
+    const reference = searchParams.get("reference");
+    if (searchParams.get("korapay") === "success" && user && reference) {
+      (async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke("korapay-verify", {
+            body: { reference },
+          });
+          if (error) throw error;
+          if (data?.success) {
+            toast({
+              title: "🎉 Payment Successful!",
+              description: `Your ${data.plan} plan is active for 30 days. Renew anytime.`,
+            });
+            navigate("/dashboard", { replace: true });
+          } else {
+            // retry once after delay (webhook may complete shortly)
+            setTimeout(async () => {
+              const { data: retry } = await supabase.functions.invoke("korapay-verify", {
+                body: { reference },
+              });
+              if (retry?.success) {
+                toast({ title: "🎉 Payment Successful!", description: `Your plan is now active!` });
+                navigate("/dashboard", { replace: true });
+              } else {
+                toast({
+                  title: "Payment pending",
+                  description: "We're confirming your payment. This may take a moment.",
+                });
+              }
+            }, 5000);
+          }
+        } catch (err: any) {
+          toast({
+            title: "Verification error",
+            description: err.message || "Could not verify payment. Contact support if charged.",
+            variant: "destructive",
+          });
+        }
+      })();
+    }
+  }, [searchParams, user]);
+
   if (isAndroidApp) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -163,7 +247,8 @@ const Pricing = () => {
     }
     setLoadingPlan(plan.id);
     try {
-      const { data, error } = await supabase.functions.invoke("initialize-payment", {
+      const fnName = currency === "NGN" ? "korapay-initialize" : "initialize-payment";
+      const { data, error } = await supabase.functions.invoke(fnName, {
         body: { plan: plan.id },
       });
       if (error) throw error;
@@ -198,8 +283,28 @@ const Pricing = () => {
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Pick the plan that fits you</h1>
           <p className="text-muted-foreground text-sm max-w-md mx-auto">
-            Start free. Upgrade any time. Cancel any time.
+            Start free. Upgrade any time. {currency === "NGN" ? "One-off payment, valid 30 days." : "Cancel any time."}
           </p>
+
+          {/* Currency toggle */}
+          <div className="mt-5 inline-flex items-center bg-secondary rounded-full p-1 border border-border">
+            <button
+              onClick={() => toggleCurrency("USD")}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                currency === "USD" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🌍 USD
+            </button>
+            <button
+              onClick={() => toggleCurrency("NGN")}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                currency === "NGN" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🇳🇬 NGN
+            </button>
+          </div>
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -234,10 +339,18 @@ const Pricing = () => {
               </div>
 
               <div className="mb-1 flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-foreground">{plan.price}</span>
-                <span className="text-muted-foreground text-xs">{plan.period}</span>
+                <span className="text-3xl font-bold text-foreground">
+                  {currency === "NGN" && plan.id !== "free"
+                    ? formatNgn(NGN_PRICES[plan.id as Exclude<PlanId, "free">])
+                    : plan.price}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {plan.id === "free" ? plan.period : currency === "NGN" ? "/30 days" : plan.period}
+                </span>
               </div>
-              <p className="text-muted-foreground text-[11px] italic mb-5">{plan.blurb}</p>
+              <p className="text-muted-foreground text-[11px] italic mb-5">
+                {currency === "NGN" && plan.id !== "free" ? "One-off payment · renew when it expires" : plan.blurb}
+              </p>
 
               <ul className="space-y-2.5 mb-6 flex-1">
                 {plan.features.map((feature) => (
@@ -267,7 +380,11 @@ const Pricing = () => {
 
         <div className="text-center mt-8 space-y-1">
           <p className="text-muted-foreground text-xs">*Scholar fair-usage cap: 80 uploads/month to prevent abuse.</p>
-          <p className="text-muted-foreground text-xs">Secure payment powered by Lemon Squeezy. Cancel anytime.</p>
+          <p className="text-muted-foreground text-xs">
+            {currency === "NGN"
+              ? "Secure payment powered by Korapay (Nigeria). One-off — no auto-renew."
+              : "Secure payment powered by Lemon Squeezy. Cancel anytime."}
+          </p>
           <p className="text-muted-foreground text-[10px]">Created by <span className="font-semibold">TechWorld</span></p>
         </div>
       </div>
