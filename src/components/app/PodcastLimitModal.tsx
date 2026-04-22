@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Mic, Zap, Crown, Loader2, X, Sparkles } from "lucide-react";
+import { useCurrency, priceFor, periodFor } from "@/hooks/useCurrency";
 
 interface PodcastLimitModalProps {
   isOpen: boolean;
@@ -14,10 +15,17 @@ const PodcastLimitModal = ({ isOpen, onClose, subscriptionPlan }: PodcastLimitMo
   const [loadingAddon, setLoadingAddon] = useState(false);
   const isFree = subscriptionPlan === "free";
   const isPaid = ["basic", "pro", "scholar"].includes(subscriptionPlan);
+  const { currency } = useCurrency();
+  const basicPrice = priceFor("basic", currency);
+  const proPrice = priceFor("pro", currency);
+  // Podcast addon is USD-only (Lemon Squeezy)
+  const addonPrice = "$4.99";
+  const period = periodFor(currency);
 
   const handleBuyAddon = async () => {
     setLoadingAddon(true);
     try {
+      // Podcast top-up runs on Lemon Squeezy (USD) for now — Korapay top-up not yet enabled.
       const { data, error } = await supabase.functions.invoke("initialize-payment", {
         body: { plan: "podcast_addon" },
       });
@@ -62,7 +70,7 @@ const PodcastLimitModal = ({ isOpen, onClose, subscriptionPlan }: PodcastLimitMo
                     <Crown className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-semibold text-foreground text-sm">Upgrade to Basic — $4.99/mo</p>
+                    <p className="font-semibold text-foreground text-sm">Upgrade to Basic — {basicPrice}{period}</p>
                     <p className="text-muted-foreground text-xs mt-0.5">3 podcasts/month (7 min) + 15 uploads</p>
                   </div>
                 </div>
@@ -76,7 +84,7 @@ const PodcastLimitModal = ({ isOpen, onClose, subscriptionPlan }: PodcastLimitMo
                     <Zap className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-semibold text-foreground text-sm">Upgrade to Pro — $9.99/mo</p>
+                    <p className="font-semibold text-foreground text-sm">Upgrade to Pro — {proPrice}{period}</p>
                     <p className="text-muted-foreground text-xs mt-0.5">6 podcasts/month (12 min) + 40 uploads</p>
                   </div>
                 </div>
@@ -98,7 +106,7 @@ const PodcastLimitModal = ({ isOpen, onClose, subscriptionPlan }: PodcastLimitMo
                 <div>
                   <p className="font-semibold text-foreground text-sm">Get More Podcasts</p>
                   <p className="text-muted-foreground text-xs mt-0.5">
-                    Add <span className="font-bold text-foreground">5 podcasts</span> for <span className="font-bold text-foreground">$4.99</span>
+                    Add <span className="font-bold text-foreground">5 podcasts</span> for <span className="font-bold text-foreground">{addonPrice}</span>
                   </p>
                   <p className="text-muted-foreground text-[10px] mt-1 italic">
                     One-time top-up · Adds 5 podcast credits only (no other features)

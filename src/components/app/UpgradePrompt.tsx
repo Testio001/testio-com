@@ -1,6 +1,7 @@
 import { Crown, Gift, Flame, GraduationCap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
+import { useCurrency, priceFor, periodFor } from "@/hooks/useCurrency";
 
 interface UpgradePromptProps {
   onRefer: () => void;
@@ -14,6 +15,10 @@ interface UpgradePromptProps {
 const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken, currentPlan = "free" }: UpgradePromptProps) => {
   const navigate = useNavigate();
   const isAndroidApp = useIsAndroidApp();
+  const { currency } = useCurrency();
+  const basicPrice = priceFor("basic", currency);
+  const proPrice = priceFor("pro", currency);
+  const period = periodFor(currency);
 
   // Scholar users see no upgrade CTA (top plan)
   const isTopPlan = currentPlan === "scholar";
@@ -24,7 +29,7 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken, curr
       title: type === "upload" ? "Upload limit reached" : type === "podcast" ? "Free podcast preview" : "Quiz question limit",
       description:
         type === "upload"
-          ? "You've used all your free uploads. Upgrade starting at $4.99/mo for more access or refer a friend to earn 1 bonus upload."
+          ? `You've used all your free uploads. Upgrade starting at ${basicPrice}${period} for more access or refer a friend to earn 1 bonus upload.`
           : type === "podcast"
           ? "Free plans include a 5-minute podcast preview. Upgrade for full-length podcasts with unlimited depth."
           : "Free plans allow up to 20 quiz questions. Upgrade for unlimited questions per document.",
@@ -33,7 +38,7 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken, curr
     },
     basic: {
       title: "Ready for more?",
-      description: "Pro gives you 40 uploads/month, 6 long-form podcasts, and 41 AI Tutor questions per doc — only $9.99/mo.",
+      description: `Pro gives you 40 uploads/month, 6 long-form podcasts, and 41 AI Tutor questions per doc — only ${proPrice}${period}.`,
       cta: "Upgrade to Pro",
       pressure: "medium",
     },
