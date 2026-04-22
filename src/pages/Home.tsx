@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { Moon, Sun } from "lucide-react";
+import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
 
 const features = [
   {
@@ -26,11 +27,18 @@ const features = [
   },
 ];
 
-const plans = [
+type HomePlan = {
+  id: "free" | "basic" | "pro" | "scholar";
+  name: string;
+  features: string[];
+  highlight: boolean;
+  cta: string;
+};
+
+const plans: HomePlan[] = [
   {
+    id: "free",
     name: "Free",
-    price: "$0",
-    period: "",
     features: [
       "3 uploads (lifetime)",
       "AI Summaries & Flashcards",
@@ -43,9 +51,8 @@ const plans = [
     cta: "Start Free",
   },
   {
+    id: "basic",
     name: "Basic",
-    price: "$4.99",
-    period: "/mo",
     features: [
       "15 uploads / month",
       "AI Summaries & Flashcards",
@@ -57,9 +64,8 @@ const plans = [
     cta: "Subscribe",
   },
   {
+    id: "pro",
     name: "Pro",
-    price: "$9.99",
-    period: "/mo",
     features: [
       "40 uploads / month",
       "Unlimited AI Quizzes",
@@ -71,9 +77,8 @@ const plans = [
     cta: "Subscribe",
   },
   {
+    id: "scholar",
     name: "Scholar",
-    price: "$14.99",
-    period: "/mo",
     features: [
       "Unlimited uploads*",
       "Unlimited AI Quizzes",
@@ -86,10 +91,18 @@ const plans = [
   },
 ];
 
+const USD_LABELS: Record<HomePlan["id"], { price: string; period: string }> = {
+  free: { price: "$0", period: "" },
+  basic: { price: "$4.99", period: "/mo" },
+  pro: { price: "$9.99", period: "/mo" },
+  scholar: { price: "$14.99", period: "/mo" },
+};
+
 const Home = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const isDark = theme === "dark";
+  const { currency, setCurrency } = useCurrency();
 
   return (
     <div className={`min-h-screen transition-colors ${isDark ? "bg-gray-950 text-gray-100" : "bg-white text-gray-900"}`}>
