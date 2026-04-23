@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users } from "lucide-react";
+import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users, Star } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { Moon, Sun } from "lucide-react";
 import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
@@ -97,6 +97,37 @@ const USD_LABELS: Record<HomePlan["id"], { price: string; period: string }> = {
   pro: { price: "$9.99", period: "/mo" },
   scholar: { price: "$14.99", period: "/mo" },
 };
+
+const testimonials = [
+  {
+    quote:
+      "I was honestly failing my exams. I'd read for hours and remember nothing. I started turning every chapter into a Testio podcast and listening on my way to school — my last test I scored 82%. I almost cried.",
+    name: "Amaka O.",
+    role: "300L Microbiology Student",
+    initials: "AO",
+  },
+  {
+    quote:
+      "Reading PDFs used to put me to sleep. Now I upload my lecture notes, get a podcast in 30 seconds, and revise while I cook. I've never felt this prepared for finals in my life.",
+    name: "Daniel K.",
+    role: "Final Year Law Student",
+    initials: "DK",
+  },
+  {
+    quote:
+      "I have ADHD and sitting still to study is torture. The AI quizzes and podcasts make studying feel like a game. I went from a 2.4 GPA to a 3.7 in one semester. This app changed my life — no exaggeration.",
+    name: "Priya S.",
+    role: "Pre-Med, 2nd Year",
+    initials: "PS",
+  },
+  {
+    quote:
+      "I'm a working mum trying to finish my MBA. I have zero free time. Testio turns my readings into podcasts I listen to while doing dishes. I passed my last two courses with distinction. Worth every naira.",
+    name: "Funmi A.",
+    role: "MBA Candidate",
+    initials: "FA",
+  },
+];
 
 const Home = () => {
   const navigate = useNavigate();
@@ -290,6 +321,55 @@ const Home = () => {
               </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className={`py-20 px-6 ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-1.5 mb-4">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+              ))}
+            </div>
+            <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>
+              Loved by students who used to struggle
+            </h2>
+            <p className={`max-w-2xl mx-auto ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+              Real stories from real students who turned their grades around with Testio.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            {testimonials.map((t) => (
+              <div
+                key={t.name}
+                className={`rounded-2xl p-7 border transition-all hover:shadow-xl ${
+                  isDark
+                    ? "bg-gray-950 border-gray-800 hover:border-indigo-700"
+                    : "bg-white border-gray-200 hover:border-indigo-300"
+                }`}
+              >
+                <div className="flex items-center gap-1 mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className={`text-base leading-relaxed mb-6 ${isDark ? "text-gray-200" : "text-gray-700"}`}>
+                  "{t.quote}"
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                    {t.initials}
+                  </div>
+                  <div>
+                    <div className={`font-semibold text-sm ${isDark ? "text-white" : "text-gray-900"}`}>{t.name}</div>
+                    <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.role}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
