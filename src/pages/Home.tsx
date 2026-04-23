@@ -325,6 +325,55 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Testimonials Section */}
+      <section className={`py-20 px-6 ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-1.5 mb-4">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+              ))}
+            </div>
+            <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>
+              Loved by students who used to struggle
+            </h2>
+            <p className={`max-w-2xl mx-auto ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+              Real stories from real students who turned their grades around with Testio.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            {testimonials.map((t) => (
+              <div
+                key={t.name}
+                className={`rounded-2xl p-7 border transition-all hover:shadow-xl ${
+                  isDark
+                    ? "bg-gray-950 border-gray-800 hover:border-indigo-700"
+                    : "bg-white border-gray-200 hover:border-indigo-300"
+                }`}
+              >
+                <div className="flex items-center gap-1 mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className={`text-base leading-relaxed mb-6 ${isDark ? "text-gray-200" : "text-gray-700"}`}>
+                  "{t.quote}"
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                    {t.initials}
+                  </div>
+                  <div>
+                    <div className={`font-semibold text-sm ${isDark ? "text-white" : "text-gray-900"}`}>{t.name}</div>
+                    <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.role}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Referral Section */}
       <section className={`py-20 px-6 ${isDark ? "bg-indigo-950/30" : "bg-indigo-50"}`}>
         <div className="max-w-4xl mx-auto text-center">
