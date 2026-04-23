@@ -23,9 +23,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setLoading(false);
+
+      // Send a one-time welcome email on the first SIGNED_IN after a brand-new
+      // account is created (catches Google OAuth signups and any other path
+      // that didn't go through the email/password form). Idempotent because
+      // send-transactional-email dedupes on idempotencyKey per user.
+      if (event === "SIGNED_IN" && session?.user) {
+        const user = session.user;
+        const createdAt = new Date(user.created_at).getTime();
+        const isFresh = Date.now() - createdAt < 5 * 60 * 1000;
+        const flagKey = `testio-welcome-sent-${user.id}`;
+        if (isFresh && typeof window !== "undefined" && !window.localStorage.getItem(flagKey)) {
+          window.localStorage.setItem(flagKey, "1");
+          const displayName =
+            (user.user_metadata?.display_name as string | undefined) ||
+            (user.user_metadata?.name as string | undefined) ||
+            user.email?.split("@")[0] ||
+            "there";
+          supabase.functions
+            .invoke("send-transactional-email", {
+              body: {
+                templateName: "welcome",
+                recipientEmail: user.email,
+                idempotencyKey: `welcome-${user.id}`,
+                templateData: { displayName },
+              },
+            })
+            .catch((err) => console.error("welcome email enqueue failed", err));
+        }
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {

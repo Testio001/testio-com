@@ -77,35 +77,22 @@ serve(async (req) => {
               ? `You have ${user.streak_freezes} Streak Freeze${user.streak_freezes > 1 ? "s" : ""} to protect you!`
               : "Refer a friend to earn a Streak Freeze!";
 
-            const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-            if (RESEND_API_KEY) {
-              await fetch("https://api.resend.com/emails", {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${RESEND_API_KEY}`,
-                  "Content-Type": "application/json",
+            try {
+              await supabase.functions.invoke("send-transactional-email", {
+                body: {
+                  templateName: "idle-reminder",
+                  recipientEmail: profile.email,
+                  idempotencyKey: `streak-risk-${user.user_id}-${today.toISOString().split("T")[0]}`,
+                  templateData: {
+                    displayName: profile.display_name || profile.email.split("@")[0],
+                    headline: `Your ${user.current_streak}-day streak is at risk!`,
+                    note: freezeNote,
+                  },
                 },
-                body: JSON.stringify({
-                  from: "Testio <noreply@notify.testio.online>",
-                  to: [profile.email],
-                  subject: `🔥 Your ${user.current_streak}-day streak is at risk!`,
-                  html: `
-                    <div style="font-family: 'DM Sans', sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
-                      <h2 style="color: #1a1a1a;">Hey ${profile.display_name || "there"}! 👋</h2>
-                      <p style="color: #4a4a4a; line-height: 1.6;">
-                        Your <strong>${user.current_streak}-day streak</strong> is at risk! 
-                        Take a quick 2-minute quiz or upload a note to keep it alive.
-                      </p>
-                      <p style="color: #4a4a4a; line-height: 1.6;">${freezeNote}</p>
-                      <a href="https://testio.online/dashboard" 
-                         style="display: inline-block; background: linear-gradient(135deg, #30b8a0, #40d0b0); color: #0a0c10; padding: 12px 28px; border-radius: 999px; text-decoration: none; font-weight: 600; margin-top: 16px;">
-                        Keep My Streak 🔥
-                      </a>
-                    </div>
-                  `,
-                }),
               });
               notified++;
+            } catch (e) {
+              console.error("Failed to send streak-at-risk email:", e);
             }
           }
         }
