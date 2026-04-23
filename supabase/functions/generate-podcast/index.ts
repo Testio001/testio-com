@@ -105,12 +105,17 @@ serve(async (req) => {
     // We always reserve the LAST exchange for a proper sign-off ("pleasantries" close).
     // Total = (exchangeLimit - 1) substantive exchanges + 1 outro.
     const substantiveCount = Math.max(2, exchangeLimit - 1);
-    const totalExchanges = substantiveCount + 1; // +1 for outro
+    // +1 outro (Alex recap), +1 final closing line (CTA on Free/Basic, pleasantry on Pro/Scholar)
+    const totalExchanges = substantiveCount + 2;
 
     for (let i = 0; i < totalExchanges; i++) {
-      const isOutro = i === totalExchanges - 1;
-      // Outro is always spoken by Alex (host) for a clean, consistent close.
-      const speaker = isOutro ? "Alex" : (i % 2 === 0 ? "Alex" : "Sam");
+      const isFinalClose = i === totalExchanges - 1;
+      const isOutro = i === totalExchanges - 2;
+      // Outro is always spoken by Alex (host). Final closing line:
+      //   - Free/Basic: Alex delivers the upgrade CTA.
+      //   - Pro/Scholar: Sam delivers a warm "thanks for having me" pleasantry.
+      const finalSpeaker = needsUpgradeCTA ? "Alex" : "Sam";
+      const speaker = isFinalClose ? finalSpeaker : (isOutro ? "Alex" : (i % 2 === 0 ? "Alex" : "Sam"));
       const voice = speaker === "Alex" ? "onyx" : "nova";
       const isFirst = i === 0;
 
@@ -122,6 +127,12 @@ serve(async (req) => {
       let instruction: string;
       if (isFirst) {
         instruction = `You are Alex, the host of a friendly study podcast. Open warmly: greet the listener, introduce yourself AND your co-host Sam by name, then introduce the topic from the study material. Preview what you'll cover. Speak in 3-5 detailed sentences. End with a natural handoff like "Sam, what's your take?" so Sam knows it's their turn.`;
+      } else if (isFinalClose) {
+        if (needsUpgradeCTA) {
+          instruction = `You are Alex. This is the VERY LAST line of the podcast. Say exactly, in your own warm voice: "That is all for now. Upgrade to Testio Premium to generate more podcast minutes." Do NOT add anything else, do NOT introduce new content. Keep it to those two sentences only.`;
+        } else {
+          instruction = `You are Sam, the co-host. This is the VERY LAST line of the podcast — a warm pleasantry close. Say something natural like: "Thank you so much for having me here, Alex — it was a great conversation. Thanks to everyone listening, and we'll see you next time!" Keep it to 2-3 short sentences. Do NOT introduce any new ideas or topics.`;
+        }
       } else if (isOutro) {
         // Last 5+ seconds = pleasantries / proper sign-off (NOT new content).
         if (needsUpgradeCTA) {
