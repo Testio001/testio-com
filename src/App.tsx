@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 import PromoVideo from "./pages/PromoVideo";
 import ThemeToggle from "./components/ThemeToggle";
 import AdminStreakAssign from "./pages/AdminStreakAssign";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
               <Route path="/waitlist-analytics" element={<ProtectedRoute><WaitlistAnalytics /></ProtectedRoute>} />
+              <Route path="/admin-dashboard" element={<AdminDashboard />} />
               <Route path="/_internal/streak-admin-x7k2" element={<AdminStreakAssign />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

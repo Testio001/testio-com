@@ -1,25 +1,10 @@
-import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import AdminCodeGate from "@/components/app/AdminCodeGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-
-// Host check: only allow on lovable.app preview domains
-const isLovablePreview = () => {
-  if (typeof window === "undefined") return false;
-  const h = window.location.hostname;
-  // Allow Lovable preview/sandbox hosts and local dev. Block published custom domains.
-  return (
-    h.endsWith(".lovable.app") ||
-    h.endsWith(".lovable.dev") ||
-    h.endsWith(".lovableproject.com") ||
-    h === "localhost" ||
-    h === "127.0.0.1"
-  );
-};
 
 type LookupResult = {
   user_id: string;
@@ -29,40 +14,22 @@ type LookupResult = {
   longest_streak: number;
 };
 
-const AdminStreakAssign = () => {
-  const { user, loading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+const AdminStreakAssignContent = ({ code }: { code: string }) => {
   const [email, setEmail] = useState("");
   const [streak, setStreak] = useState("");
   const [target, setTarget] = useState<LookupResult | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!user) { setIsAdmin(false); return; }
-    (async () => {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-      setIsAdmin(!error && !!data);
-    })();
-  }, [user]);
-
-  if (!isLovablePreview()) return <Navigate to="/" replace />;
-  if (loading || isAdmin === null) return <div className="min-h-screen bg-background" />;
-  if (!user) return <Navigate to="/auth" replace />;
-  if (!isAdmin) return <Navigate to="/" replace />;
-
   const lookup = async () => {
     if (!email.trim()) return;
     setBusy(true);
     setTarget(null);
-    const { data, error } = await supabase.rpc("admin_lookup_user_by_email", { _email: email.trim() });
+    const { data, error } = await supabase.functions.invoke("admin-ops", {
+      body: { action: "lookup-user", code, email: email.trim() },
+    });
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    const row = (data as LookupResult[] | null)?.[0];
+    if (error || data?.error) { toast.error(error?.message || data?.error || "Lookup failed"); return; }
+    const row = data as LookupResult | null;
     if (!row) { toast.error("No user found with that email"); return; }
     setTarget(row);
     setStreak(String(row.current_streak));
@@ -73,12 +40,11 @@ const AdminStreakAssign = () => {
     const n = parseInt(streak, 10);
     if (Number.isNaN(n) || n < 0) { toast.error("Enter a valid non-negative number"); return; }
     setBusy(true);
-    const { error } = await supabase.rpc("admin_set_user_streak", {
-      _target_user_id: target.user_id,
-      _new_streak: n,
+    const { data, error } = await supabase.functions.invoke("admin-ops", {
+      body: { action: "set-streak", code, targetUserId: target.user_id, streak: n },
     });
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error || data?.error) { toast.error(error?.message || data?.error || "Update failed"); return; }
     toast.success(`Streak updated to ${n} for ${target.email}`);
     setTarget({ ...target, current_streak: n, longest_streak: Math.max(target.longest_streak, n) });
   };
@@ -88,7 +54,7 @@ const AdminStreakAssign = () => {
       <div className="max-w-xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Streak Admin</h1>
-          <p className="text-sm text-muted-foreground">Lovable preview only · admin access</p>
+          <p className="text-sm text-muted-foreground">Code-gated admin tool</p>
         </div>
 
         <Card className="p-4 space-y-3">
@@ -129,5 +95,14 @@ const AdminStreakAssign = () => {
     </div>
   );
 };
+
+const AdminStreakAssign = () => (
+  <AdminCodeGate
+    title="Streak Admin"
+    description="Enter the admin code to search for a user and update their streak."
+  >
+    {(code) => <AdminStreakAssignContent code={code} />}
+  </AdminCodeGate>
+);
 
 export default AdminStreakAssign;
