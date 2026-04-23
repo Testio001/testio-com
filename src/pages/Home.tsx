@@ -331,6 +331,7 @@ const Home = () => {
           <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${isDark ? "bg-indigo-900/50" : "bg-indigo-100"}`}>
             <Gift className="w-8 h-8 text-indigo-600" />
           </div>
+          {/* placeholder anchor */}
           <h2 className={`text-3xl font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>Invite Friends, Earn Free Uploads</h2>
           <p className={`max-w-2xl mx-auto mb-10 text-lg ${isDark ? "text-gray-300" : "text-gray-600"}`}>
             Love Testio? Share it with your classmates! For every friend who signs up using your referral link, 
