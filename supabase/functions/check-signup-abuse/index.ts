@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Disposable email domains (server-side mirror)
+// Disposable email domains (server-side mirror of src/lib/disposableEmails.ts)
 const DISPOSABLE = new Set<string>([
   "mailinator.com","tempmail.com","temp-mail.org","temp-mail.io",
   "10minutemail.com","10minutemail.net","guerrillamail.com","guerrillamail.net",
@@ -18,13 +18,41 @@ const DISPOSABLE = new Set<string>([
   "anonbox.net","fakemail.net","mytemp.email","mailcatch.com","trbvm.com",
   "spambog.com","spamgourmet.com","tempemail.net","tempemail.co",
   "20minutemail.com","1secmail.com","1secmail.net","1secmail.org",
-  "anonymousmail.org","throwam.com",
+  "anonymousmail.org","throwam.com","minitts.net","minitts.com",
 ]);
+
+const DISPOSABLE_KEYWORDS = [
+  "temp","tmp","trash","fake","throwaway","throw-away","disposable",
+  "minute","10min","20min","1sec","burner","junk","spam","yopmail",
+  "guerrilla","mailinator","getnada","maildrop","discard","anonbox",
+  "mintemail","mohmal","moakt","sharklasers","inboxbear","mailcatch",
+  "mailnesia","nada","mintts","minitts",
+];
+
+const TRUSTED_DOMAINS = new Set<string>([
+  "gmail.com","googlemail.com","yahoo.com","yahoo.co.uk","yahoo.co.in",
+  "outlook.com","hotmail.com","live.com","msn.com","icloud.com","me.com",
+  "mac.com","proton.me","protonmail.com","pm.me","aol.com","zoho.com",
+  "gmx.com","gmx.net","yandex.com","yandex.ru","mail.com","fastmail.com",
+  "tutanota.com","tuta.io",
+]);
+
+const SUSPICIOUS_TLDS = [".xyz",".top",".click",".gq",".tk",".ml",".cf",".ga",".buzz",".rest"];
 
 function isDisposable(email: string): boolean {
   const at = email.lastIndexOf("@");
   if (at < 0) return false;
-  return DISPOSABLE.has(email.slice(at + 1).toLowerCase().trim());
+  const domain = email.slice(at + 1).toLowerCase().trim();
+  if (!domain) return false;
+  if (TRUSTED_DOMAINS.has(domain)) return false;
+  if (DISPOSABLE.has(domain)) return true;
+  for (const kw of DISPOSABLE_KEYWORDS) {
+    if (domain.includes(kw)) return true;
+  }
+  for (const tld of SUSPICIOUS_TLDS) {
+    if (domain.endsWith(tld)) return true;
+  }
+  return false;
 }
 
 async function sha256(input: string): Promise<string> {
