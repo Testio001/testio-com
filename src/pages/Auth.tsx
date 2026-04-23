@@ -100,11 +100,8 @@ const Auth = () => {
     }
     setForgotLoading(true);
     try {
-      // Send a 6-digit OTP code via the recovery email template (no link).
-      const { error } = await supabase.auth.signInWithOtp({
-        email: forgotEmail,
-        options: { shouldCreateUser: false, emailRedirectTo: undefined },
-      });
+      // Trigger the recovery email (OTP code, no link) via password reset flow.
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail);
       if (error) throw error;
       toast({ title: "Check your email", description: "We've sent you a 6-digit reset code." });
       setResetStep("verify");
@@ -133,7 +130,7 @@ const Auth = () => {
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email: forgotEmail,
         token: resetCode.trim(),
-        type: "email",
+        type: "recovery",
       });
       if (verifyError) throw verifyError;
       const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
