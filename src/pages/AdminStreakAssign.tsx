@@ -11,7 +11,14 @@ import { toast } from "sonner";
 const isLovablePreview = () => {
   if (typeof window === "undefined") return false;
   const h = window.location.hostname;
-  return h.endsWith(".lovable.app") || h === "localhost" || h === "127.0.0.1";
+  // Allow Lovable preview/sandbox hosts and local dev. Block published custom domains.
+  return (
+    h.endsWith(".lovable.app") ||
+    h.endsWith(".lovable.dev") ||
+    h.endsWith(".lovableproject.com") ||
+    h === "localhost" ||
+    h === "127.0.0.1"
+  );
 };
 
 type LookupResult = {
