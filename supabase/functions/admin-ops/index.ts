@@ -188,6 +188,7 @@ serve(async (req) => {
         .update({
           current_streak: streak,
           longest_streak: Math.max(currentStats.longest_streak ?? 0, streak),
+          last_upload_date: new Date().toISOString().slice(0, 10),
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", targetUserId);
