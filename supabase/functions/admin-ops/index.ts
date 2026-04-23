@@ -31,22 +31,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-
-    const supabaseUser = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
-
-    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
-    if (userError || !user) return json({ error: "Unauthorized" }, 401);
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") return json({ error: "Invalid request body" }, 400);
@@ -143,13 +131,38 @@ serve(async (req) => {
       const email = typeof body.email === "string" ? body.email.trim() : "";
       if (!email) return json({ error: "Email is required" }, 400);
 
-      const { data, error } = await supabaseAdmin.rpc("admin_lookup_user_by_email", { _email: email });
+      const { data, error } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id, email, display_name")
+        .ilike("email", email)
+        .limit(1)
+        .maybeSingle();
+
       if (error) {
         console.error("admin-ops lookup error", error);
         return json({ error: "Unable to look up user" }, 500);
       }
 
-      return json((data as Array<Record<string, unknown>> | null)?.[0] ?? null);
+      if (!data?.user_id) return json(null);
+
+      const { data: stats, error: statsError } = await supabaseAdmin
+        .from("user_stats")
+        .select("current_streak, longest_streak")
+        .eq("user_id", data.user_id)
+        .maybeSingle();
+
+      if (statsError) {
+        console.error("admin-ops stats lookup error", statsError);
+        return json({ error: "Unable to load streak data" }, 500);
+      }
+
+      return json({
+        user_id: data.user_id,
+        email: data.email,
+        display_name: data.display_name,
+        current_streak: stats?.current_streak ?? 0,
+        longest_streak: stats?.longest_streak ?? 0,
+      });
     }
 
     if (action === "set-streak") {
