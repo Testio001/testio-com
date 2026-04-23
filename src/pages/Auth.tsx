@@ -10,6 +10,8 @@ import testioLogo from "@/assets/testio-logo.png";
 import { getDeviceFingerprint } from "@/hooks/useDeviceFingerprint";
 import { isDisposableEmail } from "@/lib/disposableEmails";
 
+const RESET_CODE_LENGTH = 8;
+
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const referralCode = searchParams.get("ref");
@@ -103,7 +105,7 @@ const Auth = () => {
       // Trigger the recovery email (OTP code, no link) via password reset flow.
       const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail);
       if (error) throw error;
-      toast({ title: "Check your email", description: "We've sent you a 6-digit reset code." });
+      toast({ title: "Check your email", description: `We've sent you an ${RESET_CODE_LENGTH}-digit reset code.` });
       setResetStep("verify");
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -113,8 +115,8 @@ const Auth = () => {
   };
 
   const handleVerifyResetCode = async () => {
-    if (!resetCode || resetCode.length < 6) {
-      toast({ title: "Error", description: "Enter the 6-digit code from your email", variant: "destructive" });
+    if (!resetCode || resetCode.length < RESET_CODE_LENGTH) {
+      toast({ title: "Error", description: `Enter the ${RESET_CODE_LENGTH}-digit code from your email`, variant: "destructive" });
       return;
     }
     if (newPassword.length < 6) {
@@ -278,7 +280,7 @@ const Auth = () => {
             <div className="space-y-3 pt-2 border-t border-border">
               {resetStep === "request" ? (
                 <>
-                  <p className="text-sm text-muted-foreground">Enter your email and we'll send you a 6-digit code:</p>
+                  <p className="text-sm text-muted-foreground">Enter your email and we'll send you an {RESET_CODE_LENGTH}-digit code:</p>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
@@ -310,16 +312,16 @@ const Auth = () => {
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    Enter the 6-digit code sent to <span className="text-foreground font-medium">{forgotEmail}</span> and choose a new password.
+                    Enter the {RESET_CODE_LENGTH}-digit code sent to <span className="text-foreground font-medium">{forgotEmail}</span> and choose a new password.
                   </p>
                   <input
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    maxLength={6}
-                    placeholder="6-digit code"
+                    maxLength={RESET_CODE_LENGTH}
+                    placeholder={`${RESET_CODE_LENGTH}-digit code`}
                     value={resetCode}
-                    onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ""))}
+                    onChange={(e) => setResetCode(e.target.value.replace(/\D/g, "").slice(0, RESET_CODE_LENGTH))}
                     className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground text-center tracking-[0.5em] text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
                   <div className="relative">
