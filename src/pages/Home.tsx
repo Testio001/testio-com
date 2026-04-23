@@ -138,11 +138,11 @@ const Home = () => {
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className={`text-5xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight ${isDark ? "text-white" : "text-gray-900"}`}>
-            Master Your Studies{" "}
-            <span className="text-indigo-600">with AI</span>
+            Generate Amazing Podcasts{" "}
+            <span className="text-indigo-600">from your notes in seconds</span>
           </h1>
           <p className={`text-xl max-w-2xl mx-auto mb-10 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-            Turn PDFs into summaries, quizzes, and podcasts in seconds. Study smarter, not harder.
+            Plus AI-powered summaries, flashcards, quizzes, and a chat tutor — everything you need to study smarter, not harder.
           </p>
           <button
             onClick={() => navigate("/auth")}
