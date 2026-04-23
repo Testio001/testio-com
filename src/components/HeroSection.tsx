@@ -34,7 +34,7 @@ const HeroSection = () => {
             transition={{ delay: 0.3, duration: 0.6 }}
           >
             <h1 className="text-5xl md:text-7xl font-black text-foreground leading-[0.95] tracking-tight">
-              Meet Testio
+              Generate Amazing Podcasts from your notes in seconds
               <img
                 src={testioLogo}
                 alt="Testio logo"
