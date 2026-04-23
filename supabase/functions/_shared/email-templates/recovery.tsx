@@ -4,7 +4,6 @@ import * as React from 'npm:react@18.3.1'
 
 import {
   Body,
-  Button,
   Container,
   Head,
   Heading,
@@ -15,12 +14,12 @@ import {
 
 interface RecoveryEmailProps {
   siteName: string
-  confirmationUrl: string
+  token: string
 }
 
 export const RecoveryEmail = ({
   siteName,
-  confirmationUrl,
+  token,
 }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
@@ -30,13 +29,11 @@ export const RecoveryEmail = ({
         <Text style={logo}>{siteName}</Text>
         <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
-          We received a request to reset your password for {siteName}. Click the button below to choose a new password.
+          We received a request to reset your password for {siteName}. Use the code below to set a new password:
         </Text>
-        <Button style={button} href={confirmationUrl}>
-          Reset Password
-        </Button>
+        <Text style={codeStyle}>{token}</Text>
         <Text style={footer}>
-          If you didn't request a password reset, you can safely ignore this email.
+          This code will expire shortly. If you didn't request a password reset, you can safely ignore this email.
         </Text>
       </Container>
     </Body>
@@ -50,5 +47,5 @@ const container = { padding: '20px 25px' }
 const logo = { fontSize: '24px', fontWeight: 'bold' as const, color: '#22c9a0', margin: '0 0 20px' }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#111111', margin: '0 0 20px' }
 const text = { fontSize: '14px', color: '#55575d', lineHeight: '1.5', margin: '0 0 25px' }
-const button = { backgroundColor: '#22c9a0', color: '#ffffff', fontSize: '14px', borderRadius: '12px', padding: '12px 24px', textDecoration: 'none', fontWeight: 'bold' as const }
+const codeStyle = { fontFamily: "'Space Grotesk', Courier, monospace", fontSize: '28px', fontWeight: 'bold' as const, color: '#22c9a0', letterSpacing: '4px', margin: '0 0 30px' }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
