@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users } from "lucide-react";
+import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users, Star } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { Moon, Sun } from "lucide-react";
 import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
@@ -97,6 +97,37 @@ const USD_LABELS: Record<HomePlan["id"], { price: string; period: string }> = {
   pro: { price: "$9.99", period: "/mo" },
   scholar: { price: "$14.99", period: "/mo" },
 };
+
+const testimonials = [
+  {
+    quote:
+      "I was honestly failing my exams. I'd read for hours and remember nothing. I started turning every chapter into a Testio podcast and listening on my way to school — my last test I scored 82%. I almost cried.",
+    name: "Amaka O.",
+    role: "300L Microbiology Student",
+    initials: "AO",
+  },
+  {
+    quote:
+      "Reading PDFs used to put me to sleep. Now I upload my lecture notes, get a podcast in 30 seconds, and revise while I cook. I've never felt this prepared for finals in my life.",
+    name: "Daniel K.",
+    role: "Final Year Law Student",
+    initials: "DK",
+  },
+  {
+    quote:
+      "I have ADHD and sitting still to study is torture. The AI quizzes and podcasts make studying feel like a game. I went from a 2.4 GPA to a 3.7 in one semester. This app changed my life — no exaggeration.",
+    name: "Priya S.",
+    role: "Pre-Med, 2nd Year",
+    initials: "PS",
+  },
+  {
+    quote:
+      "I'm a working mum trying to finish my MBA. I have zero free time. Testio turns my readings into podcasts I listen to while doing dishes. I passed my last two courses with distinction. Worth every naira.",
+    name: "Funmi A.",
+    role: "MBA Candidate",
+    initials: "FA",
+  },
+];
 
 const Home = () => {
   const navigate = useNavigate();
