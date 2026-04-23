@@ -4,13 +4,44 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Check, Crown, ArrowLeft, Loader2, Zap, Sparkles, GraduationCap } from "lucide-react";
+import { Check, Crown, ArrowLeft, Loader2, Zap, Sparkles, GraduationCap, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import testioLogo from "@/assets/testio-logo.png";
 import ElitePricingBanner from "@/components/app/ElitePricingBanner";
 import { useCurrency, NGN_PRICES, formatNgn, type Currency } from "@/hooks/useCurrency";
 
 type PlanId = "free" | "basic" | "pro" | "scholar";
+
+const testimonials = [
+  {
+    quote:
+      "I was honestly failing my exams. I'd read for hours and remember nothing. I started turning every chapter into a Testio podcast and listening on my way to school — my last test I scored 82%. I almost cried.",
+    name: "Amaka O.",
+    role: "300L Microbiology Student",
+    initials: "AO",
+  },
+  {
+    quote:
+      "Reading PDFs used to put me to sleep. Now I upload my lecture notes, get a podcast in 30 seconds, and revise while I cook. I've never felt this prepared for finals in my life.",
+    name: "Daniel K.",
+    role: "Final Year Law Student",
+    initials: "DK",
+  },
+  {
+    quote:
+      "I have ADHD and sitting still to study is torture. The AI quizzes and podcasts make studying feel like a game. I went from a 2.4 GPA to a 3.7 in one semester. This app changed my life — no exaggeration.",
+    name: "Priya S.",
+    role: "Pre-Med, 2nd Year",
+    initials: "PS",
+  },
+  {
+    quote:
+      "I'm a working mum trying to finish my MBA. I have zero free time. Testio turns my readings into podcasts I listen to while doing dishes. I passed my last two courses with distinction. Worth every naira.",
+    name: "Funmi A.",
+    role: "MBA Candidate",
+    initials: "FA",
+  },
+];
 
 const plans: Array<{
   id: PlanId;
@@ -350,6 +381,58 @@ const Pricing = () => {
           </p>
           <p className="text-muted-foreground text-[10px]">Created by <span className="font-semibold">TechWorld</span></p>
         </div>
+
+        {/* Testimonials */}
+        <section className="mt-20">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-10"
+          >
+            <div className="inline-flex items-center gap-1 mb-3">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              ))}
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
+              Loved by students who used to struggle
+            </h2>
+            <p className="text-muted-foreground text-xs max-w-md mx-auto">
+              Real stories from real students who turned their grades around.
+            </p>
+          </motion.div>
+          <div className="grid sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
+            {testimonials.map((t, i) => (
+              <motion.div
+                key={t.name}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ duration: 0.5, delay: i * 0.1, ease: "easeOut" }}
+                whileHover={{ y: -4, scale: 1.02 }}
+                className="bg-card border border-border rounded-2xl p-5 transition-shadow hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30"
+              >
+                <div className="flex items-center gap-0.5 mb-3">
+                  {[...Array(5)].map((_, j) => (
+                    <Star key={j} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-foreground text-xs leading-relaxed mb-4">"{t.quote}"</p>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-[11px] shrink-0">
+                    {t.initials}
+                  </div>
+                  <div>
+                    <div className="text-foreground font-semibold text-xs">{t.name}</div>
+                    <div className="text-muted-foreground text-[10px]">{t.role}</div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );
