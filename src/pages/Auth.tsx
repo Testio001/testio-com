@@ -22,6 +22,11 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [resetStep, setResetStep] = useState<"request" | "verify">("request");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
@@ -95,14 +100,53 @@ const Auth = () => {
     }
     setForgotLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      // Send a 6-digit OTP code via the recovery email template (no link).
+      const { error } = await supabase.auth.signInWithOtp({
+        email: forgotEmail,
+        options: { shouldCreateUser: false, emailRedirectTo: undefined },
       });
       if (error) throw error;
-      toast({ title: "Check your email", description: "We've sent you a password reset link." });
-      setShowForgotPassword(false);
+      toast({ title: "Check your email", description: "We've sent you a 6-digit reset code." });
+      setResetStep("verify");
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleVerifyResetCode = async () => {
+    if (!resetCode || resetCode.length < 6) {
+      toast({ title: "Error", description: "Enter the 6-digit code from your email", variant: "destructive" });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast({ title: "Error", description: "Password must be at least 6 characters", variant: "destructive" });
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      toast({ title: "Error", description: "Passwords do not match", variant: "destructive" });
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: forgotEmail,
+        token: resetCode.trim(),
+        type: "email",
+      });
+      if (verifyError) throw verifyError;
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+      toast({ title: "Success", description: "Your password has been updated!" });
+      setShowForgotPassword(false);
+      setResetStep("request");
+      setResetCode("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      navigate("/dashboard", { replace: true });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Invalid or expired code", variant: "destructive" });
     } finally {
       setForgotLoading(false);
     }
