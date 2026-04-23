@@ -86,6 +86,22 @@ const Auth = () => {
           const fp = await getDeviceFingerprint();
           await supabase.functions.invoke("check-signup-abuse", { body: { fingerprint: fp } });
         } catch {}
+        // Fire-and-forget: send branded welcome email immediately on signup so
+        // users who never complete email confirmation still receive it.
+        try {
+          await supabase.functions.invoke("send-transactional-email", {
+            body: {
+              templateName: "welcome",
+              recipientEmail: email,
+              idempotencyKey: `welcome-${signUpData.user?.id ?? email}`,
+              templateData: {
+                displayName: displayName || email.split("@")[0],
+              },
+            },
+          });
+        } catch (err) {
+          console.error("welcome email enqueue failed", err);
+        }
         navigate("/verify-email", { state: { email } });
       }
     } catch (error: any) {
