@@ -65,11 +65,40 @@ Deno.serve(async (req) => {
 
     const status = verifyData.data?.status;
     if (status === "success") {
+      // Helper to fire the congratulations email (best-effort)
+      const sendCongratsEmail = async (opts: { isAddon: boolean; expiresAt?: string }) => {
+        try {
+          const { data: profile } = await admin
+            .from("profiles")
+            .select("email, display_name")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          const recipient = profile?.email || user.email;
+          if (!recipient) return;
+          await admin.functions.invoke("send-transactional-email", {
+            body: {
+              templateName: "payment-success",
+              recipientEmail: recipient,
+              idempotencyKey: `payment-success-${reference}`,
+              templateData: {
+                displayName: profile?.display_name ?? null,
+                planLabel: tx.plan,
+                isAddon: opts.isAddon,
+                expiresAt: opts.expiresAt ?? null,
+              },
+            },
+          });
+        } catch (e) {
+          console.error("payment-success email failed", e);
+        }
+      };
+
       if (tx.plan === "podcast_addon") {
         await admin.from("korapay_transactions").update({ status: "success" }).eq("reference", reference);
         const { data: stats } = await admin.from("user_stats").select("bonus_podcasts").eq("user_id", user.id).maybeSingle();
         const current = stats?.bonus_podcasts ?? 0;
         await admin.from("user_stats").update({ bonus_podcasts: current + 5 }).eq("user_id", user.id);
+        await sendCongratsEmail({ isAddon: true });
         return new Response(JSON.stringify({ success: true, plan: tx.plan, addon: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -81,6 +110,7 @@ Deno.serve(async (req) => {
         subscription_plan: tx.plan,
         subscription_expires_at: expiresAt,
       }).eq("user_id", user.id);
+      await sendCongratsEmail({ isAddon: false, expiresAt });
 
       return new Response(JSON.stringify({ success: true, plan: tx.plan, expires_at: expiresAt }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
