@@ -13,19 +13,27 @@ Deno.serve(async (req) => {
     const rawBody = await req.text();
     const signature = req.headers.get("x-korapay-signature") || "";
     const webhookSecret = Deno.env.get("KORAPAY_WEBHOOK_SECRET");
+    const event = JSON.parse(rawBody);
 
-    if (webhookSecret) {
-      // Korapay signs the `data` payload with HMAC SHA256 using the secret key
-      const parsed = JSON.parse(rawBody);
-      const dataStr = JSON.stringify(parsed.data);
-      const expected = createHmac("sha256", webhookSecret).update(dataStr).digest("hex");
-      if (expected !== signature) {
-        console.error("Invalid Korapay signature");
-        return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers: corsHeaders });
+    // Korapay signature verification is unreliable across payload variants.
+    // Try multiple signing schemes; if none match we DO NOT reject — instead
+    // we re-verify the charge against the Korapay API below as ground truth.
+    let signatureValid = false;
+    if (webhookSecret && signature) {
+      const candidates = [
+        rawBody,
+        JSON.stringify(event.data ?? {}),
+        event?.data?.reference ?? "",
+      ];
+      for (const c of candidates) {
+        try {
+          const h = createHmac("sha256", webhookSecret).update(c).digest("hex");
+          if (h === signature) { signatureValid = true; break; }
+        } catch (_) { /* ignore */ }
       }
+      if (!signatureValid) console.warn("Korapay signature mismatch — falling back to API verify");
     }
 
-    const event = JSON.parse(rawBody);
     const eventType = event.event;
     const data = event.data || {};
     const reference = data.reference;
@@ -50,13 +58,34 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
     }
 
-    if (eventType === "charge.success" || data.status === "success") {
+    // Determine real success. If signature didn't validate, re-query Korapay's API
+    // before granting any reward — this prevents spoofed webhooks AND prevents lost
+    // payments when Korapay changes their signing format.
+    let isSuccess = (eventType === "charge.success" || data.status === "success");
+    if (isSuccess && !signatureValid) {
+      try {
+        const koraSecret = Deno.env.get("KORAPAY_SECRET_KEY")!;
+        const verifyRes = await fetch(
+          `https://api.korapay.com/merchant/api/v1/charges/${encodeURIComponent(reference)}`,
+          { headers: { Authorization: `Bearer ${koraSecret}` } }
+        );
+        const verifyData = await verifyRes.json();
+        isSuccess = verifyRes.ok && verifyData?.data?.status === "success";
+        if (!isSuccess) console.error("API re-verify did not confirm success", verifyData);
+      } catch (e) {
+        console.error("API re-verify threw", e);
+        isSuccess = false;
+      }
+    }
+
+    if (isSuccess) {
       if (tx.status !== "success") {
         if (tx.plan === "podcast_addon") {
           await admin.from("korapay_transactions").update({ status: "success" }).eq("reference", reference);
           const { data: stats } = await admin.from("user_stats").select("bonus_podcasts").eq("user_id", tx.user_id).maybeSingle();
           const current = stats?.bonus_podcasts ?? 0;
           await admin.from("user_stats").update({ bonus_podcasts: current + 5 }).eq("user_id", tx.user_id);
+          console.log("Webhook: granted 5 podcast credits to", tx.user_id);
         } else {
           const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
           await admin.from("korapay_transactions").update({ status: "success", expires_at: expiresAt }).eq("reference", reference);
@@ -64,6 +93,7 @@ Deno.serve(async (req) => {
             subscription_plan: tx.plan,
             subscription_expires_at: expiresAt,
           }).eq("user_id", tx.user_id);
+          console.log(`Webhook: activated ${tx.plan} for`, tx.user_id);
         }
       }
     } else if (eventType === "charge.failed" || data.status === "failed") {
