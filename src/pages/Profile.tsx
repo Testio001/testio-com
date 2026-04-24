@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Save, Loader2, Crown, Calendar, ExternalLink } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Crown, Calendar, ExternalLink, Music, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import testioLogo from "@/assets/testio-logo.png";
 import { PushNotificationSettings } from "@/components/PushNotificationSettings";
+import StudyMusicModal from "@/components/app/StudyMusicModal";
+import { Badge } from "@/components/ui/badge";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -17,6 +19,7 @@ const Profile = () => {
   const [subscriptionExpires, setSubscriptionExpires] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showStudyMusic, setShowStudyMusic] = useState(false);
 
   useEffect(() => {
     if (user) fetchProfile();
@@ -143,6 +146,28 @@ const Profile = () => {
 
         {/* Push Notifications */}
         <PushNotificationSettings />
+
+        {/* Study Music — moved here from dashboard for clarity */}
+        <button
+          onClick={() => setShowStudyMusic(true)}
+          className="w-full text-left bg-testio-card rounded-xl p-5 hover:border-primary/30 transition-all border border-border relative overflow-hidden"
+        >
+          <div className="absolute top-3 right-3">
+            <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">Coming Soon</Badge>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Music className="w-5 h-5 text-primary" />
+            </div>
+            <div className="min-w-0 pr-16">
+              <h3 className="text-foreground font-semibold text-sm flex items-center gap-1.5">
+                Study Music <Sparkles className="w-3.5 h-3.5 text-primary" />
+              </h3>
+              <p className="text-muted-foreground text-xs mt-0.5">Turn your notes into catchy songs for memorization. Join the waitlist.</p>
+            </div>
+          </div>
+        </button>
+        <StudyMusicModal open={showStudyMusic} onOpenChange={setShowStudyMusic} />
       </div>
     </div>
   );
