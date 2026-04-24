@@ -433,19 +433,34 @@ const Pricing = () => {
                 ))}
               </ul>
 
-              <button
-                onClick={() => handleSubscribe(plan)}
-                disabled={loadingPlan !== null || plan.id === "free"}
-                className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
-                  plan.highlight
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
-                    : plan.id === "free"
-                    ? "bg-secondary text-muted-foreground border border-border cursor-not-allowed"
-                    : "bg-secondary text-foreground hover:bg-secondary/80 border border-border"
-                } disabled:opacity-50`}
-              >
-                {loadingPlan === plan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : plan.cta}
-              </button>
+              {(() => {
+                const isCurrent = activePlan === plan.id || (plan.id === "free" && (!activePlan || activePlan === "free"));
+                return (
+                  <button
+                    onClick={() => handleSubscribe(plan)}
+                    disabled={loadingPlan !== null || plan.id === "free" || isCurrent}
+                    className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+                      isCurrent
+                        ? "bg-primary/15 text-primary border border-primary/40 cursor-default"
+                        : plan.highlight
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
+                        : plan.id === "free"
+                        ? "bg-secondary text-muted-foreground border border-border cursor-not-allowed"
+                        : "bg-secondary text-foreground hover:bg-secondary/80 border border-border"
+                    } disabled:opacity-100`}
+                  >
+                    {loadingPlan === plan.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : isCurrent ? (
+                      <>
+                        <BadgeCheck className="w-4 h-4" /> Subscribed · Current Plan
+                      </>
+                    ) : (
+                      plan.cta
+                    )}
+                  </button>
+                );
+              })()}
             </motion.div>
           ))}
         </div>
