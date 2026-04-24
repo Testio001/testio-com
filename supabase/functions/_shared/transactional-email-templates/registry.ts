@@ -15,6 +15,7 @@ import { template as badgeEarned } from './badge-earned.tsx'
 import { template as accountDeleted } from './account-deleted.tsx'
 import { template as referralSuccess } from './referral-success.tsx'
 import { template as creditAlert } from './credit-alert.tsx'
+import { template as paymentSuccess } from './payment-success.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'welcome': welcome,
@@ -23,4 +24,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'account-deleted': accountDeleted,
   'referral-success': referralSuccess,
   'credit-alert': creditAlert,
+  'payment-success': paymentSuccess,
 }
