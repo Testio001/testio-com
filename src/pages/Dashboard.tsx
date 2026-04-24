@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Music, Crown, Zap, X, Home, LayoutDashboard } from "lucide-react";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Crown, Zap, X, Home, LayoutDashboard } from "lucide-react";
 import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -15,7 +15,6 @@ import StreakDisplay from "@/components/app/StreakDisplay";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
-import StudyMusicModal from "@/components/app/StudyMusicModal";
 import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
 import { useCurrency, priceFor, periodFor } from "@/hooks/useCurrency";
 
@@ -36,7 +35,6 @@ const Dashboard = () => {
   const [renamingDoc, setRenamingDoc] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [userPlan, setUserPlan] = useState<string | null>(null);
-  const [showStudyMusic, setShowStudyMusic] = useState(false);
   const [showPeriodicUpgrade, setShowPeriodicUpgrade] = useState(false);
   const isAndroidApp = useIsAndroidApp();
 
