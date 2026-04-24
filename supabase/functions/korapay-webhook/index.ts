@@ -80,11 +80,39 @@ Deno.serve(async (req) => {
 
     if (isSuccess) {
       if (tx.status !== "success") {
+        // Helper: send congratulations email (best-effort, idempotent by reference)
+        const sendCongratsEmail = async (opts: { isAddon: boolean; expiresAt?: string }) => {
+          try {
+            const { data: profile } = await admin
+              .from("profiles")
+              .select("email, display_name")
+              .eq("user_id", tx.user_id)
+              .maybeSingle();
+            if (!profile?.email) return;
+            await admin.functions.invoke("send-transactional-email", {
+              body: {
+                templateName: "payment-success",
+                recipientEmail: profile.email,
+                idempotencyKey: `payment-success-${reference}`,
+                templateData: {
+                  displayName: profile.display_name ?? null,
+                  planLabel: tx.plan,
+                  isAddon: opts.isAddon,
+                  expiresAt: opts.expiresAt ?? null,
+                },
+              },
+            });
+          } catch (e) {
+            console.error("payment-success email failed", e);
+          }
+        };
+
         if (tx.plan === "podcast_addon") {
           await admin.from("korapay_transactions").update({ status: "success" }).eq("reference", reference);
           const { data: stats } = await admin.from("user_stats").select("bonus_podcasts").eq("user_id", tx.user_id).maybeSingle();
           const current = stats?.bonus_podcasts ?? 0;
           await admin.from("user_stats").update({ bonus_podcasts: current + 5 }).eq("user_id", tx.user_id);
+          await sendCongratsEmail({ isAddon: true });
           console.log("Webhook: granted 5 podcast credits to", tx.user_id);
         } else {
           const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -93,6 +121,7 @@ Deno.serve(async (req) => {
             subscription_plan: tx.plan,
             subscription_expires_at: expiresAt,
           }).eq("user_id", tx.user_id);
+          await sendCongratsEmail({ isAddon: false, expiresAt });
           console.log(`Webhook: activated ${tx.plan} for`, tx.user_id);
         }
       }

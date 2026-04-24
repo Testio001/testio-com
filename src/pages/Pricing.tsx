@@ -185,8 +185,10 @@ const Pricing = () => {
           if (error) throw error;
           if (data?.success) {
             toast({
-              title: "🎉 Payment Successful!",
-              description: `Your ${data.plan} plan is active for 30 days. Renew anytime.`,
+              title: "🎉 Congratulations! Payment confirmed",
+              description: data.addon
+                ? "5 podcast credits have been added to your account. A confirmation email is on the way."
+                : `Your ${data.plan} plan is active for 30 days. A confirmation email is on the way.`,
             });
             navigate("/dashboard", { replace: true });
           } else {
@@ -196,7 +198,12 @@ const Pricing = () => {
                 body: { reference },
               });
               if (retry?.success) {
-                toast({ title: "🎉 Payment Successful!", description: `Your plan is now active!` });
+                toast({
+                  title: "🎉 Congratulations! Payment confirmed",
+                  description: retry.addon
+                    ? "5 podcast credits have been added. Check your inbox for confirmation."
+                    : "Your plan is now active. Check your inbox for confirmation.",
+                });
                 navigate("/dashboard", { replace: true });
               } else {
                 toast({
