@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Music, Crown, Zap, X, Home, LayoutDashboard } from "lucide-react";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Crown, Zap, X, Home, LayoutDashboard } from "lucide-react";
 import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -15,7 +15,6 @@ import StreakDisplay from "@/components/app/StreakDisplay";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
-import StudyMusicModal from "@/components/app/StudyMusicModal";
 import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
 import { useCurrency, priceFor, periodFor } from "@/hooks/useCurrency";
 
@@ -36,7 +35,6 @@ const Dashboard = () => {
   const [renamingDoc, setRenamingDoc] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [userPlan, setUserPlan] = useState<string | null>(null);
-  const [showStudyMusic, setShowStudyMusic] = useState(false);
   const [showPeriodicUpgrade, setShowPeriodicUpgrade] = useState(false);
   const isAndroidApp = useIsAndroidApp();
 
@@ -447,8 +445,8 @@ const Dashboard = () => {
                 className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
             </div>
 
-            {/* Upgrade to Pro Banner */}
-            {userPlan && userPlan !== "pro" && !isAndroidApp && (
+            {/* Upgrade to Pro Banner — only shown to free users */}
+            {userPlan === "free" && !isAndroidApp && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -533,29 +531,6 @@ const Dashboard = () => {
               </motion.div>
             ) : (
               <>
-                {/* Study Music Feature Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  onClick={() => setShowStudyMusic(true)}
-                  className="bg-testio-card rounded-xl p-4 sm:p-5 cursor-pointer hover:border-primary/30 transition-all group mb-6 border border-border relative overflow-hidden"
-                >
-                  <div className="absolute top-3 right-3">
-                    <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">Coming Soon</Badge>
-                  </div>
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <Music className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="text-foreground font-semibold text-sm">Study Music</h3>
-                      <p className="text-muted-foreground text-xs mt-0.5">Turn your notes into catchy songs for memorization</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <StudyMusicModal open={showStudyMusic} onOpenChange={setShowStudyMusic} />
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {filteredDocs.map((doc, i) => (
                   <motion.div key={doc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}

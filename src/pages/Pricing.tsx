@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Check, Crown, ArrowLeft, Loader2, Zap, Sparkles, GraduationCap, Star } from "lucide-react";
+import { Check, Crown, ArrowLeft, Loader2, Zap, Sparkles, GraduationCap, Star, BadgeCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import testioLogo from "@/assets/testio-logo.png";
 import ElitePricingBanner from "@/components/app/ElitePricingBanner";
@@ -143,6 +143,28 @@ const Pricing = () => {
   const [searchParams] = useSearchParams();
   const { currency, setCurrency } = useCurrency();
   const toggleCurrency = (c: Currency) => setCurrency(c);
+  const [activePlan, setActivePlan] = useState<string | null>(null);
+
+  const fetchActivePlan = async () => {
+    if (!user) return null;
+    const { data } = await supabase
+      .from("profiles")
+      .select("subscription_plan, subscription_expires_at")
+      .eq("user_id", user.id)
+      .single();
+    if (!data) { setActivePlan("free"); return "free"; }
+    const plan = data.subscription_plan || "free";
+    if (plan !== "free" && data.subscription_expires_at) {
+      if (new Date(data.subscription_expires_at) < new Date()) {
+        setActivePlan("free");
+        return "free";
+      }
+    }
+    setActivePlan(plan);
+    return plan;
+  };
+
+  useEffect(() => { if (user) fetchActivePlan(); }, [user]);
 
   useEffect(() => {
     if (searchParams.get("payment") === "success" && user) {
@@ -190,6 +212,7 @@ const Pricing = () => {
                 ? "5 podcast credits have been added to your account. A confirmation email is on the way."
                 : `Your ${data.plan} plan is active for 30 days. A confirmation email is on the way.`,
             });
+            await fetchActivePlan();
             navigate("/dashboard", { replace: true });
           } else {
             // retry once after delay (webhook may complete shortly)
@@ -204,6 +227,7 @@ const Pricing = () => {
                     ? "5 podcast credits have been added. Check your inbox for confirmation."
                     : "Your plan is now active. Check your inbox for confirmation.",
                 });
+                await fetchActivePlan();
                 navigate("/dashboard", { replace: true });
               } else {
                 toast({
@@ -224,6 +248,49 @@ const Pricing = () => {
     }
   }, [searchParams, user]);
 
+  // FALLBACK: Korapay sometimes drops the redirect query params.
+  // If the user lands here with no payment params but has a recent pending
+  // tx, poll korapay-verify for it so the congrats toast still fires.
+  useEffect(() => {
+    if (!user) return;
+    if (searchParams.get("korapay") === "success") return; // handled above
+    let cancelled = false;
+    (async () => {
+      const { data: pendingTx } = await supabase
+        .from("korapay_transactions")
+        .select("reference, plan, status, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!pendingTx) return;
+      const ageMs = Date.now() - new Date(pendingTx.created_at).getTime();
+      // Only auto-recover transactions started in the last 30 minutes
+      if (ageMs > 30 * 60 * 1000) return;
+      if (pendingTx.status === "success") {
+        // already granted — show a friendly congrats once if plan just changed
+        return;
+      }
+      // Try to verify once; webhook may already have run by the time this fires
+      try {
+        const { data: verifyRes } = await supabase.functions.invoke("korapay-verify", {
+          body: { reference: pendingTx.reference },
+        });
+        if (cancelled) return;
+        if (verifyRes?.success) {
+          toast({
+            title: "🎉 Congratulations! Payment confirmed",
+            description: verifyRes.addon
+              ? "5 podcast credits have been added. Check your inbox for confirmation."
+              : `Your ${verifyRes.plan} plan is active for 30 days. A confirmation email is on the way.`,
+          });
+          await fetchActivePlan();
+        }
+      } catch { /* silent */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
   if (isAndroidApp) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -240,6 +307,10 @@ const Pricing = () => {
   const handleSubscribe = async (plan: typeof plans[0]) => {
     if (plan.id === "free") {
       navigate("/dashboard");
+      return;
+    }
+    if (activePlan && activePlan === plan.id) {
+      toast({ title: "You're already on this plan", description: "Enjoy your premium features!" });
       return;
     }
     if (!user) {
@@ -362,19 +433,34 @@ const Pricing = () => {
                 ))}
               </ul>
 
-              <button
-                onClick={() => handleSubscribe(plan)}
-                disabled={loadingPlan !== null || plan.id === "free"}
-                className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
-                  plan.highlight
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
-                    : plan.id === "free"
-                    ? "bg-secondary text-muted-foreground border border-border cursor-not-allowed"
-                    : "bg-secondary text-foreground hover:bg-secondary/80 border border-border"
-                } disabled:opacity-50`}
-              >
-                {loadingPlan === plan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : plan.cta}
-              </button>
+              {(() => {
+                const isCurrent = activePlan === plan.id || (plan.id === "free" && (!activePlan || activePlan === "free"));
+                return (
+                  <button
+                    onClick={() => handleSubscribe(plan)}
+                    disabled={loadingPlan !== null || plan.id === "free" || isCurrent}
+                    className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+                      isCurrent
+                        ? "bg-primary/15 text-primary border border-primary/40 cursor-default"
+                        : plan.highlight
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
+                        : plan.id === "free"
+                        ? "bg-secondary text-muted-foreground border border-border cursor-not-allowed"
+                        : "bg-secondary text-foreground hover:bg-secondary/80 border border-border"
+                    } disabled:opacity-100`}
+                  >
+                    {loadingPlan === plan.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : isCurrent ? (
+                      <>
+                        <BadgeCheck className="w-4 h-4" /> Subscribed · Current Plan
+                      </>
+                    ) : (
+                      plan.cta
+                    )}
+                  </button>
+                );
+              })()}
             </motion.div>
           ))}
         </div>
