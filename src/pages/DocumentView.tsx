@@ -56,6 +56,31 @@ const DocumentView = () => {
     if (id && user) fetchDocument();
   }, [id, user]);
 
+  // Tour tabs (excluding Chat) — show "Tap to generate" once per user lifetime
+  const tourTabs: Array<"notes" | "flashcards" | "quiz" | "podcast"> = ["notes", "flashcards", "quiz", "podcast"];
+
+  // Start the tour after the document finishes processing — first time only.
+  useEffect(() => {
+    if (!doc || doc.status !== "completed" || loadingContent) return;
+    try {
+      if (localStorage.getItem("testio_tab_tour_done") === "1") return;
+    } catch {}
+    if (tourStep === -1) setTourStep(0);
+  }, [doc?.status, loadingContent]);
+
+  // Advance tour automatically every 2.8s
+  useEffect(() => {
+    if (tourStep < 0) return;
+    if (tourStep >= tourTabs.length) {
+      try { localStorage.setItem("testio_tab_tour_done", "1"); } catch {}
+      setTourStep(-1);
+      return;
+    }
+    setActiveTab(tourTabs[tourStep]);
+    const t = setTimeout(() => setTourStep((s) => s + 1), 2800);
+    return () => clearTimeout(t);
+  }, [tourStep]);
+
   const fetchDocument = async () => {
     setLoadingContent(true);
     const { data: docData } = await supabase.from("documents").select("*").eq("id", id!).single();
