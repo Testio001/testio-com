@@ -16,6 +16,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
 import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
+import EmptyStateDemo from "@/components/app/EmptyStateDemo";
 import { useCurrency, priceFor, periodFor } from "@/hooks/useCurrency";
 
 type Document = Tables<"documents">;
@@ -511,6 +512,7 @@ const Dashboard = () => {
                 <h3 className="text-foreground font-semibold mb-2 text-sm sm:text-base">No documents yet</h3>
                 <p className="text-muted-foreground text-xs sm:text-sm mb-6">Upload a PDF, paste text, or upload an image to get started</p>
                 <button onClick={tryUpload} className="btn-testio-primary text-sm !py-2 !px-6">Upload Your First Document</button>
+                <EmptyStateDemo />
               </motion.div>
             ) : (
               <>
