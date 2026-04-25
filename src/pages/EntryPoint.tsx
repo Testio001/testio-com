@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import Home from "./Home";
 import Onboarding from "./Onboarding";
+import { useAuth } from "@/hooks/useAuth";
 
 const EntryPoint = () => {
   const [isAppContext, setIsAppContext] = useState<boolean | null>(null);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     // Detect Android TWA
@@ -16,9 +19,14 @@ const EntryPoint = () => {
     setIsAppContext(isTWA || isPWA);
   }, []);
 
-  // Show nothing while detecting
-  if (isAppContext === null) {
+  // Show nothing while detecting context or auth
+  if (isAppContext === null || authLoading) {
     return <div className="min-h-screen bg-background" />;
+  }
+
+  // Authenticated users go straight to the dashboard, regardless of context
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   // TWA/PWA users go straight to app onboarding
