@@ -511,6 +511,7 @@ const Dashboard = () => {
                 <h3 className="text-foreground font-semibold mb-2 text-sm sm:text-base">No documents yet</h3>
                 <p className="text-muted-foreground text-xs sm:text-sm mb-6">Upload a PDF, paste text, or upload an image to get started</p>
                 <button onClick={tryUpload} className="btn-testio-primary text-sm !py-2 !px-6">Upload Your First Document</button>
+                <EmptyStateDemo />
               </motion.div>
             ) : (
               <>
