@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Mic, Loader2, Sparkles, Crown } from "lucide-react";
+import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Mic, Loader2, Sparkles, Crown, ArrowDown, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import NoteViewer from "@/components/app/NoteViewer";
@@ -48,6 +48,7 @@ const DocumentView = () => {
   const [hasPodcast, setHasPodcast] = useState(false);
   const [subscriptionPlan, setSubscriptionPlan] = useState("free");
   const [podcastCount, setPodcastCount] = useState(0);
+  const [tourStep, setTourStep] = useState<number>(-1); // -1 = inactive, 0..3 cycles through tabs
   const [bonusPodcasts, setBonusPodcasts] = useState(0);
   const [showPodcastLimitModal, setShowPodcastLimitModal] = useState(false);
 
@@ -216,6 +217,36 @@ const DocumentView = () => {
     { id: "chat" as const, label: "Chat", icon: MessageSquare },
   ];
 
+  // Tour tabs (excluding Chat) — show "Tap to generate" once per user lifetime
+  const tourTabs: Array<"notes" | "flashcards" | "quiz" | "podcast"> = ["notes", "flashcards", "quiz", "podcast"];
+
+  // Start the tour after the document finishes processing — first time only.
+  useEffect(() => {
+    if (!doc || doc.status !== "completed" || loadingContent) return;
+    try {
+      if (localStorage.getItem("testio_tab_tour_done") === "1") return;
+    } catch {}
+    if (tourStep === -1) setTourStep(0);
+  }, [doc?.status, loadingContent]);
+
+  // Advance tour automatically every 2.8s
+  useEffect(() => {
+    if (tourStep < 0) return;
+    if (tourStep >= tourTabs.length) {
+      try { localStorage.setItem("testio_tab_tour_done", "1"); } catch {}
+      setTourStep(-1);
+      return;
+    }
+    setActiveTab(tourTabs[tourStep]);
+    const t = setTimeout(() => setTourStep((s) => s + 1), 2800);
+    return () => clearTimeout(t);
+  }, [tourStep]);
+
+  const dismissTour = () => {
+    try { localStorage.setItem("testio_tab_tour_done", "1"); } catch {}
+    setTourStep(-1);
+  };
+
   const podcastLimitTotal = getPodcastLimit();
   const podcastsRemaining = Math.max(0, podcastLimitTotal - podcastCount);
 
@@ -260,18 +291,34 @@ const DocumentView = () => {
 
       <div className="max-w-6xl mx-auto px-6 py-6">
         {/* Tabs */}
-        <div className="grid grid-cols-5 bg-secondary rounded-lg p-1 mb-6 max-w-lg">
+        <div className="relative grid grid-cols-5 bg-secondary rounded-lg p-1 mb-6 max-w-lg">
           {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center justify-center gap-1.5 py-2 px-1 sm:px-3 rounded-md text-xs font-medium transition-colors ${
-                activeTab === tab.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <tab.icon className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
+            <div key={tab.id} className="relative">
+              <button
+                onClick={() => { setActiveTab(tab.id); if (tourStep >= 0) dismissTour(); }}
+                className={`w-full flex items-center justify-center gap-1.5 py-2 px-1 sm:px-3 rounded-md text-xs font-medium transition-colors ${
+                  activeTab === tab.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                } ${tourStep >= 0 && tourTabs[tourStep] === tab.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
+              >
+                <tab.icon className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+              {tourStep >= 0 && tourTabs[tourStep] === tab.id && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 whitespace-nowrap pointer-events-auto"
+                >
+                  <div className="relative bg-primary text-primary-foreground text-[11px] font-medium px-2.5 py-1 rounded-md shadow-lg flex items-center gap-1.5">
+                    Tap to generate
+                    <button onClick={dismissTour} aria-label="Dismiss" className="opacity-80 hover:opacity-100">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <ArrowDown className="w-4 h-4 text-primary mx-auto -mt-0.5" />
+                </motion.div>
+              )}
+            </div>
           ))}
         </div>
 
