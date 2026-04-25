@@ -16,6 +16,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
 import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
+import EmptyStateDemo from "@/components/app/EmptyStateDemo";
 import { useCurrency, priceFor, periodFor } from "@/hooks/useCurrency";
 
 type Document = Tables<"documents">;
