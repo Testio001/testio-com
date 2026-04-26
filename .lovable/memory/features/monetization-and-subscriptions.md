@@ -4,7 +4,7 @@ description: 4-tier pricing (Free/Basic/Pro/Scholar), Lemon Squeezy variant IDs,
 type: feature
 ---
 ## Plans (UI + manage-gamification backend)
-- Free $0: 3 uploads/mo, 1 podcast (4 min, 8 exchanges), 5 tutor q's/doc, 20 quiz qs.
+- Free $0: 2 uploads (lifetime), 1 podcast (4 min, 8 exchanges), 5 tutor q's/doc, 20 quiz qs.
 - Basic $4.99/mo: 15 uploads/mo, 3 podcasts (7 min, 14 exchanges), 21 tutor q's/doc.
 - Pro $9.99/mo: 40 uploads/mo, 6 podcasts (12 min, 24 exchanges), 21 tutor q's/doc, unlimited quizzes, priority.
 - Scholar $14.99/mo: "Unlimited" uploads (HARD CAP 80/mo for fair-use abuse prevention), 9 podcasts (15 min, 30 exchanges), unlimited tutor & quizzes, early access.
