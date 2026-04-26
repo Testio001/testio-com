@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const FREE_UPLOAD_LIMIT = 3;
+const FREE_UPLOAD_LIMIT = 2;
 const BASIC_UPLOAD_LIMIT = 15;
 const PRO_UPLOAD_LIMIT = 40;
 const SCHOLAR_UPLOAD_LIMIT = 80; // Hard cap (UI says unlimited, backend enforces fair-use)
