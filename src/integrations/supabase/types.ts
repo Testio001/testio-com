@@ -734,6 +734,7 @@ export type Database = {
           referral_code: string
           referrals_month_reset: string
           referrals_this_month: number
+          streak_bonus_uploads: number
           streak_freezes: number
           updated_at: string
           uploads_used: number
@@ -753,6 +754,7 @@ export type Database = {
           referral_code: string
           referrals_month_reset?: string
           referrals_this_month?: number
+          streak_bonus_uploads?: number
           streak_freezes?: number
           updated_at?: string
           uploads_used?: number
@@ -772,6 +774,7 @@ export type Database = {
           referral_code?: string
           referrals_month_reset?: string
           referrals_this_month?: number
+          streak_bonus_uploads?: number
           streak_freezes?: number
           updated_at?: string
           uploads_used?: number
