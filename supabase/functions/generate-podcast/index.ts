@@ -136,7 +136,7 @@ serve(async (req) => {
 
       let instruction: string;
       if (isFirst) {
-        instruction = `You are Alex, the host of a friendly study podcast. Open warmly: greet the listener, introduce yourself AND your co-host Sam by name, then introduce the topic from the study material. Preview what you'll cover. Speak in 3-5 detailed sentences. End with a natural handoff like "Sam, what's your take?" so Sam knows it's their turn.`;
+        instruction = `You are Alex, the host of a friendly study podcast. Open warmly: greet the listener, introduce yourself AND your co-host Sam by name, then introduce the topic from the study material. Speak in 2-3 sentences MAX. End with a natural handoff like "Sam, what's your take?" so Sam knows it's their turn.`;
       } else if (isFinalClose) {
         if (needsUpgradeCTA) {
           instruction = `You are Alex. This is the VERY LAST line of the podcast. Say exactly, in your own warm voice: "That is all for now. Upgrade to Testio Premium to generate more podcast minutes." Do NOT add anything else, do NOT introduce new content. Keep it to those two sentences only.`;
@@ -146,17 +146,17 @@ serve(async (req) => {
       } else if (isOutro) {
         // Last 5+ seconds = pleasantries / proper sign-off (NOT new content).
         if (needsUpgradeCTA) {
-          instruction = `You are Alex, wrapping up the podcast. This is the OUTRO — do NOT introduce new ideas. Briefly thank Sam and the listener for joining, give a one-sentence recap, then say exactly: "Want the full deep dive? Upgrade to Testio Premium for complete, uncut podcasts!" End with: "Thanks for listening — until next time, keep studying smart!" Speak in 4-5 sentences total.`;
+          instruction = `You are Alex, wrapping up the podcast. This is the OUTRO — do NOT introduce new ideas. Briefly thank the listener, then say exactly: "Want the full deep dive? Upgrade to Testio Premium for complete, uncut podcasts!" Speak in 3 sentences MAX.`;
         } else {
-          instruction = `You are Alex, wrapping up the podcast. This is the OUTRO — do NOT introduce new ideas or new topics. Briefly thank Sam for the great discussion, thank the listener for joining, give a one-sentence recap of the single biggest takeaway, then sign off warmly with something like: "That's it for today — thanks for listening, keep studying smart, and we'll catch you in the next one!" Speak in 4-5 sentences. Make the ending feel like a real podcast close (pleasantries, not new content).`;
+          instruction = `You are Alex, wrapping up the podcast. This is the OUTRO — do NOT introduce new ideas or new topics. Briefly thank Sam and the listener, then sign off warmly with something like: "That's it for today — keep studying smart!" Speak in 3 sentences MAX.`;
         }
       } else if (speaker === "Sam") {
-        instruction = `You are Sam, Alex's co-host and a curious learner. WAIT for Alex to finish — Alex JUST said: "${lastLine?.text || ''}". Start by briefly acknowledging or reacting to Alex's exact point (e.g. "That's a great point about X..." or "So if I'm understanding correctly..."), then ask a thoughtful follow-up question that digs deeper into the study material. Speak in 3-5 detailed sentences. Do NOT repeat what Alex just said verbatim. End with a clear question so Alex knows it's their turn.`;
+        instruction = `You are Sam, Alex's co-host and a curious learner. WAIT for Alex to finish — Alex JUST said: "${lastLine?.text || ''}". Briefly acknowledge Alex's point, then ask ONE thoughtful follow-up question. Speak in 2-3 sentences MAX. Do NOT repeat what Alex just said verbatim. End with a clear question so Alex knows it's their turn.`;
       } else {
-        instruction = `You are Alex, the host and expert. WAIT for Sam to finish — Sam JUST asked: "${lastLine?.text || ''}". Directly answer Sam's question using the study material. Provide examples or analogies. Speak in 3-5 detailed sentences. End naturally — either by inviting Sam's reaction ("Does that make sense, Sam?") or pivoting to the next sub-topic.`;
+        instruction = `You are Alex, the host and expert. WAIT for Sam to finish — Sam JUST asked: "${lastLine?.text || ''}". Directly answer Sam's question using the study material with one quick example. Speak in 2-3 sentences MAX. End naturally — either by inviting Sam's reaction ("Does that make sense, Sam?") or pivoting to the next sub-topic.`;
       }
 
-      const systemContent = `${instruction}\n\nCRITICAL RULES:\n- You MUST speak in at least 3 COMPLETE sentences with real substance. Every sentence must end with proper punctuation (. ! or ?).\n- You MUST start with a fresh, complete sentence. NEVER start mid-sentence, NEVER trail off, NEVER end mid-word.\n- The previous speaker has COMPLETELY FINISHED. Do not interrupt, do not overlap, do not echo their last words.\n- Speak at a natural, calm pace. Finish your final sentence completely before stopping.\n- Do NOT use stage directions like [pause] or *laughs*.\n- Speak ONLY your own lines — do not voice the other person.\n\nStudy material:\n${materialContext}${fullConvo ? `\n\nFull conversation so far (the other speaker has FINISHED their last line):\n${fullConvo}` : ""}`;
+      const systemContent = `${instruction}\n\nCRITICAL RULES:\n- HARD LIMIT: Speak in a MAXIMUM of 3 sentences. NEVER exceed 3 sentences. Prefer 2-3 short, complete sentences.\n- Every sentence must end with proper punctuation (. ! or ?). Stop completely after your 3rd sentence — hand off to the other speaker.\n- You MUST start with a fresh, complete sentence. NEVER start mid-sentence, NEVER trail off, NEVER end mid-word.\n- The previous speaker has COMPLETELY FINISHED. Do not interrupt, do not overlap, do not echo their last words.\n- Speak at a natural, calm pace. Finish your final sentence completely before stopping.\n- Do NOT use stage directions like [pause] or *laughs*.\n- Speak ONLY your own lines — do not voice the other person.\n\nStudy material:\n${materialContext}${fullConvo ? `\n\nFull conversation so far (the other speaker has FINISHED their last line):\n${fullConvo}` : ""}`;
 
       const { transcript, audioData } = await callAudioAPI(OPENAI_API_KEY, systemContent, voice);
 
