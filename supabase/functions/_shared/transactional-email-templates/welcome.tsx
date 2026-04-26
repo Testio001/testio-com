@@ -26,7 +26,7 @@ const WelcomeEmail = ({ displayName }: WelcomeProps) => (
           Upload any lecture note, PDF, or document and we'll turn it into smart study notes, flashcards, quizzes, and even a podcast — all powered by AI.
         </Text>
         <Text style={text}>
-          You have <strong>3 free uploads</strong> to get started. Refer friends to earn more!
+          You have <strong>2 free uploads</strong> to get started. Refer friends to earn more!
         </Text>
         <Button style={button} href={`${APP_URL}/dashboard`}>
           Go to Dashboard →
