@@ -290,8 +290,9 @@ const DocumentView = () => {
         title={genInfo?.title}
         subtitle={genInfo?.subtitle}
       />
-
       <header className="border-b border-border/50 px-6 py-4">
+
+      {/* placeholder removed */}
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate("/dashboard")} className="text-muted-foreground hover:text-foreground">
