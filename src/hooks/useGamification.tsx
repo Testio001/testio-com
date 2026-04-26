@@ -59,7 +59,7 @@ export interface GamificationData {
   BADGE_DEFINITIONS: typeof BADGE_DEFINITIONS;
 }
 
-const FREE_UPLOAD_LIMIT = 3;
+const FREE_UPLOAD_LIMIT = 2;
 const MAX_REFERRALS_PER_MONTH = 5;
 // Podcast exchange counts (each exchange ≈ 30s of audio)
 const FREE_PODCAST_MAX_EXCHANGES = 8;   // ~4 min
