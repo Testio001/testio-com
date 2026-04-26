@@ -235,7 +235,7 @@ const Home = () => {
 
       {/* Pricing Section */}
       <section className="py-20 px-6">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <h2 className={`text-3xl font-bold text-center mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>Simple, Transparent Pricing</h2>
           <p className={`text-center mb-14 max-w-md mx-auto ${isDark ? "text-gray-400" : "text-gray-500"}`}>
             Choose the plan that fits your study needs. {currency === "NGN" ? "One-off payment, valid 30 days." : "Cancel anytime."}
