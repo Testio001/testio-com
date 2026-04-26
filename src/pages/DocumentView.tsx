@@ -51,6 +51,7 @@ const DocumentView = () => {
   const [tourStep, setTourStep] = useState<number>(-1); // -1 = inactive, 0..3 cycles through tabs
   const [bonusPodcasts, setBonusPodcasts] = useState(0);
   const [showPodcastLimitModal, setShowPodcastLimitModal] = useState(false);
+  const [showPodcastPrompt, setShowPodcastPrompt] = useState(false);
 
   useEffect(() => {
     if (id && user) fetchDocument();
@@ -80,6 +81,24 @@ const DocumentView = () => {
     const t = setTimeout(() => setTourStep((s) => s + 1), 2800);
     return () => clearTimeout(t);
   }, [tourStep]);
+
+  // First-time podcast prompt: show once after notes are ready and user has no podcast yet
+  useEffect(() => {
+    if (loadingContent) return;
+    if (!doc || doc.status !== "completed") return;
+    if (notes.length === 0) return;
+    if (hasPodcast) return;
+    try {
+      if (localStorage.getItem("testio_podcast_prompt_seen") === "1") return;
+    } catch {}
+    const t = setTimeout(() => setShowPodcastPrompt(true), 1200);
+    return () => clearTimeout(t);
+  }, [doc?.status, loadingContent, notes.length, hasPodcast]);
+
+  const dismissPodcastPrompt = () => {
+    try { localStorage.setItem("testio_podcast_prompt_seen", "1"); } catch {}
+    setShowPodcastPrompt(false);
+  };
 
   const fetchDocument = async () => {
     setLoadingContent(true);
