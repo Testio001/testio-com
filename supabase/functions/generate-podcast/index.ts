@@ -7,6 +7,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ~200ms of silent MP3 (mono, 24kHz, 32kbps) used as a natural pause between
+// speaker turns so the next voice doesn't start before the previous one ends.
+const SILENCE_MP3_BASE64 = "SUQzBAAAAAAAIlRTU0UAAAAOAAADTGF2ZjYyLjMuMTAwAAAAAAAAAAAAAAD/84TAAAAAAAAAAAAASW5mbwAAAA8AAAALAAAE4AA7Ozs7Ozs7OztOTk5OTk5OTk5iYmJiYmJiYmJ2dnZ2dnZ2dnaJiYmJiYmJiYmdnZ2dnZ2dnZ2xsbGxsbGxsbHExMTExMTExMTY2NjY2NjY2Njs7Ozs7Ozs7Oz///////////8AAAAATGF2YzYyLjExAAAAAAAAAAAAAAAAJAPAAAAAAAAABOAnh21GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/80TEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy7/80TEUwAAA0gAAAAAMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy7/80TEpgAAA0gAAAAAMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy7/80TErAAAA0gAAAAAMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy7/80TErAAAA0gAAAAAMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy7/80TErAAAA0gAAAAAMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy7/80TErAAAA0gAAAAAMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy7/80TErAAAA0gAAAAAMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy7/80TErAAAA0gAAAAAMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80TErAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80TErAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=";
+const SILENCE_MP3: Uint8Array = (() => {
+  const bin = atob(SILENCE_MP3_BASE64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+})();
+
 async function callAudioAPI(apiKey: string, systemContent: string, voice: string, retries = 2): Promise<{ transcript: string; audioData: Uint8Array | null }> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -146,7 +156,7 @@ serve(async (req) => {
         instruction = `You are Alex, the host and expert. WAIT for Sam to finish — Sam JUST asked: "${lastLine?.text || ''}". Directly answer Sam's question using the study material. Provide examples or analogies. Speak in 3-5 detailed sentences. End naturally — either by inviting Sam's reaction ("Does that make sense, Sam?") or pivoting to the next sub-topic.`;
       }
 
-      const systemContent = `${instruction}\n\nCRITICAL RULES:\n- You MUST speak in at least 3 full sentences with real substance.\n- You MUST NOT start mid-sentence or talk over the previous speaker — they have completely finished.\n- Do NOT use stage directions like [pause] or *laughs*.\n- Speak ONLY your own lines — do not voice the other person.\n\nStudy material:\n${materialContext}${fullConvo ? `\n\nFull conversation so far (the other speaker has FINISHED their last line):\n${fullConvo}` : ""}`;
+      const systemContent = `${instruction}\n\nCRITICAL RULES:\n- You MUST speak in at least 3 COMPLETE sentences with real substance. Every sentence must end with proper punctuation (. ! or ?).\n- You MUST start with a fresh, complete sentence. NEVER start mid-sentence, NEVER trail off, NEVER end mid-word.\n- The previous speaker has COMPLETELY FINISHED. Do not interrupt, do not overlap, do not echo their last words.\n- Speak at a natural, calm pace. Finish your final sentence completely before stopping.\n- Do NOT use stage directions like [pause] or *laughs*.\n- Speak ONLY your own lines — do not voice the other person.\n\nStudy material:\n${materialContext}${fullConvo ? `\n\nFull conversation so far (the other speaker has FINISHED their last line):\n${fullConvo}` : ""}`;
 
       const { transcript, audioData } = await callAudioAPI(OPENAI_API_KEY, systemContent, voice);
 
@@ -172,10 +182,17 @@ serve(async (req) => {
 
     if (audioChunks.length === 0) throw new Error("Failed to generate podcast audio. Please try again.");
 
-    const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    // Stitch audio with a ~200ms silent MP3 between each turn so speakers don't
+    // overlap and the conversation feels naturally paced.
+    const pieces: Uint8Array[] = [];
+    for (let k = 0; k < audioChunks.length; k++) {
+      pieces.push(audioChunks[k]);
+      if (k < audioChunks.length - 1) pieces.push(SILENCE_MP3);
+    }
+    const totalLength = pieces.reduce((sum, chunk) => sum + chunk.length, 0);
     const combinedAudio = new Uint8Array(totalLength);
     let offset = 0;
-    for (const chunk of audioChunks) { combinedAudio.set(chunk, offset); offset += chunk.length; }
+    for (const chunk of pieces) { combinedAudio.set(chunk, offset); offset += chunk.length; }
 
     // Upload to PRIVATE podcasts bucket. We store only the storage path in the DB
     // and generate short-lived signed URLs at playback/download time.
