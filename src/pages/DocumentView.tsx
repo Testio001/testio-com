@@ -51,6 +51,7 @@ const DocumentView = () => {
   const [tourStep, setTourStep] = useState<number>(-1); // -1 = inactive, 0..3 cycles through tabs
   const [bonusPodcasts, setBonusPodcasts] = useState(0);
   const [showPodcastLimitModal, setShowPodcastLimitModal] = useState(false);
+  const [showPodcastPrompt, setShowPodcastPrompt] = useState(false);
 
   useEffect(() => {
     if (id && user) fetchDocument();
@@ -80,6 +81,24 @@ const DocumentView = () => {
     const t = setTimeout(() => setTourStep((s) => s + 1), 2800);
     return () => clearTimeout(t);
   }, [tourStep]);
+
+  // First-time podcast prompt: show once after notes are ready and user has no podcast yet
+  useEffect(() => {
+    if (loadingContent) return;
+    if (!doc || doc.status !== "completed") return;
+    if (notes.length === 0) return;
+    if (hasPodcast) return;
+    try {
+      if (localStorage.getItem("testio_podcast_prompt_seen") === "1") return;
+    } catch {}
+    const t = setTimeout(() => setShowPodcastPrompt(true), 1200);
+    return () => clearTimeout(t);
+  }, [doc?.status, loadingContent, notes.length, hasPodcast]);
+
+  const dismissPodcastPrompt = () => {
+    try { localStorage.setItem("testio_podcast_prompt_seen", "1"); } catch {}
+    setShowPodcastPrompt(false);
+  };
 
   const fetchDocument = async () => {
     setLoadingContent(true);
@@ -271,6 +290,66 @@ const DocumentView = () => {
         title={genInfo?.title}
         subtitle={genInfo?.subtitle}
       />
+
+      {/* First-time full-screen podcast prompt */}
+      {showPodcastPrompt && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-[80] bg-background/95 backdrop-blur-sm flex items-center justify-center p-6"
+        >
+          <button
+            onClick={dismissPodcastPrompt}
+            aria-label="Close"
+            className="absolute top-5 right-5 text-muted-foreground hover:text-foreground p-2"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <motion.div
+            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            transition={{ delay: 0.1, type: "spring", stiffness: 200, damping: 22 }}
+            className="text-center max-w-md w-full"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.08, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="w-24 h-24 mx-auto mb-6 rounded-full bg-primary/15 flex items-center justify-center ring-4 ring-primary/20"
+            >
+              <Mic className="w-12 h-12 text-primary" />
+            </motion.div>
+            <div className="text-5xl mb-3">🎙️</div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 leading-tight">
+              Your lecture is ready to become a podcast
+            </h2>
+            <p className="text-muted-foreground text-base mb-8 px-2">
+              Tap below to generate your study podcast — listen on your way to class.
+            </p>
+            <button
+              onClick={() => {
+                dismissPodcastPrompt();
+                setActiveTab("podcast");
+                generatePodcast();
+              }}
+              disabled={generating === "podcast"}
+              className="btn-testio-primary w-full !py-4 !text-base flex items-center justify-center gap-2 shadow-xl shadow-primary/30"
+            >
+              {generating === "podcast" ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Sparkles className="w-5 h-5" />
+              )}
+              Generate My Podcast
+            </button>
+            <button
+              onClick={dismissPodcastPrompt}
+              className="mt-4 text-sm text-muted-foreground hover:text-foreground"
+            >
+              Maybe later
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
 
       <header className="border-b border-border/50 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
