@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -99,6 +99,79 @@ const DocumentView = () => {
     try { localStorage.setItem("testio_podcast_prompt_seen", "1"); } catch {}
     setShowPodcastPrompt(false);
   };
+
+  const triggerPodcastGenerate = () => {
+    if (generating === "podcast") return;
+    dismissPodcastPrompt();
+    setActiveTab("podcast");
+    generatePodcast();
+  };
+
+  // Focus trap + keyboard support (Esc dismiss, Enter generate) for the podcast prompt
+  const podcastPromptRef = useRef<HTMLDivElement | null>(null);
+  const podcastPromptCtaRef = useRef<HTMLButtonElement | null>(null);
+  const lastFocusedBeforePromptRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!showPodcastPrompt) return;
+
+    lastFocusedBeforePromptRef.current = (document.activeElement as HTMLElement) ?? null;
+    // Focus the primary CTA on open for screen readers / keyboard users
+    const focusTimer = window.setTimeout(() => {
+      podcastPromptCtaRef.current?.focus();
+    }, 50);
+
+    const getFocusable = (): HTMLElement[] => {
+      const root = podcastPromptRef.current;
+      if (!root) return [];
+      return Array.from(
+        root.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => !el.hasAttribute("aria-hidden"));
+    };
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        dismissPodcastPrompt();
+        return;
+      }
+      if (e.key === "Enter") {
+        const target = e.target as HTMLElement | null;
+        // Let Enter on the secondary "Maybe later" / close buttons act normally
+        if (target?.tagName === "BUTTON" && target !== podcastPromptCtaRef.current) return;
+        e.preventDefault();
+        triggerPodcastGenerate();
+        return;
+      }
+      if (e.key === "Tab") {
+        const focusables = getFocusable();
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!podcastPromptRef.current?.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      window.clearTimeout(focusTimer);
+      // Restore focus to whatever had it before the prompt opened
+      lastFocusedBeforePromptRef.current?.focus?.();
+    };
+  }, [showPodcastPrompt]);
 
   const fetchDocument = async () => {
     setLoadingContent(true);
@@ -294,6 +367,11 @@ const DocumentView = () => {
       {/* First-time full-screen podcast prompt */}
       {showPodcastPrompt && (
         <motion.div
+          ref={podcastPromptRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="podcast-prompt-title"
+          aria-describedby="podcast-prompt-desc"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="fixed inset-0 z-[80] bg-background/95 backdrop-blur-sm flex items-center justify-center p-6"
@@ -319,18 +397,15 @@ const DocumentView = () => {
               <Mic className="w-12 h-12 text-primary" />
             </motion.div>
             <div className="text-5xl mb-3">🎙️</div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 leading-tight">
+            <h2 id="podcast-prompt-title" className="text-2xl sm:text-3xl font-bold text-foreground mb-3 leading-tight">
               Your lecture is ready to become a podcast
             </h2>
-            <p className="text-muted-foreground text-base mb-8 px-2">
+            <p id="podcast-prompt-desc" className="text-muted-foreground text-base mb-8 px-2">
               Tap below to generate your study podcast — listen on your way to class.
             </p>
             <button
-              onClick={() => {
-                dismissPodcastPrompt();
-                setActiveTab("podcast");
-                generatePodcast();
-              }}
+              ref={podcastPromptCtaRef}
+              onClick={triggerPodcastGenerate}
               disabled={generating === "podcast"}
               className="btn-testio-primary w-full !py-4 !text-base flex items-center justify-center gap-2 shadow-xl shadow-primary/30"
             >
