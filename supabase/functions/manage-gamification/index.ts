@@ -303,6 +303,7 @@ Deno.serve(async (req) => {
             longest_streak: newLongest,
             last_upload_date: today,
             bonus_uploads: freshStats.bonus_uploads + bonusIncrease,
+            streak_bonus_uploads: (freshStats.streak_bonus_uploads || 0) + bonusIncrease,
           })
           .eq("user_id", userId);
 
