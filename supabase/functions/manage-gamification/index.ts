@@ -189,11 +189,28 @@ Deno.serve(async (req) => {
               .eq("user_id", userId);
             stats.streak_freezes -= 1;
           } else {
+            // Streak broke: revoke any UNUSED bonus uploads earned from streak milestones.
+            // Referral bonuses are preserved.
+            const activePlan = await getActivePlan(supabaseAdmin, userId);
+            const planLimit = getUploadLimitForPlan(activePlan);
+            const totalAllowed = planLimit + (stats.bonus_uploads || 0);
+            const remaining = Math.max(0, totalAllowed - (stats.uploads_used || 0));
+            const streakBonus = stats.streak_bonus_uploads || 0;
+            const unusedStreakBonus = Math.min(streakBonus, remaining);
+            const newBonusUploads = Math.max(0, (stats.bonus_uploads || 0) - unusedStreakBonus);
+            const newStreakBonus = Math.max(0, streakBonus - unusedStreakBonus);
+
             await supabaseAdmin
               .from("user_stats")
-              .update({ current_streak: 0 })
+              .update({
+                current_streak: 0,
+                bonus_uploads: newBonusUploads,
+                streak_bonus_uploads: newStreakBonus,
+              })
               .eq("user_id", userId);
             stats.current_streak = 0;
+            stats.bonus_uploads = newBonusUploads;
+            stats.streak_bonus_uploads = newStreakBonus;
           }
         }
       }
