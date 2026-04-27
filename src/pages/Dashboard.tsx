@@ -514,6 +514,9 @@ const Dashboard = () => {
                 <p className="text-muted-foreground text-xs sm:text-sm mb-6">Upload a PDF, paste text, or upload an image to get started</p>
                 <button onClick={tryUpload} className="btn-testio-primary text-sm !py-2 !px-6">Upload Your First Document</button>
                 <EmptyStateDemo />
+                <div className="max-w-md mx-auto mt-8 text-left">
+                  <InAppTestimonials />
+                </div>
               </motion.div>
             ) : (
               <>
@@ -561,6 +564,9 @@ const Dashboard = () => {
                     <p className="text-muted-foreground text-xs">{doc.source_type.toUpperCase()} · {new Date(doc.created_at).toLocaleDateString()}</p>
                   </motion.div>
                 ))}
+              </div>
+              <div className="mt-6">
+                <InAppTestimonials />
               </div>
               </>
             )}
