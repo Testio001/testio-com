@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Edit3, Save, Copy, Check } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type Note = Tables<"notes">;
 
@@ -80,8 +81,11 @@ const NoteViewer = ({ documentId, notes, onRefresh }: { documentId: string; note
               prose-hr:border-border/30 prose-hr:my-6
               prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
               prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+              prose-table:w-full prose-table:border-collapse prose-table:my-4
+              prose-th:border prose-th:border-border prose-th:px-3 prose-th:py-2 prose-th:bg-muted prose-th:text-left prose-th:font-semibold prose-th:text-foreground
+              prose-td:border prose-td:border-border prose-td:px-3 prose-td:py-2 prose-td:text-foreground/85
             ">
-              <ReactMarkdown>{note.content}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
             </div>
           )}
         </div>
