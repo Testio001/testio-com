@@ -38,6 +38,8 @@ serve(async (req) => {
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "gpt-4o-mini",
+        max_tokens: 4000,
+        temperature: 0.3,
         messages: [
           {
             role: "system",
@@ -55,11 +57,30 @@ serve(async (req) => {
 10. Make the notes thorough, covering ALL content from the source material
 11. Use emojis in section headings to make them visually distinct
 
-The notes should be detailed, well-structured, and visually appealing when rendered as markdown. Cover every topic mentioned in the source content thoroughly.`
+The notes should be detailed, well-structured, and visually appealing when rendered as markdown. Cover every topic mentioned in the source content thoroughly.
+
+ADDITIONAL FORMATTING RULES:
+- You MUST create visual tables whenever content contains comparisons, methods, features or items with 2+ attributes
+- Adapt structure intelligently to the subject type:
+
+  Science/Engineering: use tables for comparisons, numbered steps for processes, code blocks for formulas
+
+  Law/History: use blockquotes for important cases and rulings, chronological numbered lists for events
+
+  Mathematics: use numbered steps for solutions, code blocks for equations, tables for formula references
+
+  Business/Economics: use comparison tables, bullet point frameworks, blockquotes for key principles
+
+  Medicine/Biology: use tables for symptoms and treatments, numbered steps for procedures
+
+- NEVER write walls of plain prose paragraphs
+- NEVER force the same structure on every document — let the content decide the format
+- ALWAYS bold every key term and concept on first mention
+- Make every note look like a premium professionally designed study guide that a student would pay for`
           },
           {
             role: "user",
-            content: `Generate detailed study notes from the following content:\n\n${content.substring(0, 15000)}`
+            content: `Generate detailed study notes from the following content:\n\n${content.substring(0, 20000)}`
           }
         ],
       }),
