@@ -83,7 +83,7 @@ const NoteViewer = ({ documentId, notes, onRefresh }: { documentId: string; note
               prose-a:text-primary prose-a:no-underline hover:prose-a:underline
               prose-table:min-w-full prose-table:border-collapse prose-table:text-sm prose-table:my-4
               prose-th:border prose-th:border-border prose-th:px-3 prose-th:py-2 prose-th:bg-muted prose-th:text-left prose-th:font-semibold prose-th:whitespace-nowrap prose-th:text-xs prose-th:text-foreground
-              prose-td:border prose-td:border-border prose-td:px-2 prose-td:py-2 prose-td:text-xs prose-td:leading-relaxed prose-td:text-foreground/85
+              prose-td:border prose-td:border-border prose-td:px-2 prose-td:py-2 prose-td:text-xs prose-td:leading-relaxed prose-td:text-foreground/85 prose-td:break-words prose-th:break-words [&_td]:[word-break:break-word] [&_th]:[word-break:break-word]
             ">
               <div
                 className="overflow-x-auto w-full"
