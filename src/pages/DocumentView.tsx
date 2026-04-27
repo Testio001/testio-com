@@ -374,68 +374,6 @@ const DocumentView = () => {
         subtitle={genInfo?.subtitle}
       />
 
-      {/* First-time full-screen podcast prompt */}
-      {showPodcastPrompt && (
-        <motion.div
-          ref={podcastPromptRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="podcast-prompt-title"
-          aria-describedby="podcast-prompt-desc"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 z-[80] bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
-        >
-          <button
-            onClick={dismissPodcastPrompt}
-            aria-label="Close"
-            className="absolute top-3 right-3 sm:top-5 sm:right-5 text-muted-foreground hover:text-foreground p-2"
-          >
-            <X className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-          <motion.div
-            initial={{ scale: 0.9, y: 20, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            transition={{ delay: 0.1, type: "spring", stiffness: 200, damping: 22 }}
-            className="text-center max-w-md w-full my-auto py-6"
-          >
-            <motion.div
-              animate={{ scale: [1, 1.08, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 sm:mb-6 rounded-full bg-primary/15 flex items-center justify-center ring-4 ring-primary/20"
-            >
-              <Mic className="w-8 h-8 sm:w-12 sm:h-12 text-primary" />
-            </motion.div>
-            <div className="text-4xl sm:text-5xl mb-2 sm:mb-3">🎙️</div>
-            <h2 id="podcast-prompt-title" className="text-xl sm:text-3xl font-bold text-foreground mb-2 sm:mb-3 leading-tight px-2">
-              Your lecture is ready to become a podcast
-            </h2>
-            <p id="podcast-prompt-desc" className="text-muted-foreground text-sm sm:text-base mb-6 sm:mb-8 px-2">
-              Tap below to generate your study podcast — listen on your way to class.
-            </p>
-            <button
-              ref={podcastPromptCtaRef}
-              onClick={triggerPodcastGenerate}
-              disabled={generating === "podcast"}
-              className="btn-testio-primary w-full !py-3 sm:!py-4 !text-sm sm:!text-base flex items-center justify-center gap-2 shadow-xl shadow-primary/30"
-            >
-              {generating === "podcast" ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Sparkles className="w-5 h-5" />
-              )}
-              Generate My Podcast
-            </button>
-            <button
-              onClick={dismissPodcastPrompt}
-              className="mt-4 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Maybe later
-            </button>
-          </motion.div>
-        </motion.div>
-      )}
-
       <header className="border-b border-border/50 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
