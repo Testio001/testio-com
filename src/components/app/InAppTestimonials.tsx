@@ -4,34 +4,32 @@ import { Quote } from "lucide-react";
 
 const testimonials = [
   {
-    title: "Harvard Pre-med",
-    quote: "My bio textbook is 500 pages, but Testio makes study notes of each chapter so I can review them during commutes or workouts.",
-    name: "Olivia C.",
+    quote:
+      "I was honestly failing my exams. I'd read for hours and remember nothing. I started turning every chapter into a Testio podcast and listening on my way to school — my last test I scored 82%. I almost cried.",
+    name: "Amaka O.",
+    role: "300L Microbiology Student",
+    initials: "AO",
   },
   {
-    title: "MIT Education PhD",
-    quote: "Testio outlines my research paper, then generates flashcards from the key points. I do the thinking, and Testio does the organizing.",
-    name: "Elena R.",
+    quote:
+      "Reading PDFs used to put me to sleep. Now I upload my lecture notes, get a podcast in 30 seconds, and revise while I cook. I've never felt this prepared for finals in my life.",
+    name: "Daniel K.",
+    role: "Final Year Law Student",
+    initials: "DK",
   },
   {
-    title: "Stanford Chemistry Major",
-    quote: "Having ADHD makes focusing in organic chem lectures tough, so I upload my notes to Testio. Then it quizzes me on reactions until I actually get them.",
-    name: "Sarah K.",
+    quote:
+      "I have ADHD and sitting still to study is torture. The AI quizzes and podcasts make studying feel like a game. I went from a 2.4 GPA to a 3.7 in one semester. This app changed my life — no exaggeration.",
+    name: "Priya S.",
+    role: "Pre-Med, 2nd Year",
+    initials: "PS",
   },
   {
-    title: "Yale Law Student",
-    quote: "Case law used to overwhelm me, but Testio instantly turns my readings into flashcards and quizzes. Now I can actually keep up daily.",
-    name: "Marcus O.",
-  },
-  {
-    title: "McKinsey Consultant",
-    quote: "Testio turns my meeting docs into structured notes, then I quickly edit them to highlight action items—makes follow-ups super easy.",
-    name: "Jason A.",
-  },
-  {
-    title: "Mom (4 kids, 2 dogs)",
-    quote: "I always wanted to journal but was never consistent. Now I just upload my thoughts to Testio, and it turns them into neat daily entries.",
-    name: "Danielle T.",
+    quote:
+      "I'm a working mum trying to finish my MBA. I have zero free time. Testio turns my readings into podcasts I listen to while doing dishes. I passed my last two courses with distinction. Worth every naira.",
+    name: "Funmi A.",
+    role: "MBA Candidate",
+    initials: "FA",
   },
 ];
 
@@ -83,13 +81,18 @@ const InAppTestimonials = ({ variant = "card", className = "" }: InAppTestimonia
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.35 }}
         >
-          <div className="text-[10px] text-primary font-semibold mb-2 uppercase tracking-wider">
-            {t.title}
-          </div>
-          <p className={`text-muted-foreground leading-relaxed mb-3 ${variant === "compact" ? "text-xs" : "text-sm"}`}>
+          <p className={`text-muted-foreground leading-relaxed mb-4 ${variant === "compact" ? "text-xs" : "text-sm"}`}>
             "{t.quote}"
           </p>
-          <p className="text-foreground text-xs font-medium">— {t.name}</p>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/15 text-primary text-xs font-bold">
+              {t.initials}
+            </div>
+            <div>
+              <p className="text-foreground text-xs font-semibold">{t.name}</p>
+              <p className="text-muted-foreground text-[11px]">{t.role}</p>
+            </div>
+          </div>
         </motion.div>
       </AnimatePresence>
     </div>
