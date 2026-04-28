@@ -8,7 +8,7 @@ import { Check, Crown, ArrowLeft, Loader2, Zap, Sparkles, GraduationCap, Star, B
 import { motion } from "framer-motion";
 import testioLogo from "@/assets/testio-logo.png";
 import ElitePricingBanner from "@/components/app/ElitePricingBanner";
-import { useCurrency, NGN_PRICES, formatNgn, type Currency } from "@/hooks/useCurrency";
+import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
 
 type PlanId = "free" | "basic" | "pro" | "scholar";
 
@@ -141,8 +141,7 @@ const Pricing = () => {
   const isAndroidApp = useIsAndroidApp();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
-  const { currency, setCurrency } = useCurrency();
-  const toggleCurrency = (c: Currency) => setCurrency(c);
+  const { currency, setCurrency, isNigeria } = useCurrency();
   const [activePlan, setActivePlan] = useState<string | null>(null);
 
   const fetchActivePlan = async () => {
@@ -358,25 +357,17 @@ const Pricing = () => {
             Start free. Upgrade any time. {currency === "NGN" ? "One-off payment, valid 30 days." : "Cancel any time."}
           </p>
 
-          {/* Currency toggle */}
-          <div className="mt-5 inline-flex items-center bg-secondary rounded-full p-1 border border-border">
-            <button
-              onClick={() => toggleCurrency("USD")}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                currency === "USD" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              🌍 USD
-            </button>
-            <button
-              onClick={() => toggleCurrency("NGN")}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                currency === "NGN" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              🇳🇬 NGN
-            </button>
-          </div>
+          {/* NG-only: switch to USD for auto-renewing subscription */}
+          {isNigeria && currency === "NGN" && (
+            <div className="mt-5">
+              <button
+                onClick={() => setCurrency("USD")}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-secondary text-foreground border border-border hover:bg-secondary/80 transition-all"
+              >
+                🔄 Activate auto-renewal
+              </button>
+            </div>
+          )}
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">

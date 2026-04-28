@@ -32,26 +32,39 @@ export function periodFor(currency: Currency): string {
  * Returns the user's active display currency. Reads from localStorage,
  * else auto-detects via the detect-country edge function (NG => NGN).
  */
-export function useCurrency(): { currency: Currency; setCurrency: (c: Currency) => void } {
+export function useCurrency(): { currency: Currency; setCurrency: (c: Currency) => void; isNigeria: boolean } {
   const [currency, setCurrencyState] = useState<Currency>(() => {
     if (typeof window === "undefined") return "USD";
     const stored = localStorage.getItem("testio_currency");
     return stored === "NGN" || stored === "USD" ? (stored as Currency) : "USD";
   });
+  const [isNigeria, setIsNigeria] = useState<boolean>(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("testio_currency");
-    if (stored === "NGN" || stored === "USD") return;
     let cancelled = false;
     (async () => {
       try {
         const { data } = await supabase.functions.invoke("detect-country", { body: {} });
-        if (!cancelled && data?.country === "NG") {
-          localStorage.setItem("testio_currency", "NGN");
-          setCurrencyState("NGN");
+        if (cancelled) return;
+        const ng = data?.country === "NG";
+        setIsNigeria(ng);
+        if (ng) {
+          // For Nigerian visitors, default to NGN unless they explicitly chose USD
+          const stored = localStorage.getItem("testio_currency");
+          if (stored !== "USD") {
+            localStorage.setItem("testio_currency", "NGN");
+            setCurrencyState("NGN");
+          }
+        } else {
+          // Non-Nigerian visitors must always see USD pricing
+          localStorage.setItem("testio_currency", "USD");
+          setCurrencyState("USD");
         }
       } catch {
-        // ignore — keep USD default
+        // On failure, force USD for safety
+        if (!cancelled) {
+          setCurrencyState("USD");
+        }
       }
     })();
     return () => {
@@ -60,9 +73,11 @@ export function useCurrency(): { currency: Currency; setCurrency: (c: Currency) 
   }, []);
 
   const setCurrency = (c: Currency) => {
+    // Block any attempt to use NGN if the visitor is not in Nigeria
+    if (c === "NGN" && !isNigeria) return;
     localStorage.setItem("testio_currency", c);
     setCurrencyState(c);
   };
 
-  return { currency, setCurrency };
+  return { currency, setCurrency, isNigeria };
 }
