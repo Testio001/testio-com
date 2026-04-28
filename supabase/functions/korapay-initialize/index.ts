@@ -10,7 +10,7 @@ const PLAN_NGN: Record<string, number> = {
   starter: 4490,
   basic: 7800,
   pro: 14990,
-  scholar: 22990,
+  scholar: 29990,
   podcast_addon: 7800,
 };
 

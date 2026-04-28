@@ -111,7 +111,7 @@ const USD_LABELS: Record<HomePlan["id"], { price: string; period: string }> = {
   starter: { price: "—", period: "" },
   basic: { price: "$4.99", period: "/mo" },
   pro: { price: "$9.99", period: "/mo" },
-  scholar: { price: "$14.99", period: "/mo" },
+  scholar: { price: "$19.99", period: "/mo" },
 };
 
 const testimonials = [
