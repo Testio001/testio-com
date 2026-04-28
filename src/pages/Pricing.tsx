@@ -377,14 +377,14 @@ const Pricing = () => {
             Start free. Upgrade any time. {currency === "NGN" ? "One-off payment, valid 30 days." : "Cancel any time."}
           </p>
 
-          {/* NG-only: switch to USD for auto-renewing subscription */}
-          {isNigeria && currency === "NGN" && (
+          {/* NG-only: toggle auto-renewing USD subscription on/off */}
+          {isNigeria && (
             <div className="mt-5">
               <button
-                onClick={() => setCurrency("USD")}
+                onClick={() => setCurrency(currency === "NGN" ? "USD" : "NGN")}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-secondary text-foreground border border-border hover:bg-secondary/80 transition-all"
               >
-                🔄 Activate auto-renewal
+                {currency === "NGN" ? "🔄 Activate auto-renewal" : "↩️ Deactivate auto-renewal (back to ₦)"}
               </button>
             </div>
           )}
