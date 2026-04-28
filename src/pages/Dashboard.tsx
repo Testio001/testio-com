@@ -91,6 +91,19 @@ const Dashboard = () => {
     return () => { clearTimeout(initialTimer); clearInterval(interval); };
   }, [userPlan, isAndroidApp]);
 
+  // Poll the documents list while any document is still processing/pending so
+  // the status chip updates without requiring a manual refresh.
+  useEffect(() => {
+    const hasInflight = documents.some(
+      (d) => d.status === "processing" || d.status === "pending"
+    );
+    if (!hasInflight) return;
+    const interval = setInterval(() => {
+      fetchData();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [documents]);
+
   const fetchPlan = async () => {
     if (!user) return;
     const { data } = await supabase.from("profiles").select("subscription_plan, subscription_expires_at").eq("user_id", user.id).single();
