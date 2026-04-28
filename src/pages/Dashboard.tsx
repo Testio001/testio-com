@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
 import EmptyStateDemo from "@/components/app/EmptyStateDemo";
 import InAppTestimonials from "@/components/app/InAppTestimonials";
-import { useCurrency, priceFor, periodFor } from "@/hooks/useCurrency";
+import { useCurrency, priceFor, periodFor, entryPlanFor } from "@/hooks/useCurrency";
 
 type Document = Tables<"documents">;
 
@@ -119,7 +119,7 @@ const Dashboard = () => {
       if (gamification.isAbuseFlagged && (!userPlan || userPlan === "free")) {
         toast({
           title: "Free trial already used on this device",
-          description: `Upgrade to keep generating notes, flashcards, quizzes and podcasts — from ${priceFor("basic", currency)}${periodFor(currency)}.`,
+          description: `Upgrade to keep generating notes, flashcards, quizzes and podcasts — from ${priceFor(entryPlanFor(currency), currency)}${periodFor(currency)}.`,
           duration: 4000,
         });
         navigate("/pricing");
@@ -448,7 +448,7 @@ const Dashboard = () => {
                       Upgrade to Pro — Unlock Everything
                     </h3>
                     <p className="text-muted-foreground text-[10px] sm:text-xs mt-0.5">
-                      Unlimited uploads, full podcasts & AI Tutor — starting at <span className="text-primary font-bold">{priceFor("basic", currency)}{periodFor(currency)}</span>
+                      Unlimited uploads, full podcasts & AI Tutor — starting at <span className="text-primary font-bold">{priceFor(entryPlanFor(currency), currency)}{periodFor(currency)}</span>
                     </p>
                   </div>
                   <div className="hidden sm:block shrink-0 bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-full">
@@ -470,7 +470,7 @@ const Dashboard = () => {
                   </div>
                   <h3 className="text-foreground font-bold text-lg mb-2">Unlock the Full Testio Experience</h3>
                   <p className="text-muted-foreground text-sm mb-1">Get unlimited uploads, full-length podcasts, unlimited quizzes & flashcards.</p>
-                  <p className="text-primary font-bold text-lg mb-4">Starting at {priceFor("basic", currency)}{periodFor(currency)}</p>
+                  <p className="text-primary font-bold text-lg mb-4">Starting at {priceFor(entryPlanFor(currency), currency)}{periodFor(currency)}</p>
                   <button onClick={() => { setShowPeriodicUpgrade(false); navigate("/pricing"); }} className="w-full btn-testio-primary text-sm !py-3 flex items-center justify-center gap-2 mb-2">
                     <Crown className="w-4 h-4" /> Upgrade Now
                   </button>

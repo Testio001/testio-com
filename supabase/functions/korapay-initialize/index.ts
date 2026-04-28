@@ -7,6 +7,7 @@ const corsHeaders = {
 
 // Plan -> NGN amount (kobo = NGN * 100)
 const PLAN_NGN: Record<string, number> = {
+  starter: 4490,
   basic: 7800,
   pro: 14990,
   scholar: 22990,
@@ -35,7 +36,7 @@ Deno.serve(async (req) => {
 
     const { plan } = await req.json();
     if (!plan || !PLAN_NGN[plan]) {
-      return new Response(JSON.stringify({ error: "Invalid plan. Must be 'basic', 'pro', 'scholar', or 'podcast_addon'." }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Invalid plan. Must be 'starter', 'basic', 'pro', 'scholar', or 'podcast_addon'." }), { status: 400, headers: corsHeaders });
     }
 
     const koraSecret = Deno.env.get("KORAPAY_SECRET_KEY");

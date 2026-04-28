@@ -10,7 +10,7 @@ import testioLogo from "@/assets/testio-logo.png";
 import ElitePricingBanner from "@/components/app/ElitePricingBanner";
 import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
 
-type PlanId = "free" | "basic" | "pro" | "scholar";
+type PlanId = "free" | "starter" | "basic" | "pro" | "scholar";
 
 const testimonials = [
   {
@@ -54,6 +54,7 @@ const plans: Array<{
   highlight: boolean;
   cta: string;
   badge?: string;
+  ngnOnly?: boolean;
 }> = [
   {
     id: "free",
@@ -63,7 +64,6 @@ const plans: Array<{
     period: "Forever free",
     blurb: "Less than nothing",
     features: [
-      "📄 3 uploads (lifetime)",
       "📝 AI Summaries & Flashcards",
       "🧠 AI Quizzes (20 questions)",
       "🎙️ 1 Study Podcast (4 min, lifetime)",
@@ -72,6 +72,26 @@ const plans: Array<{
     ],
     highlight: false,
     cta: "Current Plan",
+  },
+  {
+    id: "starter",
+    name: "Starter",
+    tagline: "For Nigerian students on a budget",
+    price: formatNgn(NGN_PRICES.starter),
+    period: "/30 days",
+    blurb: "Most affordable way in",
+    features: [
+      "📄 10 uploads / month",
+      "📝 AI Summaries Unlimited (High-speed extraction)",
+      "🃏 20 Flashcard packs",
+      "🧠 AI Quizzes (20 questions)",
+      "🤖 AI Tutor (10 q's per doc)",
+      "❌ No podcast — upgrade to Basic+ for podcasts",
+    ],
+    highlight: false,
+    cta: "Subscribe",
+    badge: "STARTER",
+    ngnOnly: true,
   },
   {
     id: "basic",
@@ -371,7 +391,7 @@ const Pricing = () => {
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {plans.map((plan, i) => (
+          {plans.filter((p) => !p.ngnOnly || (currency === "NGN" && isNigeria)).map((plan, i) => (
             <motion.div
               key={plan.id}
               initial={{ opacity: 0, y: 20 }}
@@ -380,12 +400,14 @@ const Pricing = () => {
               className={`relative rounded-2xl p-6 border flex flex-col ${
                 plan.highlight
                   ? "bg-primary/5 border-primary/40 shadow-lg shadow-primary/10"
+                  : plan.id === "starter"
+                  ? "bg-card border-amber-500/30"
                   : "bg-card border-border"
               }`}
             >
               {plan.badge && (
                 <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ${
-                  plan.highlight ? "bg-primary text-primary-foreground" : "bg-foreground text-background"
+                  plan.highlight ? "bg-primary text-primary-foreground" : plan.id === "starter" ? "bg-amber-500 text-black" : "bg-foreground text-background"
                 }`}>
                   {plan.badge}
                 </div>

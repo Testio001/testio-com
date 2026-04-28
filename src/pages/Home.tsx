@@ -28,11 +28,12 @@ const features = [
 ];
 
 type HomePlan = {
-  id: "free" | "basic" | "pro" | "scholar";
+  id: "free" | "starter" | "basic" | "pro" | "scholar";
   name: string;
   features: string[];
   highlight: boolean;
   cta: string;
+  ngnOnly?: boolean;
 };
 
 const plans: HomePlan[] = [
@@ -40,7 +41,6 @@ const plans: HomePlan[] = [
     id: "free",
     name: "Free",
     features: [
-      "3 uploads (lifetime)",
       "AI Summaries & Flashcards",
       "AI Quizzes (20 questions)",
       "1 Study Podcast (4 min, lifetime)",
@@ -49,6 +49,21 @@ const plans: HomePlan[] = [
     ],
     highlight: false,
     cta: "Start Free",
+  },
+  {
+    id: "starter",
+    name: "Starter",
+    features: [
+      "10 uploads / month",
+      "AI Summaries Unlimited",
+      "20 Flashcard packs",
+      "AI Quizzes (20 questions)",
+      "AI Tutor (10 q's per doc)",
+      "❌ No podcast",
+    ],
+    highlight: false,
+    cta: "Subscribe",
+    ngnOnly: true,
   },
   {
     id: "basic",
@@ -93,6 +108,7 @@ const plans: HomePlan[] = [
 
 const USD_LABELS: Record<HomePlan["id"], { price: string; period: string }> = {
   free: { price: "$0", period: "" },
+  starter: { price: "—", period: "" },
   basic: { price: "$4.99", period: "/mo" },
   pro: { price: "$9.99", period: "/mo" },
   scholar: { price: "$14.99", period: "/mo" },
@@ -258,11 +274,11 @@ const Home = () => {
           )}
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {plans.map((plan) => {
+            {plans.filter((p) => !p.ngnOnly || (currency === "NGN" && isNigeria)).map((plan) => {
               const usd = USD_LABELS[plan.id];
               const isNgnPaid = currency === "NGN" && plan.id !== "free";
               const displayPrice = isNgnPaid
-                ? formatNgn(NGN_PRICES[plan.id as "basic" | "pro" | "scholar"])
+                ? formatNgn(NGN_PRICES[plan.id as "starter" | "basic" | "pro" | "scholar"])
                 : usd.price;
               const displayPeriod = plan.id === "free" ? usd.period : currency === "NGN" ? "/30 days" : usd.period;
               return (
