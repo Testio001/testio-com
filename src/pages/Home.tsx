@@ -274,11 +274,11 @@ const Home = () => {
           )}
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {plans.map((plan) => {
+            {plans.filter((p) => !p.ngnOnly || (currency === "NGN" && isNigeria)).map((plan) => {
               const usd = USD_LABELS[plan.id];
               const isNgnPaid = currency === "NGN" && plan.id !== "free";
               const displayPrice = isNgnPaid
-                ? formatNgn(NGN_PRICES[plan.id as "basic" | "pro" | "scholar"])
+                ? formatNgn(NGN_PRICES[plan.id as "starter" | "basic" | "pro" | "scholar"])
                 : usd.price;
               const displayPeriod = plan.id === "free" ? usd.period : currency === "NGN" ? "/30 days" : usd.period;
               return (
