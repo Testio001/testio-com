@@ -53,6 +53,7 @@ const DocumentView = () => {
   const [bonusPodcasts, setBonusPodcasts] = useState(0);
   const [showPodcastLimitModal, setShowPodcastLimitModal] = useState(false);
   const [showPodcastPrompt, setShowPodcastPrompt] = useState(false);
+  const autoNotesTriedRef = useRef(false);
 
   useEffect(() => {
     if (id && user) fetchDocument();
@@ -60,6 +61,21 @@ const DocumentView = () => {
 
   // Tour tabs (excluding Chat) — show "Tap to generate" once per user lifetime
   const tourTabs: Array<"notes" | "flashcards" | "quiz" | "podcast"> = ["notes", "flashcards", "quiz", "podcast"];
+
+  // Auto-generate notes if the document is ready but no notes exist yet.
+  // This is a safety net in case process-document's auto-invocation of
+  // generate-notes failed (transient OpenAI error, timeout, etc.) so the
+  // user never has to manually click "Generate Notes".
+  useEffect(() => {
+    if (!doc || loadingContent) return;
+    if (doc.status !== "completed") return;
+    if (notes.length > 0) return;
+    if (generating) return;
+    if (autoNotesTriedRef.current) return;
+    autoNotesTriedRef.current = true;
+    generateNotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc?.status, loadingContent, notes.length]);
 
   // Start the tour after the document finishes processing — first time only.
   useEffect(() => {
