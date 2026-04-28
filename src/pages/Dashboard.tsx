@@ -347,6 +347,11 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
+      <ProcessingOverlay
+        open={!!uploading}
+        title="Processing your document…"
+        subtitle={uploading || "This may take a while. We'll open your summary automatically when it's ready."}
+      />
       {/* Desktop/Tablet header */}
       <header className="border-b border-border/50 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
@@ -432,16 +437,6 @@ const Dashboard = () => {
                 <Plus className="w-4 h-4 md:w-5 md:h-5" /> Upload
               </button>
             </div>
-
-            {uploading && (
-              <div className="mb-6 bg-primary/10 border border-primary/20 rounded-xl p-3 sm:p-4 flex items-center gap-3">
-                <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
-                <div>
-                  <p className="text-foreground text-sm font-medium">{uploading}</p>
-                  <p className="text-muted-foreground text-xs mt-0.5">Please do not close this page.</p>
-                </div>
-              </div>
-            )}
 
             <div className="relative mb-6">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
