@@ -94,7 +94,24 @@ const DocumentView = () => {
     if (generating) return;
     if (autoNotesTriedRef.current) return;
     autoNotesTriedRef.current = true;
-    generateNotes();
+    // Wait a bit so the backend's auto-invocation of generate-notes
+    // (kicked off by process-document) has time to finish and insert
+    // notes — otherwise we'd race it and end up generating twice.
+    const t = setTimeout(async () => {
+      // Re-check directly from DB right before triggering
+      const { data: latestNotes } = await supabase
+        .from("notes")
+        .select("id")
+        .eq("document_id", id!)
+        .limit(1);
+      if (latestNotes && latestNotes.length > 0) {
+        // Backend already created notes — just refresh UI, don't regenerate.
+        fetchDocument();
+        return;
+      }
+      generateNotes();
+    }, 10000);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc?.status, loadingContent, notes.length]);
 
