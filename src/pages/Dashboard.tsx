@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Loader2, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Crown, Zap, X, Home, LayoutDashboard } from "lucide-react";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Crown, Zap, X, Home, LayoutDashboard } from "lucide-react";
 import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -19,6 +19,7 @@ import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
 import EmptyStateDemo from "@/components/app/EmptyStateDemo";
 import InAppTestimonials from "@/components/app/InAppTestimonials";
 import NotificationBell from "@/components/app/NotificationBell";
+import ProcessingOverlay from "@/components/app/ProcessingOverlay";
 import { useCurrency, priceFor, periodFor, entryPlanFor } from "@/hooks/useCurrency";
 
 type Document = Tables<"documents">;
@@ -189,6 +190,7 @@ const Dashboard = () => {
         setUploading(null);
         toast({ title: "Done!", description: "Your document has been processed." });
         sendStudyDeckReadyNotification(doc.title);
+        navigate(`/document/${doc.id}`);
       } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the document. Please try re-uploading or try again later.", variant: "destructive" });
@@ -222,6 +224,7 @@ const Dashboard = () => {
         setUploading(null);
         toast({ title: "Done!", description: "Your text has been processed." });
         sendStudyDeckReadyNotification(doc.title);
+        navigate(`/document/${doc.id}`);
       } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the text. Please try again.", variant: "destructive" });
@@ -263,6 +266,7 @@ const Dashboard = () => {
         setUploading(null);
         toast({ title: "Done!", description: "Your image has been processed." });
         sendStudyDeckReadyNotification(doc.title);
+        navigate(`/document/${doc.id}`);
       } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the image. Please try again.", variant: "destructive" });
