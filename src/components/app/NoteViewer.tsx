@@ -32,7 +32,7 @@ const NoteViewer = ({ documentId, notes, onRefresh }: { documentId: string; note
   if (notes.length === 0) {
     return (
       <div className="text-center py-16">
-        <p className="text-muted-foreground">No notes yet. Click "Generate Notes with AI" to create notes from this document.</p>
+        <p className="text-muted-foreground">Your notes are being prepared automatically. They will appear here shortly.</p>
       </div>
     );
   }
