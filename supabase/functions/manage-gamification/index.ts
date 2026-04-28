@@ -339,6 +339,15 @@ Deno.serve(async (req) => {
           })
           .eq("user_id", userId);
 
+        if (bonusIncrease > 0) {
+          await createInAppNotification(supabaseAdmin, userId, {
+            type: "streak_bonus_earned",
+            title: `🎉 ${newStreak}-day streak bonus!`,
+            body: "You just earned +1 bonus upload for keeping your streak alive. Keep it up!",
+            link: "/dashboard",
+          });
+        }
+
         // Credit alert: send when user has 1 upload left
         const totalAllowed = getUploadLimitForPlan(activePlan) + (freshStats.bonus_uploads + bonusIncrease);
         const uploadsRemaining = totalAllowed - newUploadsUsed;
@@ -384,6 +393,13 @@ Deno.serve(async (req) => {
                   badgeName: badge.name,
                 });
               }
+
+              await createInAppNotification(supabaseAdmin, userId, {
+                type: "badge_earned",
+                title: `🏅 New badge: ${badge.name}`,
+                body: `You unlocked the "${badge.name}" badge for hitting a ${badge.threshold}-day streak!`,
+                link: "/dashboard",
+              });
             }
           }
         }
