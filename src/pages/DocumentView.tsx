@@ -394,11 +394,11 @@ const DocumentView = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Big half-screen processing overlay */}
+      {/* Full-screen processing overlay */}
       <ProcessingOverlay
-        open={doc.status === "processing"}
+        open={doc.status === "processing" || doc.status === "pending"}
         title="Processing your document…"
-        subtitle="We're extracting and analysing your content. This usually takes 10–30 seconds."
+        subtitle="This may take a while. Your summary will appear automatically when it's ready."
       />
       <ProcessingOverlay
         open={!!genInfo}
