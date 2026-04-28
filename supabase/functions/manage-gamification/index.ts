@@ -232,6 +232,17 @@ Deno.serve(async (req) => {
             stats.current_streak = 0;
             stats.bonus_uploads = newBonusUploads;
             stats.streak_bonus_uploads = newStreakBonus;
+
+            // Notify the user in-app so they see what happened on next login.
+            const revokedMsg = unusedStreakBonus > 0
+              ? ` We also removed ${unusedStreakBonus} unused streak bonus upload${unusedStreakBonus === 1 ? "" : "s"}.`
+              : "";
+            await createInAppNotification(supabaseAdmin, userId, {
+              type: "streak_broken",
+              title: "🔥 Your streak was reset",
+              body: `You missed a day, so your streak went back to 0.${revokedMsg} Upload today to start a new streak!`,
+              link: "/dashboard",
+            });
           }
         }
       }
