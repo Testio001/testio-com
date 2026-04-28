@@ -8,7 +8,7 @@ import { Check, Crown, ArrowLeft, Loader2, Zap, Sparkles, GraduationCap, Star, B
 import { motion } from "framer-motion";
 import testioLogo from "@/assets/testio-logo.png";
 import ElitePricingBanner from "@/components/app/ElitePricingBanner";
-import { useCurrency, NGN_PRICES, formatNgn, type Currency } from "@/hooks/useCurrency";
+import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
 
 type PlanId = "free" | "basic" | "pro" | "scholar";
 
