@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, XCircle, RotateCcw, Loader2, Plus } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, Loader2, Plus, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables, Json } from "@/integrations/supabase/types";
 
@@ -15,6 +16,7 @@ interface QuizOption {
 
 const QuizViewer = ({ documentId }: { documentId: string }) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -24,10 +26,25 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
   const [showResult, setShowResult] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [totalGenerated, setTotalGenerated] = useState(0);
+  const [plan, setPlan] = useState<string>("free");
 
   useEffect(() => {
     fetchQuizzes();
+    fetchPlan();
   }, [documentId]);
+
+  const fetchPlan = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("profiles").select("subscription_plan, subscription_expires_at").eq("user_id", user.id).single();
+    if (!data) return;
+    const isActive = ["basic", "pro", "scholar"].includes(data.subscription_plan) &&
+      data.subscription_expires_at && new Date(data.subscription_expires_at).getTime() > Date.now();
+    setPlan(isActive ? data.subscription_plan : "free");
+  };
+
+  const isLimitedPlan = plan === "free" || plan === "basic";
+  const maxCap = isLimitedPlan ? 20 : 100;
 
   const fetchQuizzes = async () => {
     const { data } = await supabase
@@ -94,10 +111,10 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-quiz", {
-        body: { documentId, count: 15 },
+        body: { documentId, count: 20 },
       });
       if (error) throw error;
-      toast({ title: "15 more questions generated!" });
+      toast({ title: "More questions generated!" });
       // Re-fetch all questions
       const allQuizIds = quizzes.map(q => q.id);
       const { data: newQuizzes } = await supabase
@@ -133,7 +150,7 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
 
   if (showResult) {
     const pct = Math.round((score / questions.length) * 100);
-    const canGenerateMore = totalGenerated < 100;
+    const canGenerateMore = totalGenerated < maxCap;
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-lg mx-auto text-center py-10">
         <div className={`text-6xl font-black mb-4 ${pct >= 70 ? "text-testio-green" : "text-destructive"}`}>
@@ -156,10 +173,19 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
               className="flex items-center gap-2 px-4 py-2 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
             >
               {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              Generate 15 more questions ({totalGenerated}/100)
+              Generate 20 more questions ({totalGenerated}/{maxCap})
             </button>
           )}
-          {!canGenerateMore && (
+          {!canGenerateMore && isLimitedPlan && (
+            <button
+              onClick={() => navigate("/pricing")}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Sparkles className="w-4 h-4" />
+              {totalGenerated}/{maxCap} — Upgrade to get more
+            </button>
+          )}
+          {!canGenerateMore && !isLimitedPlan && (
             <p className="text-muted-foreground text-xs">Maximum 100 questions reached</p>
           )}
         </div>

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, RotateCcw, Plus, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, RotateCcw, Plus, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -10,16 +11,29 @@ type FlashcardCard = Tables<"flashcard_cards">;
 
 const FlashcardViewer = ({ documentId }: { documentId: string }) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [sets, setSets] = useState<FlashcardSet[]>([]);
   const [cards, setCards] = useState<FlashcardCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [plan, setPlan] = useState<string>("free");
 
   useEffect(() => {
     fetchAllCards();
+    fetchPlan();
   }, [documentId]);
+
+  const fetchPlan = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("profiles").select("subscription_plan, subscription_expires_at").eq("user_id", user.id).single();
+    if (!data) return;
+    const isActive = ["basic", "pro", "scholar"].includes(data.subscription_plan) &&
+      data.subscription_expires_at && new Date(data.subscription_expires_at).getTime() > Date.now();
+    setPlan(isActive ? data.subscription_plan : "free");
+  };
 
   const fetchAllCards = async () => {
     const { data: setsData } = await supabase
@@ -43,14 +57,14 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
   };
 
   const generateMore = async () => {
-    if (cards.length >= 100) return;
+    if (cards.length >= maxCap) return;
     setGenerating(true);
     try {
       const { error } = await supabase.functions.invoke("generate-flashcards", {
-        body: { documentId, count: 15 },
+        body: { documentId, count: 20 },
       });
       if (error) throw error;
-      toast({ title: "15 more flashcards generated!" });
+      toast({ title: "More flashcards generated!" });
       await fetchAllCards();
       setCompleted(false);
     } catch (err: any) {
@@ -59,6 +73,9 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
       setGenerating(false);
     }
   };
+
+  const isLimitedPlan = plan === "free" || plan === "basic";
+  const maxCap = isLimitedPlan ? 20 : 100;
 
   if (sets.length === 0) {
     return (
@@ -87,7 +104,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
   const reset = () => { setFlipped(false); setCurrentIndex(0); setCompleted(false); };
 
   if (completed) {
-    const canGenerateMore = cards.length < 100;
+    const canGenerateMore = cards.length < maxCap;
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-lg mx-auto text-center py-10">
         <h3 className="text-foreground text-xl font-bold mb-2">🎉 You've reviewed all {cards.length} cards!</h3>
@@ -103,10 +120,19 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
               className="flex items-center gap-2 px-4 py-2 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
             >
               {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              Generate 15 more cards ({cards.length}/100)
+              Generate 20 more cards ({cards.length}/{maxCap})
             </button>
           )}
-          {!canGenerateMore && (
+          {!canGenerateMore && isLimitedPlan && (
+            <button
+              onClick={() => navigate("/pricing")}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Sparkles className="w-4 h-4" />
+              {cards.length}/{maxCap} — Upgrade to get more
+            </button>
+          )}
+          {!canGenerateMore && !isLimitedPlan && (
             <p className="text-muted-foreground text-xs">Maximum 100 flashcards reached</p>
           )}
         </div>
