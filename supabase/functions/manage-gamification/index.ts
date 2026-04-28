@@ -91,6 +91,24 @@ async function sendPush(supabaseAdmin: any, userId: string, payload: { title: st
   }
 }
 
+async function createInAppNotification(
+  supabaseAdmin: any,
+  userId: string,
+  payload: { type: string; title: string; body: string; link?: string }
+) {
+  try {
+    await supabaseAdmin.from("in_app_notifications").insert({
+      user_id: userId,
+      type: payload.type,
+      title: payload.title,
+      body: payload.body,
+      link: payload.link ?? null,
+    });
+  } catch (e) {
+    console.error(`Failed to create in-app notification for ${userId}:`, e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -214,6 +232,17 @@ Deno.serve(async (req) => {
             stats.current_streak = 0;
             stats.bonus_uploads = newBonusUploads;
             stats.streak_bonus_uploads = newStreakBonus;
+
+            // Notify the user in-app so they see what happened on next login.
+            const revokedMsg = unusedStreakBonus > 0
+              ? ` We also removed ${unusedStreakBonus} unused streak bonus upload${unusedStreakBonus === 1 ? "" : "s"}.`
+              : "";
+            await createInAppNotification(supabaseAdmin, userId, {
+              type: "streak_broken",
+              title: "🔥 Your streak was reset",
+              body: `You missed a day, so your streak went back to 0.${revokedMsg} Upload today to start a new streak!`,
+              link: "/dashboard",
+            });
           }
         }
       }
@@ -310,6 +339,15 @@ Deno.serve(async (req) => {
           })
           .eq("user_id", userId);
 
+        if (bonusIncrease > 0) {
+          await createInAppNotification(supabaseAdmin, userId, {
+            type: "streak_bonus_earned",
+            title: `🎉 ${newStreak}-day streak bonus!`,
+            body: "You just earned +1 bonus upload for keeping your streak alive. Keep it up!",
+            link: "/dashboard",
+          });
+        }
+
         // Credit alert: send when user has 1 upload left
         const totalAllowed = getUploadLimitForPlan(activePlan) + (freshStats.bonus_uploads + bonusIncrease);
         const uploadsRemaining = totalAllowed - newUploadsUsed;
@@ -355,6 +393,13 @@ Deno.serve(async (req) => {
                   badgeName: badge.name,
                 });
               }
+
+              await createInAppNotification(supabaseAdmin, userId, {
+                type: "badge_earned",
+                title: `🏅 New badge: ${badge.name}`,
+                body: `You unlocked the "${badge.name}" badge for hitting a ${badge.threshold}-day streak!`,
+                link: "/dashboard",
+              });
             }
           }
         }
@@ -488,6 +533,19 @@ Deno.serve(async (req) => {
           title: "🎉 Referral confirmed!",
           body: "A friend just joined using your link! You earned 1 bonus upload + 1 streak freeze.",
           url: "/dashboard"
+        });
+
+        await createInAppNotification(supabaseAdmin, referrer.user_id, {
+          type: "referral_reward",
+          title: "🎉 Referral reward!",
+          body: "A friend joined using your link. You got +1 bonus upload and +1 streak freeze.",
+          link: "/dashboard",
+        });
+        await createInAppNotification(supabaseAdmin, userId, {
+          type: "referral_welcome",
+          title: "🎁 Welcome bonus applied",
+          body: "Your referral code worked! You got +1 bonus upload to start.",
+          link: "/dashboard",
         });
 
         result = {

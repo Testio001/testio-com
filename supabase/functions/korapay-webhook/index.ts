@@ -114,6 +114,13 @@ Deno.serve(async (req) => {
           await admin.from("user_stats").update({ bonus_podcasts: current + 5 }).eq("user_id", tx.user_id);
           await sendCongratsEmail({ isAddon: true });
           console.log("Webhook: granted 5 podcast credits to", tx.user_id);
+          await admin.from("in_app_notifications").insert({
+            user_id: tx.user_id,
+            type: "podcast_topup",
+            title: "🎙️ +5 podcast credits added",
+            body: "Your podcast top-up is active. Enjoy 5 more podcast generations!",
+            link: "/dashboard",
+          });
         } else {
           const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
           await admin.from("korapay_transactions").update({ status: "success", expires_at: expiresAt }).eq("reference", reference);
@@ -125,6 +132,13 @@ Deno.serve(async (req) => {
           await admin.from("user_stats").update({ uploads_used: 0 }).eq("user_id", tx.user_id);
           await sendCongratsEmail({ isAddon: false, expiresAt });
           console.log(`Webhook: activated ${tx.plan} for`, tx.user_id);
+          await admin.from("in_app_notifications").insert({
+            user_id: tx.user_id,
+            type: "plan_activated",
+            title: `✅ ${tx.plan.charAt(0).toUpperCase() + tx.plan.slice(1)} plan activated`,
+            body: "Your upload quota has been refreshed. Enjoy your new plan for 30 days!",
+            link: "/dashboard",
+          });
         }
       }
     } else if (eventType === "charge.failed" || data.status === "failed") {
