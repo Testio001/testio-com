@@ -535,6 +535,19 @@ Deno.serve(async (req) => {
           url: "/dashboard"
         });
 
+        await createInAppNotification(supabaseAdmin, referrer.user_id, {
+          type: "referral_reward",
+          title: "🎉 Referral reward!",
+          body: "A friend joined using your link. You got +1 bonus upload and +1 streak freeze.",
+          link: "/dashboard",
+        });
+        await createInAppNotification(supabaseAdmin, userId, {
+          type: "referral_welcome",
+          title: "🎁 Welcome bonus applied",
+          body: "Your referral code worked! You got +1 bonus upload to start.",
+          link: "/dashboard",
+        });
+
         result = {
           success: true,
           message: "Referral applied! You earned 1 bonus upload.",
