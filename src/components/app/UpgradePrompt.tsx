@@ -1,7 +1,7 @@
 import { Crown, Gift, Flame, GraduationCap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
-import { useCurrency, priceFor, periodFor } from "@/hooks/useCurrency";
+import { useCurrency, priceFor, periodFor, entryPlanFor } from "@/hooks/useCurrency";
 
 interface UpgradePromptProps {
   onRefer: () => void;
@@ -16,7 +16,9 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken, curr
   const navigate = useNavigate();
   const isAndroidApp = useIsAndroidApp();
   const { currency } = useCurrency();
-  const basicPrice = priceFor("basic", currency);
+  const entryPlan = entryPlanFor(currency); // "starter" for NGN, "basic" for USD
+  const entryPrice = priceFor(entryPlan, currency);
+  const entryName = entryPlan === "starter" ? "Starter" : "Basic";
   const proPrice = priceFor("pro", currency);
   const period = periodFor(currency);
 
@@ -29,11 +31,20 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken, curr
       title: type === "upload" ? "Upload limit reached" : type === "podcast" ? "Free podcast preview" : "Quiz question limit",
       description:
         type === "upload"
-          ? `You've used all your free uploads. Upgrade starting at ${basicPrice}${period} for more access or refer a friend to earn 1 bonus upload.`
+          ? `You've used all your free uploads. Upgrade to ${entryName} for ${entryPrice}${period} for more access or refer a friend to earn 1 bonus upload.`
           : type === "podcast"
           ? "Free plans include a 5-minute podcast preview. Upgrade for full-length podcasts with unlimited depth."
           : "Free plans allow up to 20 quiz questions. Upgrade for unlimited questions per document.",
-      cta: "Upgrade to Pro",
+      cta: `Upgrade to ${entryName}`,
+      pressure: "high",
+    },
+    starter: {
+      title: type === "podcast" ? "Podcasts not on Starter" : "Ready for more?",
+      description:
+        type === "podcast"
+          ? `Starter doesn't include podcasts. Upgrade to Basic (${priceFor("basic", currency)}${period}) or higher to unlock study podcasts.`
+          : `Basic gives you 15 uploads/month, podcasts and more AI Tutor questions — only ${priceFor("basic", currency)}${period}.`,
+      cta: "Upgrade to Basic",
       pressure: "high",
     },
     basic: {
