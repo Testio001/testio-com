@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export type Currency = "USD" | "NGN";
 
 export const NGN_PRICES = {
+  starter: 4490,
   basic: 7800,
   pro: 14990,
   scholar: 22990,
@@ -11,6 +12,8 @@ export const NGN_PRICES = {
 } as const;
 
 export const USD_PRICES = {
+  // Starter is NGN-only — no USD price. Kept here so types align.
+  starter: "—",
   basic: "$4.99",
   pro: "$9.99",
   scholar: "$14.99",
@@ -26,6 +29,14 @@ export function priceFor(plan: keyof typeof NGN_PRICES, currency: Currency): str
 
 export function periodFor(currency: Currency): string {
   return currency === "NGN" ? "/30 days" : "/mo";
+}
+
+/**
+ * Returns the entry-level paid plan to market based on currency.
+ * NGN visitors see Starter (₦4,490). Everyone else sees Basic ($4.99).
+ */
+export function entryPlanFor(currency: Currency): "starter" | "basic" {
+  return currency === "NGN" ? "starter" : "basic";
 }
 
 /**
