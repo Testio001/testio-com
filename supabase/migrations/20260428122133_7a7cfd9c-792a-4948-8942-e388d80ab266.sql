@@ -1,0 +1,1 @@
+UPDATE public.user_stats SET uploads_used = 0, updated_at = now() WHERE user_id = 'ec56abdb-54e6-456e-9d88-2f837025b93d';
