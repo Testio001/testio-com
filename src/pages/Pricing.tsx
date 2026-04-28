@@ -391,7 +391,7 @@ const Pricing = () => {
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {plans.map((plan, i) => (
+          {plans.filter((p) => !p.ngnOnly || (currency === "NGN" && isNigeria)).map((plan, i) => (
             <motion.div
               key={plan.id}
               initial={{ opacity: 0, y: 20 }}
@@ -400,12 +400,14 @@ const Pricing = () => {
               className={`relative rounded-2xl p-6 border flex flex-col ${
                 plan.highlight
                   ? "bg-primary/5 border-primary/40 shadow-lg shadow-primary/10"
+                  : plan.id === "starter"
+                  ? "bg-card border-amber-500/30"
                   : "bg-card border-border"
               }`}
             >
               {plan.badge && (
                 <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ${
-                  plan.highlight ? "bg-primary text-primary-foreground" : "bg-foreground text-background"
+                  plan.highlight ? "bg-primary text-primary-foreground" : plan.id === "starter" ? "bg-amber-500 text-black" : "bg-foreground text-background"
                 }`}>
                   {plan.badge}
                 </div>
