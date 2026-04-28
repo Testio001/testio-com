@@ -7,7 +7,7 @@ export const NGN_PRICES = {
   starter: 4490,
   basic: 7800,
   pro: 14990,
-  scholar: 22990,
+  scholar: 29990,
   podcast_addon: 7800,
 } as const;
 
@@ -16,7 +16,7 @@ export const USD_PRICES = {
   starter: "—",
   basic: "$4.99",
   pro: "$9.99",
-  scholar: "$14.99",
+  scholar: "$19.99",
   podcast_addon: "$4.99",
 } as const;
 
