@@ -7,6 +7,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const FREE_FLASHCARD_MAX_PER_DOC = 20;
+const BASIC_FLASHCARD_MAX_PER_DOC = 20;
+const UNLIMITED_FLASHCARD_CAP = 200;
+
+async function getActivePlan(supabase: any, userId: string): Promise<string> {
+  const { data } = await supabase.from("profiles").select("subscription_plan, subscription_expires_at").eq("user_id", userId).single();
+  if (!data) return "free";
+  const isActive = ["basic", "pro", "scholar"].includes(data.subscription_plan) &&
+    data.subscription_expires_at && new Date(data.subscription_expires_at).getTime() > Date.now();
+  return isActive ? data.subscription_plan : "free";
+}
+
+function getFlashcardCapForPlan(plan: string): number {
+  if (plan === "free") return FREE_FLASHCARD_MAX_PER_DOC;
+  if (plan === "basic") return BASIC_FLASHCARD_MAX_PER_DOC;
+  return UNLIMITED_FLASHCARD_CAP;
+}
+
 function extractSummary(noteContent: string): string {
   const overviewMatch = noteContent.match(/## Brief Overview[\s\S]*?(?=\n## |$)/);
   const keyPointsMatch = noteContent.match(/## Key Points[\s\S]*?(?=\n## |$)/);
@@ -59,6 +77,22 @@ serve(async (req) => {
       existingFronts = existing?.map((c: any) => c.front) || [];
     }
 
+    // Enforce per-plan cap on TOTAL flashcards for this document
+    const plan = await getActivePlan(supabase, doc.user_id);
+    const cap = getFlashcardCapForPlan(plan);
+    const remainingCapacity = Math.max(0, cap - existingFronts.length);
+    if (remainingCapacity <= 0) {
+      return new Response(
+        JSON.stringify({
+          error: plan === "free" || plan === "basic"
+            ? `You've reached the ${cap}-flashcard limit for this document on the ${plan} plan. Upgrade to Pro or Scholar for unlimited flashcards.`
+            : `You've reached the safety cap of ${cap} flashcards per document.`,
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const effectiveCount = Math.min(cardCount, remainingCapacity);
+
     // Pass ALL existing fronts to the AI (truncated to ~3000 chars), not just last 30
     const existingJoined = existingFronts.join("\n");
     const truncatedExisting = existingJoined.length > 3000 ? existingJoined.substring(existingJoined.length - 3000) : existingJoined;
@@ -74,7 +108,7 @@ serve(async (req) => {
         temperature: 0.85,
         messages: [
           { role: "system", content: "Generate flashcards from the provided study summary. Cover DIFFERENT angles each time. Return ONLY valid JSON." },
-          { role: "user", content: `Create ${cardCount} NEW unique flashcards from this content summary. Return JSON array with objects having "front" (question) and "back" (answer) fields.${avoidPrompt}\n\nContent Summary:\n${sourceContent}` }
+          { role: "user", content: `Create ${effectiveCount} NEW unique flashcards from this content summary. Return JSON array with objects having "front" (question) and "back" (answer) fields.${avoidPrompt}\n\nContent Summary:\n${sourceContent}` }
         ],
         tools: [{
           type: "function",
@@ -107,6 +141,8 @@ serve(async (req) => {
     // Client-side dedupe: drop any card whose front matches an existing one
     const existingLower = new Set(existingFronts.map((f: string) => f.toLowerCase().trim()));
     cards = cards.filter((c: any) => !existingLower.has(c.front.toLowerCase().trim()));
+    // Enforce cap one more time post-generation
+    if (cards.length > remainingCapacity) cards = cards.slice(0, remainingCapacity);
 
     const { data: set } = await supabase.from("flashcard_sets").insert({
       user_id: doc.user_id, document_id: documentId, title: `Flashcards: ${doc.title}`,
@@ -123,7 +159,7 @@ serve(async (req) => {
 
     await supabase.from("ai_usage_log").insert({ user_id: doc.user_id, function_name: "generate-flashcards" });
 
-    return new Response(JSON.stringify({ success: true, count: cards.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ success: true, count: cards.length, capRemaining: remainingCapacity - cards.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("Error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Something went wrong. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
