@@ -135,7 +135,7 @@ const plans: Array<{
     id: "scholar",
     name: "Scholar",
     tagline: "When grades are everything",
-    price: "$14.99",
+    price: "$19.99",
     period: "/mo",
     blurb: "Less than a single textbook",
     features: [
