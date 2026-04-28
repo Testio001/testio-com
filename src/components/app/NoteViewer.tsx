@@ -81,16 +81,11 @@ const NoteViewer = ({ documentId, notes, onRefresh }: { documentId: string; note
               prose-hr:border-border/30 prose-hr:my-6
               prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
               prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-              prose-table:min-w-full prose-table:border-collapse prose-table:text-sm prose-table:my-4
-              prose-th:border prose-th:border-border prose-th:px-3 prose-th:py-2 prose-th:bg-muted prose-th:text-left prose-th:font-semibold prose-th:whitespace-nowrap prose-th:text-xs prose-th:text-foreground
-              prose-td:border prose-td:border-border prose-td:px-2 prose-td:py-2 prose-td:text-xs prose-td:leading-relaxed prose-td:text-foreground/85 prose-td:break-words prose-th:break-words [&_td]:[word-break:break-word] [&_th]:[word-break:break-word]
+              [&_table]:block [&_table]:w-full [&_table]:overflow-x-auto [&_table]:border-collapse [&_table]:text-sm [&_table]:my-4 [&_table]:whitespace-nowrap
+              [&_th]:border [&_th]:border-border [&_th]:px-3 [&_th]:py-2 [&_th]:bg-muted [&_th]:text-left [&_th]:font-semibold [&_th]:text-xs [&_th]:text-foreground [&_th]:align-top
+              [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:text-xs [&_td]:leading-relaxed [&_td]:text-foreground/85 [&_td]:align-top
             ">
-              <div
-                className="overflow-x-auto w-full"
-                style={{ WebkitOverflowScrolling: "touch" }}
-              >
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
-              </div>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
             </div>
           )}
         </div>
