@@ -91,6 +91,24 @@ async function sendPush(supabaseAdmin: any, userId: string, payload: { title: st
   }
 }
 
+async function createInAppNotification(
+  supabaseAdmin: any,
+  userId: string,
+  payload: { type: string; title: string; body: string; link?: string }
+) {
+  try {
+    await supabaseAdmin.from("in_app_notifications").insert({
+      user_id: userId,
+      type: payload.type,
+      title: payload.title,
+      body: payload.body,
+      link: payload.link ?? null,
+    });
+  } catch (e) {
+    console.error(`Failed to create in-app notification for ${userId}:`, e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
