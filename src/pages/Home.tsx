@@ -133,7 +133,7 @@ const Home = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const isDark = theme === "dark";
-  const { currency, setCurrency } = useCurrency();
+  const { currency, setCurrency, isNigeria } = useCurrency();
 
   return (
     <div className={`min-h-screen transition-colors ${isDark ? "bg-gray-950 text-gray-100" : "bg-white text-gray-900"}`}>
@@ -241,31 +241,21 @@ const Home = () => {
             Choose the plan that fits your study needs. {currency === "NGN" ? "One-off payment, valid 30 days." : "Cancel anytime."}
           </p>
 
-          {/* Currency toggle */}
-          <div className="flex justify-center mb-10">
-            <div className={`inline-flex items-center rounded-full p-1 border ${isDark ? "bg-gray-900 border-gray-800" : "bg-gray-100 border-gray-200"}`}>
+          {/* NG-only: switch to USD for auto-renewing subscription */}
+          {isNigeria && currency === "NGN" && (
+            <div className="flex justify-center mb-10">
               <button
                 onClick={() => setCurrency("USD")}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                  currency === "USD"
-                    ? "bg-indigo-600 text-white shadow"
-                    : isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all ${
+                  isDark
+                    ? "bg-gray-900 border-gray-800 text-gray-200 hover:bg-gray-800"
+                    : "bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                🌍 USD
-              </button>
-              <button
-                onClick={() => setCurrency("NGN")}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                  currency === "NGN"
-                    ? "bg-indigo-600 text-white shadow"
-                    : isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                🇳🇬 NGN
+                🔄 Activate auto-renewal
               </button>
             </div>
-          </div>
+          )}
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {plans.map((plan) => {
