@@ -59,6 +59,27 @@ const DocumentView = () => {
     if (id && user) fetchDocument();
   }, [id, user]);
 
+  // Poll while the document is still processing so the UI updates without a manual refresh.
+  useEffect(() => {
+    if (!doc || !id) return;
+    if (doc.status !== "processing" && doc.status !== "pending") return;
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (data) {
+        setDoc(data);
+        if (data.status === "completed" || data.status === "failed") {
+          // Refresh related content (notes, flashcards, etc.) once done
+          fetchDocument();
+        }
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [doc?.status, id]);
+
   // Tour tabs (excluding Chat) — show "Tap to generate" once per user lifetime
   const tourTabs: Array<"notes" | "flashcards" | "quiz" | "podcast"> = ["notes", "flashcards", "quiz", "podcast"];
 
