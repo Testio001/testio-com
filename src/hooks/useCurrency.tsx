@@ -32,7 +32,7 @@ export function periodFor(currency: Currency): string {
  * Returns the user's active display currency. Reads from localStorage,
  * else auto-detects via the detect-country edge function (NG => NGN).
  */
-export function useCurrency(): { currency: Currency; setCurrency: (c: Currency) => void } {
+export function useCurrency(): { currency: Currency; setCurrency: (c: Currency) => void; isNigeria: boolean } {
   const [currency, setCurrencyState] = useState<Currency>(() => {
     if (typeof window === "undefined") return "USD";
     const stored = localStorage.getItem("testio_currency");
@@ -79,5 +79,5 @@ export function useCurrency(): { currency: Currency; setCurrency: (c: Currency) 
     setCurrencyState(c);
   };
 
-  return { currency, setCurrency, isNigeria } as { currency: Currency; setCurrency: (c: Currency) => void; isNigeria: boolean };
+  return { currency, setCurrency, isNigeria };
 }
