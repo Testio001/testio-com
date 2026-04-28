@@ -20,6 +20,15 @@ serve(async (req) => {
     // Get validated content using shared helper (auto re-extracts if needed)
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
 
+    const { data: existingNote } = await supabase
+      .from("notes")
+      .select("id")
+      .eq("document_id", documentId)
+      .maybeSingle();
+    if (existingNote) {
+      return new Response(JSON.stringify({ success: true, alreadyExists: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Rate limit check (per-user, per-function)
     const { data: rl } = await supabase.rpc("check_ai_rate_limit", {
       _user_id: doc.user_id, _function_name: "generate-notes",
@@ -98,12 +107,19 @@ ADDITIONAL FORMATTING RULES:
     const aiData = await aiResponse.json();
     const notesContent = aiData.choices?.[0]?.message?.content || "No notes generated.";
 
-    await supabase.from("notes").insert({
+    const { error: insertError } = await supabase.from("notes").insert({
       user_id: doc.user_id,
       document_id: documentId,
       title: `Notes: ${doc.title}`,
       content: notesContent,
     });
+
+    if (insertError) {
+      if (insertError.code === "23505") {
+        return new Response(JSON.stringify({ success: true, alreadyExists: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      throw insertError;
+    }
 
     await supabase.from("documents").update({ status: "completed" }).eq("id", documentId);
 
