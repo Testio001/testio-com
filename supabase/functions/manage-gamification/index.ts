@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const FREE_UPLOAD_LIMIT = 2;
+const STARTER_UPLOAD_LIMIT = 10; // NGN-only entry plan
 const BASIC_UPLOAD_LIMIT = 15;
 const PRO_UPLOAD_LIMIT = 40;
 const SCHOLAR_UPLOAD_LIMIT = 80; // Hard cap (UI says unlimited, backend enforces fair-use)
@@ -49,7 +50,7 @@ async function getActivePlan(supabaseAdmin: any, userId: string) {
     : null;
 
   const isPaidPlanActive =
-    ["basic", "pro", "scholar"].includes(data.subscription_plan) &&
+    ["starter", "basic", "pro", "scholar"].includes(data.subscription_plan) &&
     (!!expiresAt && expiresAt.getTime() > Date.now());
 
   return isPaidPlanActive ? data.subscription_plan : "free";
@@ -57,6 +58,8 @@ async function getActivePlan(supabaseAdmin: any, userId: string) {
 
 function getUploadLimitForPlan(plan: string) {
   switch (plan) {
+    case "starter":
+      return STARTER_UPLOAD_LIMIT;
     case "basic":
       return BASIC_UPLOAD_LIMIT;
     case "pro":
