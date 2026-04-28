@@ -24,6 +24,7 @@ type Note = Tables<"notes">;
 // Monthly podcast limits per plan (matches Pricing/Home)
 const PODCAST_LIMITS: Record<string, number> = {
   free: 1,
+  starter: 0, // Starter plan does NOT include podcasts
   basic: 3,
   pro: 6,
   scholar: 9,
@@ -293,6 +294,17 @@ const DocumentView = () => {
 
   const generatePodcast = async () => {
     if (!id) return;
+
+    // Starter plan: podcasts are not included — push to upgrade
+    if (subscriptionPlan === "starter") {
+      toast({
+        title: "Podcasts not included on Starter",
+        description: "Upgrade to Basic, Pro or Scholar to generate study podcasts.",
+        variant: "destructive",
+      });
+      navigate("/pricing");
+      return;
+    }
 
     // Check podcast limit
     if (!canGeneratePodcast()) {
