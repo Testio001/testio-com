@@ -121,6 +121,8 @@ Deno.serve(async (req) => {
             subscription_plan: tx.plan,
             subscription_expires_at: expiresAt,
           }).eq("user_id", tx.user_id);
+          // Reset monthly usage counter so the user starts the new plan with a fresh quota.
+          await admin.from("user_stats").update({ uploads_used: 0 }).eq("user_id", tx.user_id);
           await sendCongratsEmail({ isAddon: false, expiresAt });
           console.log(`Webhook: activated ${tx.plan} for`, tx.user_id);
         }
