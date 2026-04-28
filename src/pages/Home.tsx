@@ -257,18 +257,18 @@ const Home = () => {
             Choose the plan that fits your study needs. {currency === "NGN" ? "One-off payment, valid 30 days." : "Cancel anytime."}
           </p>
 
-          {/* NG-only: switch to USD for auto-renewing subscription */}
-          {isNigeria && currency === "NGN" && (
+          {/* NG-only: toggle auto-renewing USD subscription on/off */}
+          {isNigeria && (
             <div className="flex justify-center mb-10">
               <button
-                onClick={() => setCurrency("USD")}
+                onClick={() => setCurrency(currency === "NGN" ? "USD" : "NGN")}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all ${
                   isDark
                     ? "bg-gray-900 border-gray-800 text-gray-200 hover:bg-gray-800"
                     : "bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                🔄 Activate auto-renewal
+                {currency === "NGN" ? "🔄 Activate auto-renewal" : "↩️ Deactivate auto-renewal (back to ₦)"}
               </button>
             </div>
           )}
