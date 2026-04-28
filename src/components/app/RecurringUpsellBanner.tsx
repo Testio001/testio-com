@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Crown, X, Sparkles } from "lucide-react";
-import { useCurrency, priceFor, periodFor } from "@/hooks/useCurrency";
+import { useCurrency, priceFor, periodFor, entryPlanFor } from "@/hooks/useCurrency";
 
-const buildTips = (basicPrice: string, period: string) => [
+const buildTips = (entryName: string, entryPrice: string, period: string) => [
   "Did you know you can become a top student for less than the price of a weekly coffee?",
   "Pro unlocks 6 podcasts per month — perfect for studying on the go.",
   "Scholar gives you unlimited AI Tutor questions — never get stuck again.",
-  `Upgrade now to lock in Elite Member pricing — only 3 slots left at ${basicPrice}${period}!`,
+  `Upgrade now to ${entryName} — only ${entryPrice}${period} to unlock more uploads and AI tools!`,
   "Top students study 30 min daily with AI flashcards. Join them on Pro.",
   "Did you know? Pro users finish revision 3x faster than free users.",
 ];
@@ -17,7 +17,8 @@ const RecurringUpsellBanner = ({ userPlan }: { userPlan: string | null }) => {
   const [visible, setVisible] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
   const { currency } = useCurrency();
-  const TIPS = buildTips(priceFor("basic", currency), periodFor(currency));
+  const entry = entryPlanFor(currency);
+  const TIPS = buildTips(entry === "starter" ? "Starter" : "Basic", priceFor(entry, currency), periodFor(currency));
 
   useEffect(() => {
     if (userPlan !== "free") return;
