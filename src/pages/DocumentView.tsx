@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Mic, Loader2, Sparkles, Crown, ArrowDown, X } from "lucide-react";
+import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Mic, Loader2, Crown, ArrowDown, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import NoteViewer from "@/components/app/NoteViewer";
@@ -53,8 +53,6 @@ const DocumentView = () => {
   const [bonusPodcasts, setBonusPodcasts] = useState(0);
   const [showPodcastLimitModal, setShowPodcastLimitModal] = useState(false);
   const [showPodcastPrompt, setShowPodcastPrompt] = useState(false);
-  const autoNotesTriedRef = useRef(false);
-
   useEffect(() => {
     if (id && user) fetchDocument();
   }, [id, user]);
@@ -82,38 +80,6 @@ const DocumentView = () => {
 
   // Tour tabs (excluding Chat) — show "Tap to generate" once per user lifetime
   const tourTabs: Array<"notes" | "flashcards" | "quiz" | "podcast"> = ["notes", "flashcards", "quiz", "podcast"];
-
-  // Auto-generate notes if the document is ready but no notes exist yet.
-  // This is a safety net in case process-document's auto-invocation of
-  // generate-notes failed (transient OpenAI error, timeout, etc.) so the
-  // user never has to manually click "Generate Notes".
-  useEffect(() => {
-    if (!doc || loadingContent) return;
-    if (doc.status !== "completed") return;
-    if (notes.length > 0) return;
-    if (generating) return;
-    if (autoNotesTriedRef.current) return;
-    autoNotesTriedRef.current = true;
-    // Wait a bit so the backend's auto-invocation of generate-notes
-    // (kicked off by process-document) has time to finish and insert
-    // notes — otherwise we'd race it and end up generating twice.
-    const t = setTimeout(async () => {
-      // Re-check directly from DB right before triggering
-      const { data: latestNotes } = await supabase
-        .from("notes")
-        .select("id")
-        .eq("document_id", id!)
-        .limit(1);
-      if (latestNotes && latestNotes.length > 0) {
-        // Backend already created notes — just refresh UI, don't regenerate.
-        fetchDocument();
-        return;
-      }
-      generateNotes();
-    }, 10000);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doc?.status, loadingContent, notes.length]);
 
   // Start the tour after the document finishes processing — first time only.
   useEffect(() => {
