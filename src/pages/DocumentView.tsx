@@ -390,7 +390,7 @@ const DocumentView = () => {
 
   const dismissTour = () => {
     try { localStorage.setItem("testio_tab_tour_done", "1"); } catch {}
-    setTourStep(-1);
+    setTourActive(false);
   };
 
   const podcastLimitTotal = getPodcastLimit();
