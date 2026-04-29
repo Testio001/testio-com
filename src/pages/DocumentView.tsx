@@ -79,9 +79,11 @@ const DocumentView = () => {
     return () => clearInterval(interval);
   }, [doc?.status, id]);
 
-  // Tour tabs (excluding Chat) — show "Tap to generate" hint on each feature tab
-  // the user visits, until they've seen them all or dismissed the hint.
-  const tourTabs: Array<"notes" | "flashcards" | "quiz" | "podcast"> = ["notes", "flashcards", "quiz", "podcast"];
+  // Tour sequence — the hint points to the NEXT tab in this order from
+  // wherever the user currently is. It never switches tabs for them.
+  const tourSequence: Array<"notes" | "flashcards" | "quiz" | "podcast" | "chat"> = ["notes", "flashcards", "quiz", "podcast", "chat"];
+  const currentIdx = tourSequence.indexOf(activeTab as any);
+  const nextTourTab = currentIdx >= 0 && currentIdx < tourSequence.length - 1 ? tourSequence[currentIdx + 1] : null;
 
   // Activate the tour after the document finishes processing — first time only.
   // Does NOT switch tabs automatically; the hint just appears on whichever
@@ -94,26 +96,22 @@ const DocumentView = () => {
     setTourActive(true);
   }, [doc?.status, loadingContent]);
 
-  // Track which feature tabs the user has visited while the tour is active.
+  // Track which tabs the user has visited while the tour is active. Once they
+  // reach the last tab in the sequence (Chat), finish the tour permanently.
   useEffect(() => {
     if (!tourActive) return;
-    if (!(tourTabs as string[]).includes(activeTab)) return;
+    if (!(tourSequence as string[]).includes(activeTab)) return;
     setVisitedTourTabs((prev) => {
       if (prev.has(activeTab)) return prev;
       const next = new Set(prev);
       next.add(activeTab);
       return next;
     });
-  }, [activeTab, tourActive]);
-
-  // Once the user has visited all feature tabs, finish the tour permanently.
-  useEffect(() => {
-    if (!tourActive) return;
-    if (visitedTourTabs.size >= tourTabs.length) {
+    if (activeTab === tourSequence[tourSequence.length - 1]) {
       try { localStorage.setItem("testio_tab_tour_done", "1"); } catch {}
       setTourActive(false);
     }
-  }, [visitedTourTabs, tourActive]);
+  }, [activeTab, tourActive]);
 
   // First-time podcast prompt: show once after notes are ready and user has no podcast yet
   useEffect(() => {
@@ -444,19 +442,19 @@ const DocumentView = () => {
                 onClick={() => { setActiveTab(tab.id); }}
                 className={`w-full flex items-center justify-center gap-1.5 py-2 px-1 sm:px-3 rounded-md text-xs font-medium transition-colors ${
                   activeTab === tab.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                } ${tourActive && activeTab === tab.id && (tourTabs as string[]).includes(tab.id) ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
+                } ${tourActive && nextTourTab === tab.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
               >
                 <tab.icon className="w-4 h-4 shrink-0" />
                 <span className="hidden sm:inline">{tab.label}</span>
               </button>
-              {tourActive && activeTab === tab.id && (tourTabs as string[]).includes(tab.id) && (
+              {tourActive && nextTourTab === tab.id && (
                 <motion.div
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 whitespace-nowrap pointer-events-auto"
                 >
                   <div className="relative bg-primary text-primary-foreground text-[11px] font-medium px-2.5 py-1 rounded-md shadow-lg flex items-center gap-1.5">
-                    Tap to generate
+                    {tab.id === "chat" ? "Try chat" : "Tap to generate"}
                     <button onClick={dismissTour} aria-label="Dismiss" className="opacity-80 hover:opacity-100">
                       <X className="w-3 h-3" />
                     </button>
