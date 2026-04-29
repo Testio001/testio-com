@@ -79,9 +79,11 @@ const DocumentView = () => {
     return () => clearInterval(interval);
   }, [doc?.status, id]);
 
-  // Tour tabs (excluding Chat) — show "Tap to generate" hint on each feature tab
-  // the user visits, until they've seen them all or dismissed the hint.
-  const tourTabs: Array<"notes" | "flashcards" | "quiz" | "podcast"> = ["notes", "flashcards", "quiz", "podcast"];
+  // Tour sequence — the hint points to the NEXT tab in this order from
+  // wherever the user currently is. It never switches tabs for them.
+  const tourSequence: Array<"notes" | "flashcards" | "quiz" | "podcast" | "chat"> = ["notes", "flashcards", "quiz", "podcast", "chat"];
+  const currentIdx = tourSequence.indexOf(activeTab as any);
+  const nextTourTab = currentIdx >= 0 && currentIdx < tourSequence.length - 1 ? tourSequence[currentIdx + 1] : null;
 
   // Activate the tour after the document finishes processing — first time only.
   // Does NOT switch tabs automatically; the hint just appears on whichever
@@ -94,26 +96,22 @@ const DocumentView = () => {
     setTourActive(true);
   }, [doc?.status, loadingContent]);
 
-  // Track which feature tabs the user has visited while the tour is active.
+  // Track which tabs the user has visited while the tour is active. Once they
+  // reach the last tab in the sequence (Chat), finish the tour permanently.
   useEffect(() => {
     if (!tourActive) return;
-    if (!(tourTabs as string[]).includes(activeTab)) return;
+    if (!(tourSequence as string[]).includes(activeTab)) return;
     setVisitedTourTabs((prev) => {
       if (prev.has(activeTab)) return prev;
       const next = new Set(prev);
       next.add(activeTab);
       return next;
     });
-  }, [activeTab, tourActive]);
-
-  // Once the user has visited all feature tabs, finish the tour permanently.
-  useEffect(() => {
-    if (!tourActive) return;
-    if (visitedTourTabs.size >= tourTabs.length) {
+    if (activeTab === tourSequence[tourSequence.length - 1]) {
       try { localStorage.setItem("testio_tab_tour_done", "1"); } catch {}
       setTourActive(false);
     }
-  }, [visitedTourTabs, tourActive]);
+  }, [activeTab, tourActive]);
 
   // First-time podcast prompt: show once after notes are ready and user has no podcast yet
   useEffect(() => {
