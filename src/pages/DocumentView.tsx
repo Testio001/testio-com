@@ -441,15 +441,15 @@ const DocumentView = () => {
           {tabs.map((tab) => (
             <div key={tab.id} className="relative">
               <button
-                onClick={() => { setActiveTab(tab.id); if (tourStep >= 0) dismissTour(); }}
+                onClick={() => { setActiveTab(tab.id); }}
                 className={`w-full flex items-center justify-center gap-1.5 py-2 px-1 sm:px-3 rounded-md text-xs font-medium transition-colors ${
                   activeTab === tab.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                } ${tourStep >= 0 && tourTabs[tourStep] === tab.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
+                } ${tourActive && activeTab === tab.id && (tourTabs as string[]).includes(tab.id) ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
               >
                 <tab.icon className="w-4 h-4 shrink-0" />
                 <span className="hidden sm:inline">{tab.label}</span>
               </button>
-              {tourStep >= 0 && tourTabs[tourStep] === tab.id && (
+              {tourActive && activeTab === tab.id && (tourTabs as string[]).includes(tab.id) && (
                 <motion.div
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
