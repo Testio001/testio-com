@@ -121,11 +121,9 @@ serve(async (req) => {
     for (let i = 0; i < totalExchanges; i++) {
       const isFinalClose = i === totalExchanges - 1;
       const isOutro = i === totalExchanges - 2;
-      // Outro is always spoken by Alex (host). Final closing line:
-      //   - Free/Basic: Alex delivers the upgrade CTA.
-      //   - Pro/Scholar: Sam delivers a warm "thanks for having me" pleasantry.
-      const finalSpeaker = needsUpgradeCTA ? "Alex" : "Sam";
-      const speaker = isFinalClose ? finalSpeaker : (isOutro ? "Alex" : (i % 2 === 0 ? "Alex" : "Sam"));
+      // Outro is always spoken by Alex (host). Final closing line is always Alex
+      // delivering the Testio.online CTA.
+      const speaker = isFinalClose ? "Alex" : (isOutro ? "Alex" : (i % 2 === 0 ? "Alex" : "Sam"));
       const voice = speaker === "Alex" ? "onyx" : "nova";
       const isFirst = i === 0;
 
