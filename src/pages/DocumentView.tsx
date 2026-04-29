@@ -49,7 +49,8 @@ const DocumentView = () => {
   const [hasPodcast, setHasPodcast] = useState(false);
   const [subscriptionPlan, setSubscriptionPlan] = useState("free");
   const [podcastCount, setPodcastCount] = useState(0);
-  const [tourStep, setTourStep] = useState<number>(-1); // -1 = inactive, 0..3 cycles through tabs
+  const [tourActive, setTourActive] = useState<boolean>(false);
+  const [visitedTourTabs, setVisitedTourTabs] = useState<Set<string>>(new Set());
   const [bonusPodcasts, setBonusPodcasts] = useState(0);
   const [showPodcastLimitModal, setShowPodcastLimitModal] = useState(false);
   const [showPodcastPrompt, setShowPodcastPrompt] = useState(false);
@@ -78,30 +79,41 @@ const DocumentView = () => {
     return () => clearInterval(interval);
   }, [doc?.status, id]);
 
-  // Tour tabs (excluding Chat) — show "Tap to generate" once per user lifetime
+  // Tour tabs (excluding Chat) — show "Tap to generate" hint on each feature tab
+  // the user visits, until they've seen them all or dismissed the hint.
   const tourTabs: Array<"notes" | "flashcards" | "quiz" | "podcast"> = ["notes", "flashcards", "quiz", "podcast"];
 
-  // Start the tour after the document finishes processing — first time only.
+  // Activate the tour after the document finishes processing — first time only.
+  // Does NOT switch tabs automatically; the hint just appears on whichever
+  // feature tab the user is currently viewing.
   useEffect(() => {
     if (!doc || doc.status !== "completed" || loadingContent) return;
     try {
       if (localStorage.getItem("testio_tab_tour_done") === "1") return;
     } catch {}
-    if (tourStep === -1) setTourStep(0);
+    setTourActive(true);
   }, [doc?.status, loadingContent]);
 
-  // Advance tour automatically every 2.8s
+  // Track which feature tabs the user has visited while the tour is active.
   useEffect(() => {
-    if (tourStep < 0) return;
-    if (tourStep >= tourTabs.length) {
+    if (!tourActive) return;
+    if (!(tourTabs as string[]).includes(activeTab)) return;
+    setVisitedTourTabs((prev) => {
+      if (prev.has(activeTab)) return prev;
+      const next = new Set(prev);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab, tourActive]);
+
+  // Once the user has visited all feature tabs, finish the tour permanently.
+  useEffect(() => {
+    if (!tourActive) return;
+    if (visitedTourTabs.size >= tourTabs.length) {
       try { localStorage.setItem("testio_tab_tour_done", "1"); } catch {}
-      setTourStep(-1);
-      return;
+      setTourActive(false);
     }
-    setActiveTab(tourTabs[tourStep]);
-    const t = setTimeout(() => setTourStep((s) => s + 1), 2800);
-    return () => clearTimeout(t);
-  }, [tourStep]);
+  }, [visitedTourTabs, tourActive]);
 
   // First-time podcast prompt: show once after notes are ready and user has no podcast yet
   useEffect(() => {
@@ -378,7 +390,7 @@ const DocumentView = () => {
 
   const dismissTour = () => {
     try { localStorage.setItem("testio_tab_tour_done", "1"); } catch {}
-    setTourStep(-1);
+    setTourActive(false);
   };
 
   const podcastLimitTotal = getPodcastLimit();
@@ -429,15 +441,15 @@ const DocumentView = () => {
           {tabs.map((tab) => (
             <div key={tab.id} className="relative">
               <button
-                onClick={() => { setActiveTab(tab.id); if (tourStep >= 0) dismissTour(); }}
+                onClick={() => { setActiveTab(tab.id); }}
                 className={`w-full flex items-center justify-center gap-1.5 py-2 px-1 sm:px-3 rounded-md text-xs font-medium transition-colors ${
                   activeTab === tab.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                } ${tourStep >= 0 && tourTabs[tourStep] === tab.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
+                } ${tourActive && activeTab === tab.id && (tourTabs as string[]).includes(tab.id) ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
               >
                 <tab.icon className="w-4 h-4 shrink-0" />
                 <span className="hidden sm:inline">{tab.label}</span>
               </button>
-              {tourStep >= 0 && tourTabs[tourStep] === tab.id && (
+              {tourActive && activeTab === tab.id && (tourTabs as string[]).includes(tab.id) && (
                 <motion.div
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
