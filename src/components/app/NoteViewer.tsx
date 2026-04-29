@@ -69,11 +69,11 @@ const NoteViewer = ({ documentId, notes, onRefresh }: { documentId: string; note
               className="w-full bg-background border border-border rounded-lg p-4 text-foreground text-sm min-h-[300px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           ) : (
-            <div className="note-content prose prose-invert prose-sm max-w-none
+            <div className="note-content prose prose-invert prose-base lg:prose-lg max-w-none w-full
               prose-headings:font-bold prose-headings:text-foreground prose-headings:mt-6 prose-headings:mb-3
-              prose-h1:text-2xl prose-h1:flex prose-h1:items-center prose-h1:gap-2
-              prose-h2:text-xl prose-h2:flex prose-h2:items-center prose-h2:gap-2 prose-h2:border-b prose-h2:border-border/30 prose-h2:pb-2
-              prose-h3:text-lg
+              prose-h1:text-2xl lg:prose-h1:text-3xl prose-h1:flex prose-h1:items-center prose-h1:gap-2
+              prose-h2:text-xl lg:prose-h2:text-2xl prose-h2:flex prose-h2:items-center prose-h2:gap-2 prose-h2:border-b prose-h2:border-border/30 prose-h2:pb-2
+              prose-h3:text-lg lg:prose-h3:text-xl
               prose-p:text-foreground/90 prose-p:leading-relaxed prose-p:mb-4
               prose-strong:text-primary prose-strong:font-semibold
               prose-ul:space-y-1.5 prose-li:text-foreground/85
@@ -81,9 +81,9 @@ const NoteViewer = ({ documentId, notes, onRefresh }: { documentId: string; note
               prose-hr:border-border/30 prose-hr:my-6
               prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
               prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-              [&_table]:block [&_table]:w-full [&_table]:overflow-x-auto [&_table]:border-collapse [&_table]:text-sm [&_table]:my-4 [&_table]:whitespace-nowrap
-              [&_th]:border [&_th]:border-border [&_th]:px-3 [&_th]:py-2 [&_th]:bg-muted [&_th]:text-left [&_th]:font-semibold [&_th]:text-xs [&_th]:text-foreground [&_th]:align-top
-              [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:text-xs [&_td]:leading-relaxed [&_td]:text-foreground/85 [&_td]:align-top
+              [&_table]:w-full [&_table]:table-auto [&_table]:border-collapse [&_table]:text-sm lg:[&_table]:text-base [&_table]:my-4
+              [&_th]:border [&_th]:border-border [&_th]:px-3 [&_th]:py-2 [&_th]:bg-muted [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_th]:align-top
+              [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:leading-relaxed [&_td]:text-foreground/85 [&_td]:align-top
             ">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
             </div>
