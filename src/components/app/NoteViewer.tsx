@@ -40,9 +40,9 @@ const NoteViewer = ({ documentId, notes, onRefresh }: { documentId: string; note
   return (
     <div className="space-y-6">
       {notes.map((note) => (
-        <div key={note.id} className="bg-testio-card rounded-xl p-6 md:p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-foreground font-bold text-xl">{note.title}</h3>
+        <div key={note.id} className="bg-testio-card rounded-2xl p-5 sm:p-8 md:p-10 lg:p-12 shadow-sm border border-border/40">
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/30">
+            <h3 className="text-foreground font-bold text-xl md:text-2xl">{note.title}</h3>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => copyNote(note.content)}
@@ -69,21 +69,24 @@ const NoteViewer = ({ documentId, notes, onRefresh }: { documentId: string; note
               className="w-full bg-background border border-border rounded-lg p-4 text-foreground text-sm min-h-[300px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           ) : (
-            <div className="note-content prose prose-invert prose-base lg:prose-lg max-w-none w-full
-              prose-headings:font-bold prose-headings:text-foreground prose-headings:mt-6 prose-headings:mb-3
-              prose-h1:text-2xl lg:prose-h1:text-3xl prose-h1:flex prose-h1:items-center prose-h1:gap-2
-              prose-h2:text-xl lg:prose-h2:text-2xl prose-h2:flex prose-h2:items-center prose-h2:gap-2 prose-h2:border-b prose-h2:border-border/30 prose-h2:pb-2
-              prose-h3:text-lg lg:prose-h3:text-xl
-              prose-p:text-foreground/90 prose-p:leading-relaxed prose-p:mb-4
+            <div className="note-content prose prose-invert prose-base md:prose-lg lg:prose-xl max-w-none w-full
+              prose-headings:font-bold prose-headings:text-foreground prose-headings:tracking-tight
+              prose-h1:text-3xl md:prose-h1:text-4xl lg:prose-h1:text-5xl prose-h1:flex prose-h1:items-center prose-h1:gap-3 prose-h1:mt-2 prose-h1:mb-6 prose-h1:leading-tight
+              prose-h2:text-2xl md:prose-h2:text-3xl prose-h2:flex prose-h2:items-center prose-h2:gap-3 prose-h2:mt-10 prose-h2:mb-4 prose-h2:leading-tight
+              prose-h3:text-xl md:prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-3
+              prose-p:text-foreground/90 prose-p:leading-[1.8] prose-p:mb-5
               prose-strong:text-primary prose-strong:font-semibold
-              prose-ul:space-y-1.5 prose-li:text-foreground/85
-              prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-primary/5 prose-blockquote:py-3 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:text-foreground/90
-              prose-hr:border-border/30 prose-hr:my-6
-              prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
-              prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-              [&_table]:w-full [&_table]:table-auto [&_table]:border-collapse [&_table]:text-sm lg:[&_table]:text-base [&_table]:my-4
-              [&_th]:border [&_th]:border-border [&_th]:px-3 [&_th]:py-2 [&_th]:bg-muted [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_th]:align-top
-              [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:leading-relaxed [&_td]:text-foreground/85 [&_td]:align-top
+              prose-ul:my-5 prose-ul:space-y-2 prose-li:text-foreground/85 prose-li:leading-relaxed prose-li:marker:text-primary
+              prose-ol:my-5 prose-ol:space-y-2 prose-ol:marker:text-primary
+              prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-primary/[0.06] prose-blockquote:py-4 prose-blockquote:px-5 prose-blockquote:rounded-r-xl prose-blockquote:not-italic prose-blockquote:text-foreground/90 prose-blockquote:my-6 [&_blockquote_p]:before:hidden [&_blockquote_p]:after:hidden [&_blockquote_p]:my-0
+              prose-hr:border-border/30 prose-hr:my-8
+              prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:hidden prose-code:after:hidden prose-code:font-medium
+              prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-a:font-medium
+              [&_table]:w-full [&_table]:table-auto [&_table]:border-collapse [&_table]:text-sm md:[&_table]:text-base [&_table]:my-6 [&_table]:rounded-lg [&_table]:overflow-hidden [&_table]:border [&_table]:border-border
+              [&_thead]:bg-primary/10
+              [&_th]:border [&_th]:border-border [&_th]:px-4 [&_th]:py-3 [&_th]:text-left [&_th]:font-bold [&_th]:text-primary [&_th]:align-top
+              [&_td]:border [&_td]:border-border [&_td]:px-4 [&_td]:py-3 [&_td]:leading-relaxed [&_td]:text-foreground/85 [&_td]:align-top
+              [&_tbody_tr:nth-child(even)]:bg-muted/30
             ">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
             </div>

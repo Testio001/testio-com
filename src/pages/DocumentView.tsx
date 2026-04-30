@@ -433,7 +433,7 @@ const DocumentView = () => {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-6">
+      <div className={`${activeTab === "notes" ? "max-w-7xl" : "max-w-6xl"} mx-auto px-4 md:px-8 py-6`}>
         {/* Tabs */}
         <div className="relative grid grid-cols-5 bg-secondary rounded-lg p-1 mb-6 max-w-lg">
           {tabs.map((tab) => (
