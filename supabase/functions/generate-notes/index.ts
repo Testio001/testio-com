@@ -72,6 +72,8 @@ MANDATORY STRUCTURE (in this order, every time):
 
 HARD RULES:
 - NEVER output a flat run of paragraphs. Break every topic into headings + lists + tables + blockquotes.
+- ALWAYS leave ONE blank line before AND after every heading, list, table, and blockquote. Spacing is mandatory for readability.
+- NEVER use bold paragraphs (e.g. "**Brief Overview**") in place of a real "## " heading. Section titles MUST be true markdown headings.
 - NEVER skip the blockquote intro under the H1.
 - NEVER use a plain paragraph where a list or table would communicate better.
 - EVERY ## heading MUST start with a relevant emoji (📚 💻 🧠 ⚙️ 🔬 📊 🧪 🏛 ⚖️ 💡 🎯 📈 🩺 etc.).
