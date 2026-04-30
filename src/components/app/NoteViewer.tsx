@@ -71,13 +71,14 @@ const NoteViewer = ({ documentId, notes, onRefresh }: { documentId: string; note
           ) : (
             <div className="note-content prose prose-invert prose-lg md:prose-xl lg:prose-2xl max-w-none w-full
               prose-headings:font-bold prose-headings:text-foreground prose-headings:tracking-tight
-              prose-h1:text-4xl md:prose-h1:text-6xl lg:prose-h1:text-7xl prose-h1:flex prose-h1:items-center prose-h1:gap-4 prose-h1:mt-4 prose-h1:mb-10 prose-h1:leading-[1.1]
-              prose-h2:text-3xl md:prose-h2:text-4xl lg:prose-h2:text-5xl prose-h2:flex prose-h2:items-center prose-h2:gap-3 prose-h2:mt-16 prose-h2:mb-6 prose-h2:leading-tight
-              prose-h3:text-2xl md:prose-h3:text-3xl prose-h3:mt-12 prose-h3:mb-5 prose-h3:flex prose-h3:items-center prose-h3:gap-3
-              prose-p:text-foreground prose-p:leading-[1.9] prose-p:mb-7
+              prose-h1:!text-4xl md:prose-h1:!text-6xl lg:prose-h1:!text-7xl prose-h1:!flex prose-h1:items-center prose-h1:!justify-center prose-h1:!text-center prose-h1:!gap-4 prose-h1:!mt-6 prose-h1:!mb-12 prose-h1:!leading-[1.1]
+              prose-h2:!text-3xl md:prose-h2:!text-4xl lg:prose-h2:!text-5xl prose-h2:!flex prose-h2:items-center prose-h2:!justify-center prose-h2:!text-center prose-h2:!gap-3 prose-h2:!mt-20 prose-h2:!mb-8 prose-h2:!leading-tight prose-h2:!pt-6
+              prose-h3:!text-2xl md:prose-h3:!text-3xl prose-h3:!mt-14 prose-h3:!mb-6 prose-h3:!flex prose-h3:items-center prose-h3:!gap-3
+              prose-p:text-foreground prose-p:!leading-[1.9] prose-p:!mb-10 prose-p:!mt-0
               prose-strong:text-primary prose-strong:font-semibold
-              prose-ul:my-7 prose-ul:space-y-3 prose-li:text-foreground prose-li:leading-[1.85] prose-li:marker:text-primary prose-li:pl-2
-              prose-ol:my-7 prose-ol:space-y-3 prose-ol:marker:text-primary
+              prose-ul:!my-8 prose-ul:!space-y-6 prose-li:text-foreground prose-li:!leading-[1.85] prose-li:marker:text-primary prose-li:!pl-2 prose-li:!text-lg md:prose-li:!text-xl prose-li:!my-0
+              prose-ol:!my-8 prose-ol:!space-y-6 prose-ol:marker:text-primary
+              [&_li>p]:!my-0 [&_li]:!mb-5
               prose-blockquote:border-l-[6px] prose-blockquote:border-primary prose-blockquote:bg-primary/[0.08] prose-blockquote:py-5 prose-blockquote:px-7 prose-blockquote:rounded-r-2xl prose-blockquote:not-italic prose-blockquote:text-foreground prose-blockquote:my-10 prose-blockquote:text-lg [&_blockquote_p]:before:hidden [&_blockquote_p]:after:hidden [&_blockquote_p]:my-0
               prose-hr:border-border/40 prose-hr:my-14
               prose-code:text-primary prose-code:bg-primary/15 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:before:hidden prose-code:after:hidden prose-code:font-medium
