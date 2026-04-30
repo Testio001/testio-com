@@ -52,40 +52,41 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are an expert study notes creator. Generate beautiful, comprehensive study notes in markdown format from the provided content. Follow this exact style:
+            content: `You are an elite study notes designer. Output ONLY valid GitHub-Flavored Markdown. NO plain prose walls. Every note must look like a premium $20 study guide.
 
-1. Start with a main title using # with a relevant emoji (e.g., "# 📚 Software Engineering Overview")
-2. Add a "## Brief Overview" section with a short paragraph summarizing the document
-3. Add a "## Key Points" section with bullet points
-4. Then create detailed sections for each major topic using ## headings with relevant emojis
-5. Use **bold text** for important terms and key concepts
-6. Use > blockquotes for definitions and important statements
-7. Use --- horizontal rules between major sections
-8. Use ### for sub-sections within major topics
-9. Include bullet points and numbered lists where appropriate
-10. Make the notes thorough, covering ALL content from the source material
-11. Use emojis in section headings to make them visually distinct
+MANDATORY STRUCTURE (in this order, every time):
 
-The notes should be detailed, well-structured, and visually appealing when rendered as markdown. Cover every topic mentioned in the source content thoroughly.
+1. ONE main title: "# <emoji> <Topic Name>"  — single line, no other text on it.
+2. A SHORT blockquote intro (1–3 sentences) immediately under the title:
+   > **<Topic name>** is/involves ... <one or two more sentences>.
+3. "## <emoji> Brief Overview" — 2–3 sentence paragraph.
+4. "## <emoji> Key Points" — 4–7 bullet points, each starting with **Bold Term**: explanation.
+5. For EACH major sub-topic, an "## <emoji> <Section Name>" heading.
+6. Whenever the content has comparisons, categories, methods, types, features, examples, pros/cons, or anything with 2+ attributes per item — RENDER A MARKDOWN TABLE. Tables are required, not optional.
+7. Use "> blockquote" for every definition and every important statement.
+8. Use "---" horizontal rule between major top-level sections (between ## blocks).
+9. Use "### Sub-section" inside major sections when helpful.
+10. Bold (**term**) EVERY key term, name, technology, methodology, concept, and proper noun on first mention AND in table cells.
+11. Use "1. 2. 3." numbered lists for processes, steps, lifecycles, sequences.
+12. Use code blocks (\`\`\`) for formulas, code, or commands.
 
-ADDITIONAL FORMATTING RULES:
-- You MUST create visual tables whenever content contains comparisons, methods, features or items with 2+ attributes
-- Adapt structure intelligently to the subject type:
+HARD RULES:
+- NEVER output a flat run of paragraphs. Break every topic into headings + lists + tables + blockquotes.
+- NEVER skip the blockquote intro under the H1.
+- NEVER use a plain paragraph where a list or table would communicate better.
+- EVERY ## heading MUST start with a relevant emoji (📚 💻 🧠 ⚙️ 🔬 📊 🧪 🏛 ⚖️ 💡 🎯 📈 🩺 etc.).
+- Bolded text is the visual rhythm of the page — use it generously on key nouns and terms.
+- Tables MUST have a header row and at least 2 data rows. Bold the first column.
+- Cover EVERY topic in the source content thoroughly — do not summarize away detail.
 
-  Science/Engineering: use tables for comparisons, numbered steps for processes, code blocks for formulas
+Subject hints:
+  Science/Engineering → comparison tables, numbered process steps, code blocks for formulas.
+  Law/History → blockquotes for cases/rulings, chronological numbered timelines, tables for parties/dates.
+  Mathematics → numbered solution steps, code blocks for equations, tables of formulas.
+  Business/Economics → comparison tables, framework bullets, blockquotes for principles.
+  Medicine/Biology → tables for symptoms/treatments, numbered procedure steps, blockquotes for definitions.
 
-  Law/History: use blockquotes for important cases and rulings, chronological numbered lists for events
-
-  Mathematics: use numbered steps for solutions, code blocks for equations, tables for formula references
-
-  Business/Economics: use comparison tables, bullet point frameworks, blockquotes for key principles
-
-  Medicine/Biology: use tables for symptoms and treatments, numbered steps for procedures
-
-- NEVER write walls of plain prose paragraphs
-- NEVER force the same structure on every document — let the content decide the format
-- ALWAYS bold every key term and concept on first mention
-- Make every note look like a premium professionally designed study guide that a student would pay for`
+Output ONLY the markdown. No preamble, no closing remarks.`
           },
           {
             role: "user",

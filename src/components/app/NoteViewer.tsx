@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Edit3, Save, Copy, Check } from "lucide-react";
+import { Edit3, Save, Copy, Check, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -11,6 +12,7 @@ const NoteViewer = ({ documentId, notes, onRefresh }: { documentId: string; note
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [copied, setCopied] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   const startEdit = (note: Note) => {
     setEditingId(note.id);
@@ -29,6 +31,25 @@ const NoteViewer = ({ documentId, notes, onRefresh }: { documentId: string; note
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const regenerateNote = async (noteId: string) => {
+    if (regenerating) return;
+    const ok = window.confirm("Rebuild these notes with the latest premium formatting? Your current version will be replaced.");
+    if (!ok) return;
+    setRegenerating(true);
+    try {
+      const { error: delErr } = await supabase.from("notes").delete().eq("id", noteId);
+      if (delErr) throw delErr;
+      const { error: fnErr } = await supabase.functions.invoke("generate-notes", { body: { documentId } });
+      if (fnErr) throw fnErr;
+      toast.success("Notes rebuilt with new formatting");
+      onRefresh();
+    } catch (e: any) {
+      toast.error(e?.message || "Could not regenerate notes");
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   if (notes.length === 0) {
     return (
       <div className="text-center py-16">
@@ -41,9 +62,18 @@ const NoteViewer = ({ documentId, notes, onRefresh }: { documentId: string; note
     <div className="space-y-6">
       {notes.map((note) => (
         <div key={note.id} className="bg-testio-card rounded-2xl p-5 sm:p-8 md:p-10 lg:p-12 shadow-sm border border-border/40">
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/30">
-            <h3 className="text-foreground font-bold text-xl md:text-2xl">{note.title}</h3>
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 pb-4 border-b border-border/30">
+            <h3 className="text-foreground font-bold text-xl md:text-2xl flex-1 min-w-0 break-words">{note.title}</h3>
+            <div className="flex items-center gap-3 flex-shrink-0 self-start sm:self-auto">
+              <button
+                onClick={() => regenerateNote(note.id)}
+                disabled={regenerating}
+                className="flex items-center gap-1 text-muted-foreground text-sm hover:text-primary transition-colors disabled:opacity-50"
+                title="Rebuild with latest formatting"
+              >
+                <RefreshCw className={`w-4 h-4 ${regenerating ? "animate-spin" : ""}`} />
+                {regenerating ? "Rebuilding…" : "Rebuild"}
+              </button>
               <button
                 onClick={() => copyNote(note.content)}
                 className="flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground transition-colors"
