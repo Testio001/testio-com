@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, XCircle, RotateCcw, Loader2, Plus, Sparkles } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, Loader2, Plus, Sparkles, Trophy, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Tables, Json } from "@/integrations/supabase/types";
+import type { Tables } from "@/integrations/supabase/types";
 
 type Quiz = Tables<"quizzes">;
 type QuizQuestion = Tables<"quiz_questions">;
@@ -27,6 +27,8 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
   const [generating, setGenerating] = useState(false);
   const [totalGenerated, setTotalGenerated] = useState(0);
   const [plan, setPlan] = useState<string>("free");
+  // Track per-question answers for review
+  const [answers, setAnswers] = useState<Record<number, number>>({});
 
   useEffect(() => {
     fetchQuizzes();
@@ -73,7 +75,6 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
   const getOptions = (q: QuizQuestion): QuizOption[] => {
     try {
       const raw = (q.options as any) as QuizOption[];
-      // Filter out options with empty/missing text
       return raw.filter(opt => opt && opt.text && opt.text.trim().length > 0);
     } catch {
       return [];
@@ -88,6 +89,7 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
       setScore((s) => s + 1);
     }
     setAnswered((a) => a + 1);
+    setAnswers((prev) => ({ ...prev, [currentIndex]: optionIndex }));
   };
 
   const nextQuestion = () => {
@@ -105,18 +107,17 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
     setScore(0);
     setAnswered(0);
     setShowResult(false);
+    setAnswers({});
   };
 
   const generateMore = async () => {
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-quiz", {
+      const { error } = await supabase.functions.invoke("generate-quiz", {
         body: { documentId, count: 20 },
       });
       if (error) throw error;
       toast({ title: "More questions generated!" });
-      // Re-fetch all questions
-      const allQuizIds = quizzes.map(q => q.id);
       const { data: newQuizzes } = await supabase
         .from("quizzes")
         .select("*")
@@ -128,7 +129,6 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
       }
       setShowResult(false);
       setSelectedAnswer(null);
-      // Continue from where user left off
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -148,46 +148,154 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
     return <div className="text-center py-16 text-muted-foreground">Loading questions...</div>;
   }
 
+  // ========== FULL-SCREEN RESULTS SUMMARY ==========
   if (showResult) {
     const pct = Math.round((score / questions.length) * 100);
+    const incorrect = questions.length - score;
     const canGenerateMore = totalGenerated < maxCap;
+    const passed = pct >= 70;
+
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-lg mx-auto text-center py-10">
-        <div className={`text-6xl font-black mb-4 ${pct >= 70 ? "text-testio-green" : "text-destructive"}`}>
-          {pct}%
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="-mx-4 md:-mx-8 px-4 md:px-8 min-h-[calc(100vh-220px)] flex flex-col"
+      >
+        {/* Hero score */}
+        <div className="w-full max-w-3xl mx-auto text-center pt-6 pb-8">
+          <motion.div
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 140, damping: 14 }}
+            className={`inline-flex items-center justify-center w-32 h-32 md:w-40 md:h-40 rounded-full mb-5 ${
+              passed
+                ? "bg-gradient-to-br from-testio-green/20 to-primary/10 border-2 border-testio-green/40"
+                : "bg-gradient-to-br from-destructive/20 to-orange-500/10 border-2 border-destructive/40"
+            }`}
+          >
+            <div className={`text-5xl md:text-6xl font-black ${passed ? "text-testio-green" : "text-destructive"}`}>
+              {pct}%
+            </div>
+          </motion.div>
+          <h2 className="text-foreground text-3xl md:text-4xl font-bold mb-2 inline-flex items-center gap-2">
+            {passed ? <Trophy className="w-7 h-7 text-yellow-400" /> : <Target className="w-7 h-7 text-primary" />}
+            {passed ? "Great job!" : "Keep studying!"}
+          </h2>
+          <p className="text-muted-foreground text-base md:text-lg">
+            You got <span className="text-foreground font-semibold">{score}</span> out of{" "}
+            <span className="text-foreground font-semibold">{questions.length}</span> correct
+          </p>
+
+          {/* Score breakdown */}
+          <div className="grid grid-cols-3 gap-3 max-w-md mx-auto mt-8">
+            <div className="p-4 rounded-2xl bg-testio-card border border-border/60">
+              <div className="text-2xl font-bold text-foreground">{questions.length}</div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground mt-1">Total</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-testio-green/10 border border-testio-green/30">
+              <div className="text-2xl font-bold text-testio-green">{score}</div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground mt-1">Correct</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/30">
+              <div className="text-2xl font-bold text-destructive">{incorrect}</div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground mt-1">Wrong</div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
+            <button onClick={restart} className="btn-testio-primary text-sm !py-2.5 !px-6 inline-flex items-center gap-2">
+              <RotateCcw className="w-4 h-4" /> Restart Quiz
+            </button>
+            {canGenerateMore && (
+              <button
+                onClick={generateMore}
+                disabled={generating}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
+              >
+                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                Generate more ({totalGenerated}/{maxCap})
+              </button>
+            )}
+            {!canGenerateMore && isLimitedPlan && (
+              <button
+                onClick={() => navigate("/pricing")}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Sparkles className="w-4 h-4" />
+                Upgrade for more
+              </button>
+            )}
+          </div>
         </div>
-        <h3 className="text-foreground text-xl font-bold mb-2">
-          {pct >= 70 ? "Great job!" : "Keep studying!"}
-        </h3>
-        <p className="text-muted-foreground mb-6">
-          You got {score} out of {questions.length} correct
-        </p>
-        <div className="flex flex-col items-center gap-3">
-          <button onClick={restart} className="btn-testio-primary text-sm !py-2 !px-6 inline-flex items-center gap-2">
-            <RotateCcw className="w-4 h-4" /> Try Again
-          </button>
-          {canGenerateMore && (
-            <button
-              onClick={generateMore}
-              disabled={generating}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
-            >
-              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              Generate 20 more questions ({totalGenerated}/{maxCap})
+
+        {/* Per-question review */}
+        <div className="w-full max-w-3xl mx-auto pb-12">
+          <h3 className="text-foreground text-xl font-bold mb-4 px-1">Review your answers</h3>
+          <div className="space-y-4">
+            {questions.map((q, qi) => {
+              const opts = getOptions(q);
+              const userIdx = answers[qi];
+              const userOpt = userIdx !== undefined ? opts[userIdx] : null;
+              const correctIdx = opts.findIndex(o => o.isCorrect);
+              const wasCorrect = userOpt?.isCorrect === true;
+
+              return (
+                <div
+                  key={q.id}
+                  className={`rounded-2xl border p-5 ${
+                    wasCorrect
+                      ? "border-testio-green/30 bg-testio-green/5"
+                      : "border-destructive/30 bg-destructive/5"
+                  }`}
+                >
+                  <div className="flex items-start gap-3 mb-3">
+                    <span className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                      wasCorrect ? "bg-testio-green text-background" : "bg-destructive text-destructive-foreground"
+                    }`}>
+                      {qi + 1}
+                    </span>
+                    <p className="text-foreground font-medium leading-snug flex-1">{q.question}</p>
+                    {wasCorrect ? (
+                      <CheckCircle2 className="w-5 h-5 text-testio-green shrink-0" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-destructive shrink-0" />
+                    )}
+                  </div>
+
+                  <div className="space-y-2 ml-10">
+                    {userOpt && !wasCorrect && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Your answer: </span>
+                        <span className="text-destructive font-medium">{userOpt.text}</span>
+                      </div>
+                    )}
+                    {userIdx === undefined && (
+                      <div className="text-sm text-muted-foreground italic">Not answered</div>
+                    )}
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Correct answer: </span>
+                      <span className="text-testio-green font-medium">
+                        {correctIdx >= 0 ? opts[correctIdx].text : "—"}
+                      </span>
+                    </div>
+                    {q.explanation && (
+                      <div className="mt-2 p-3 rounded-lg bg-background/60 border border-border/50">
+                        <p className="text-[10px] uppercase tracking-wider text-primary font-semibold mb-1">Explanation</p>
+                        <p className="text-sm text-foreground/90 leading-relaxed">{q.explanation}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 text-center">
+            <button onClick={restart} className="btn-testio-primary text-base !py-3 !px-8 inline-flex items-center gap-2">
+              <RotateCcw className="w-5 h-5" /> Restart Quiz
             </button>
-          )}
-          {!canGenerateMore && isLimitedPlan && (
-            <button
-              onClick={() => navigate("/pricing")}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-            >
-              <Sparkles className="w-4 h-4" />
-              {totalGenerated}/{maxCap} — Upgrade to get more
-            </button>
-          )}
-          {!canGenerateMore && !isLimitedPlan && (
-            <p className="text-muted-foreground text-xs">Maximum 100 questions reached</p>
-          )}
+          </div>
         </div>
       </motion.div>
     );

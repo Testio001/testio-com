@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, RotateCcw, Plus, Loader2, Sparkles, RefreshCw } from "lucide-react";
+import { ChevronRight, ChevronLeft, RotateCcw, Plus, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -78,7 +78,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
     }
   };
 
-  // Track which card is in view via scroll
+  // Track which card is in view via horizontal scroll
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -105,7 +105,14 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
   };
 
   const scrollToCard = (idx: number) => {
-    cardRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    cardRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+  };
+
+  const goNext = () => {
+    if (currentIndex < cards.length) scrollToCard(currentIndex + 1);
+  };
+  const goPrev = () => {
+    if (currentIndex > 0) scrollToCard(currentIndex - 1);
   };
 
   const reset = () => {
@@ -126,22 +133,33 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
   }
 
   const canGenerateMore = cards.length < maxCap;
-  const isAtEnd = currentIndex === cards.length - 1;
+  const isAtEnd = currentIndex >= cards.length;
+  const progressPct = Math.min(100, Math.round(((currentIndex + 1) / cards.length) * 100));
 
   return (
     <div className="relative -mx-4 md:-mx-8">
-      {/* Top counter pill */}
-      <div className="sticky top-0 z-20 flex justify-center pointer-events-none pt-2 pb-3">
-        <div className="pointer-events-auto px-4 py-1.5 rounded-full bg-background/80 backdrop-blur border border-border/50 text-xs font-medium text-muted-foreground">
-          {currentIndex + 1} / {cards.length}
+      {/* Top bar: counter + progress */}
+      <div className="sticky top-0 z-20 px-4 md:px-8 pt-2 pb-3 bg-gradient-to-b from-background/95 to-background/0 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-muted-foreground tracking-wide">
+            {Math.min(currentIndex + 1, cards.length)} / {cards.length}
+          </span>
+          <span className="text-xs text-primary font-medium">{progressPct}%</span>
+        </div>
+        <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
+            animate={{ width: `${progressPct}%` }}
+            transition={{ type: "spring", stiffness: 120, damping: 20 }}
+          />
         </div>
       </div>
 
-      {/* Snap-scroll deck — fills the tab area */}
+      {/* Horizontal swipe deck */}
       <div
         ref={containerRef}
-        className="h-[calc(100vh-220px)] min-h-[480px] overflow-y-auto snap-y snap-mandatory scroll-smooth no-scrollbar px-4 md:px-8"
-        style={{ scrollbarWidth: "none" }}
+        className="h-[calc(100vh-260px)] min-h-[440px] overflow-x-auto overflow-y-hidden snap-x snap-mandatory scroll-smooth no-scrollbar flex"
+        style={{ scrollbarWidth: "none", touchAction: "pan-x" }}
       >
         {cards.map((card, idx) => {
           const flipped = !!flippedMap[idx];
@@ -150,7 +168,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
               key={card.id}
               data-index={idx}
               ref={(el) => (cardRefs.current[idx] = el)}
-              className="snap-start h-full flex items-center justify-center py-4"
+              className="snap-center shrink-0 w-full h-full flex items-center justify-center px-4 md:px-8 py-4"
             >
               <button
                 type="button"
@@ -198,12 +216,30 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
           );
         })}
 
-        {/* End card */}
-        <div className="snap-start h-full flex items-center justify-center py-4">
-          <div className="w-full max-w-2xl text-center px-6">
-            <div className="text-5xl mb-3">🎉</div>
-            <h3 className="text-foreground text-2xl font-bold mb-2">All {cards.length} cards reviewed!</h3>
-            <p className="text-muted-foreground mb-8">Great study session.</p>
+        {/* End / results summary card */}
+        <div
+          data-index={cards.length}
+          ref={(el) => (cardRefs.current[cards.length] = el)}
+          className="snap-center shrink-0 w-full h-full flex items-center justify-center px-4 md:px-8 py-4"
+        >
+          <div className="w-full max-w-2xl text-center px-6 py-10 rounded-3xl bg-gradient-to-br from-testio-card to-secondary/30 border border-border/60">
+            <div className="text-6xl mb-4">🎉</div>
+            <h3 className="text-foreground text-3xl font-bold mb-2">All done!</h3>
+            <p className="text-muted-foreground mb-6">
+              You reviewed all {cards.length} flashcards. Nice work!
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto mb-8">
+              <div className="p-4 rounded-2xl bg-background/60 border border-border/50">
+                <div className="text-2xl font-bold text-foreground">{cards.length}</div>
+                <div className="text-xs text-muted-foreground mt-1">Cards reviewed</div>
+              </div>
+              <div className="p-4 rounded-2xl bg-background/60 border border-border/50">
+                <div className="text-2xl font-bold text-primary">100%</div>
+                <div className="text-xs text-muted-foreground mt-1">Completion</div>
+              </div>
+            </div>
+
             <div className="flex flex-col items-center gap-3">
               <button onClick={reset} className="btn-testio-primary text-sm !py-2.5 !px-6 inline-flex items-center gap-2">
                 <RotateCcw className="w-4 h-4" /> Start Over
@@ -232,7 +268,27 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
         </div>
       </div>
 
-      {/* Scroll-down hint */}
+      {/* Side nav arrows (desktop) */}
+      {currentIndex > 0 && (
+        <button
+          onClick={goPrev}
+          className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 items-center justify-center rounded-full bg-background/80 backdrop-blur border border-border/60 text-foreground hover:bg-secondary transition-colors"
+          aria-label="Previous"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+      )}
+      {!isAtEnd && (
+        <button
+          onClick={goNext}
+          className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 items-center justify-center rounded-full bg-background/80 backdrop-blur border border-border/60 text-foreground hover:bg-secondary transition-colors"
+          aria-label="Next"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Swipe hint */}
       <AnimatePresence>
         {showHint && !isAtEnd && (
           <motion.div
@@ -241,25 +297,24 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
             exit={{ opacity: 0, y: 10 }}
             className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 z-20"
           >
-            <div className="flex flex-col items-center gap-1 px-3 py-2 rounded-full bg-primary/15 border border-primary/30 backdrop-blur">
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-primary/15 border border-primary/30 backdrop-blur text-primary text-xs font-medium">
+              <span>Swipe for next</span>
               <motion.div
-                animate={{ y: [0, 6, 0] }}
+                animate={{ x: [0, 6, 0] }}
                 transition={{ duration: 1.4, repeat: Infinity }}
-                className="flex items-center gap-1.5 text-primary text-xs font-medium"
               >
-                <span>Scroll for next</span>
-                <ChevronDown className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4" />
               </motion.div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Floating reset (only after first card) */}
+      {/* Floating reset (only after first card and before end) */}
       {currentIndex > 0 && !isAtEnd && (
         <button
           onClick={reset}
-          className="absolute top-3 right-4 z-20 p-2 rounded-full bg-background/80 backdrop-blur border border-border/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          className="absolute top-16 right-4 z-20 p-2 rounded-full bg-background/80 backdrop-blur border border-border/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           aria-label="Restart"
         >
           <RefreshCw className="w-4 h-4" />
