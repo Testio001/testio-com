@@ -24,7 +24,6 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
-    setLoading(true);
     fetchAllCards();
     fetchPlan();
   }, [documentId]);
@@ -40,6 +39,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
   };
 
   const fetchAllCards = async (preserveIndex?: number) => {
+    setLoading(true);
     try {
       const { data: setsData } = await supabase
       .from("flashcard_sets")
@@ -142,7 +142,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
     scrollToCard(0);
   };
 
-  if (loading) {
+  if (loading && cards.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
@@ -151,7 +151,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
     );
   }
 
-  if (sets.length === 0) {
+  if (!loading && sets.length === 0) {
     return (
       <div className="text-center py-16">
         <p className="text-muted-foreground">No flashcards yet. Click "Generate Flashcards" to create them from this document.</p>
@@ -159,7 +159,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
     );
   }
 
-  if (cards.length === 0) {
+  if (!loading && cards.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
@@ -174,6 +174,12 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
 
   return (
     <div className="relative -mx-4 md:-mx-8">
+      {loading && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-background/70 backdrop-blur-sm rounded-2xl">
+          <Loader2 className="w-7 h-7 text-primary animate-spin" />
+          <p className="text-muted-foreground text-sm">Loading your flashcards...</p>
+        </div>
+      )}
       {/* Top bar: counter + progress */}
       <div className="sticky top-0 z-20 px-4 md:px-8 pt-2 pb-3 bg-gradient-to-b from-background/95 to-background/0 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-2">
