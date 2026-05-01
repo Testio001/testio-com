@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, BarChart3, Brain, Headphones, RefreshCw, Upload, Users } from "lucide-react";
+import { Activity, BarChart3, Brain, Gift, Headphones, RefreshCw, Upload, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import AdminCodeGate from "@/components/app/AdminCodeGate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 
 type UsageMetric = {
@@ -25,6 +26,31 @@ type DashboardMetrics = {
     paidUsers: number;
     rate: number;
   };
+};
+
+type ReferralRow = {
+  created_at: string;
+  referrer_email: string | null;
+  referrer_name: string | null;
+  referred_email: string | null;
+  referred_name: string | null;
+  referred_plan: string;
+  referred_is_paid: boolean;
+};
+
+type ReferralAgg = {
+  user_id: string;
+  email: string | null;
+  name: string | null;
+  total: number;
+  paid: number;
+};
+
+type ReferralData = {
+  totalReferrals: number;
+  paidReferrals: number;
+  topReferrers: ReferralAgg[];
+  rows: ReferralRow[];
 };
 
 const formatNumber = (value: number) => value.toLocaleString();
@@ -84,6 +110,8 @@ const FeatureUsageCard = ({
 const AdminDashboardContent = ({ code }: { code: string }) => {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [referrals, setReferrals] = useState<ReferralData | null>(null);
+  const [refLoading, setRefLoading] = useState(true);
 
   const fetchMetrics = useCallback(async () => {
     setLoading(true);
@@ -102,9 +130,24 @@ const AdminDashboardContent = ({ code }: { code: string }) => {
     setLoading(false);
   }, [code]);
 
+  const fetchReferrals = useCallback(async () => {
+    setRefLoading(true);
+    const { data, error } = await supabase.functions.invoke("admin-ops", {
+      body: { action: "referrals", code },
+    });
+    if (error || data?.error) {
+      toast.error(error?.message || data?.error || "Unable to load referrals");
+      setRefLoading(false);
+      return;
+    }
+    setReferrals(data as ReferralData);
+    setRefLoading(false);
+  }, [code]);
+
   useEffect(() => {
     void fetchMetrics();
-  }, [fetchMetrics]);
+    void fetchReferrals();
+  }, [fetchMetrics, fetchReferrals]);
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6">
@@ -114,8 +157,15 @@ const AdminDashboardContent = ({ code }: { code: string }) => {
             <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
             <p className="text-sm text-muted-foreground">Aggregate overview only.</p>
           </div>
-          <Button variant="outline" onClick={() => void fetchMetrics()} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <Button
+            variant="outline"
+            onClick={() => {
+              void fetchMetrics();
+              void fetchReferrals();
+            }}
+            disabled={loading || refLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading || refLoading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
@@ -157,6 +207,109 @@ const AdminDashboardContent = ({ code }: { code: string }) => {
             <FeatureUsageCard title="Flashcards" metric={metrics?.featureUsage.flashcards ?? { total: 0, today: 0 }} icon={BarChart3} />
             <FeatureUsageCard title="Podcast" metric={metrics?.featureUsage.podcasts ?? { total: 0, today: 0 }} icon={Headphones} />
           </div>
+        </section>
+
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Gift className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Referrals</h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <MetricCard
+              title="Total referrals"
+              value={refLoading ? "—" : formatNumber(referrals?.totalReferrals ?? 0)}
+              description="All-time signups via referral link"
+              icon={Users}
+            />
+            <MetricCard
+              title="Paid referrals"
+              value={refLoading ? "—" : formatNumber(referrals?.paidReferrals ?? 0)}
+              description="Referred users currently on a paid plan"
+              icon={BarChart3}
+            />
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Top referrers</CardTitle>
+              <CardDescription>Sorted by paid conversions</CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b border-border">
+                    <th className="py-2 pr-3 font-medium">Referrer</th>
+                    <th className="py-2 pr-3 font-medium">Email</th>
+                    <th className="py-2 pr-3 font-medium text-right">Paid</th>
+                    <th className="py-2 pr-3 font-medium text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {refLoading && (
+                    <tr><td colSpan={4} className="py-3 text-muted-foreground">Loading…</td></tr>
+                  )}
+                  {!refLoading && (referrals?.topReferrers ?? []).length === 0 && (
+                    <tr><td colSpan={4} className="py-3 text-muted-foreground">No referrals yet.</td></tr>
+                  )}
+                  {(referrals?.topReferrers ?? []).slice(0, 25).map((r) => (
+                    <tr key={r.user_id} className="border-b border-border/50">
+                      <td className="py-2 pr-3">{r.name || "—"}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{r.email || "—"}</td>
+                      <td className="py-2 pr-3 text-right font-semibold text-primary">{r.paid}</td>
+                      <td className="py-2 pr-3 text-right">{r.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Recent referred users</CardTitle>
+              <CardDescription>Who referred each new signup (latest 200)</CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b border-border">
+                    <th className="py-2 pr-3 font-medium">Date</th>
+                    <th className="py-2 pr-3 font-medium">Referred user</th>
+                    <th className="py-2 pr-3 font-medium">Plan</th>
+                    <th className="py-2 pr-3 font-medium">Referred by</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {refLoading && (
+                    <tr><td colSpan={4} className="py-3 text-muted-foreground">Loading…</td></tr>
+                  )}
+                  {!refLoading && (referrals?.rows ?? []).length === 0 && (
+                    <tr><td colSpan={4} className="py-3 text-muted-foreground">No referrals yet.</td></tr>
+                  )}
+                  {(referrals?.rows ?? []).map((r, i) => (
+                    <tr key={i} className="border-b border-border/50">
+                      <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">
+                        {new Date(r.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="py-2 pr-3">
+                        <div>{r.referred_name || "—"}</div>
+                        <div className="text-xs text-muted-foreground">{r.referred_email || "—"}</div>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <Badge variant={r.referred_is_paid ? "default" : "outline"} className="uppercase text-[10px]">
+                          {r.referred_plan}
+                        </Badge>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <div>{r.referrer_name || "—"}</div>
+                        <div className="text-xs text-muted-foreground">{r.referrer_email || "—"}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
         </section>
       </div>
     </div>
