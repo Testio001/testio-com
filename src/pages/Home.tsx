@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users, Star } from "lucide-react";
+import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users, Star, Zap, Clock, ShieldCheck } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { Moon, Sun } from "lucide-react";
 import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
@@ -182,21 +182,51 @@ const Home = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="py-24 px-6">
+      <section className="pt-14 pb-16 sm:pt-20 sm:pb-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className={`text-5xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight ${isDark ? "text-white" : "text-gray-900"}`}>
-            Generate Amazing Podcasts{" "}
-            <span className="text-indigo-600">from your notes in seconds</span>
+          {/* Urgency pill */}
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold mb-6 border border-indigo-100">
+            <Zap className="w-3.5 h-3.5" />
+            New users get 50% OFF first month — first 24h only
+          </div>
+
+          <h1 className={`text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight mb-5 leading-[1.05] ${isDark ? "text-white" : "text-gray-900"}`}>
+            Pass your next exam without{" "}
+            <span className="text-indigo-600">reading the whole textbook.</span>
           </h1>
-          <p className={`text-xl max-w-2xl mx-auto mb-10 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-            Plus AI-powered summaries, flashcards, quizzes, and a chat tutor — everything you need to study smarter, not harder.
+          <p className={`text-lg sm:text-xl max-w-2xl mx-auto mb-8 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+            Upload any PDF, lecture slide, or past question — get instant flashcards, quizzes, and a 7-min podcast you can study while walking to class.
           </p>
-          <button
-            onClick={() => navigate("/auth")}
-            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
-          >
-            Get Started <ArrowRight className="w-5 h-5" />
-          </button>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+            <button
+              onClick={() => navigate("/auth")}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-xl text-base sm:text-lg font-semibold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+            >
+              Try free — no card needed <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Trust row */}
+          <div className={`flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs sm:text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-indigo-600" /> Free forever plan</span>
+            <span className="inline-flex items-center gap-1.5"><Clock className="w-4 h-4 text-indigo-600" /> Setup in 30 seconds</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="flex">{[...Array(5)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />)}</span>
+              Loved by 1,000+ students
+            </span>
+          </div>
+
+          {/* Social proof preview */}
+          <div className={`mt-10 max-w-xl mx-auto rounded-2xl border p-5 text-left ${isDark ? "bg-gray-900 border-gray-800" : "bg-gray-50 border-gray-200"}`}>
+            <div className="flex items-center gap-1 mb-2">
+              {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />)}
+            </div>
+            <p className={`text-sm sm:text-base leading-relaxed ${isDark ? "text-gray-200" : "text-gray-700"}`}>
+              "I went from a 2.4 GPA to a 3.7 in one semester. Studying finally feels like a game."
+            </p>
+            <p className={`text-xs mt-2 ${isDark ? "text-gray-500" : "text-gray-500"}`}>— Priya S., Pre-Med</p>
+          </div>
         </div>
       </section>
 
