@@ -79,13 +79,15 @@ const WelcomeDiscountModal = ({ signupAt, userPlan }: Props) => {
       style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       {/* Top bar with dismiss */}
-      <div className="flex items-center justify-end px-4 py-3">
+      <div className="flex items-center justify-between px-4 py-3">
+        <span className="text-xs font-medium text-muted-foreground pl-1">Welcome offer</span>
         <button
           onClick={close}
-          aria-label="Close"
-          className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
+          aria-label="Cancel and close"
+          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-border bg-secondary text-foreground text-sm font-semibold hover:bg-secondary/80 transition-colors"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
+          Cancel
         </button>
       </div>
 
@@ -140,9 +142,9 @@ const WelcomeDiscountModal = ({ signupAt, userPlan }: Props) => {
         </button>
         <button
           onClick={close}
-          className="w-full text-center text-xs text-muted-foreground mt-3 py-2 hover:text-foreground transition-colors"
+          className="w-full mt-3 py-3 rounded-2xl border border-border bg-background text-foreground text-sm font-semibold hover:bg-secondary transition-colors"
         >
-          No thanks, maybe later
+          Cancel · No thanks
         </button>
       </div>
     </div>
