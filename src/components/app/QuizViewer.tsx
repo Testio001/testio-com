@@ -29,8 +29,10 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
   const [plan, setPlan] = useState<string>("free");
   // Track per-question answers for review
   const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     fetchQuizzes();
     fetchPlan();
   }, [documentId]);
@@ -49,14 +51,18 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
   const maxCap = isLimitedPlan ? 20 : 100;
 
   const fetchQuizzes = async () => {
-    const { data } = await supabase
-      .from("quizzes")
-      .select("*")
-      .eq("document_id", documentId)
-      .order("created_at", { ascending: false });
-    if (data && data.length > 0) {
-      setQuizzes(data);
-      fetchAllQuestions(data.map(q => q.id));
+    try {
+      const { data } = await supabase
+        .from("quizzes")
+        .select("*")
+        .eq("document_id", documentId)
+        .order("created_at", { ascending: false });
+      if (data && data.length > 0) {
+        setQuizzes(data);
+        await fetchAllQuestions(data.map(q => q.id));
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -140,6 +146,15 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-muted-foreground text-sm">Loading your quiz...</p>
+      </div>
+    );
+  }
+
   if (quizzes.length === 0) {
     return (
       <div className="text-center py-16">
@@ -149,7 +164,12 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
   }
 
   if (questions.length === 0) {
-    return <div className="text-center py-16 text-muted-foreground">Loading questions...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-muted-foreground text-sm">Loading questions...</p>
+      </div>
+    );
   }
 
   // ========== FULL-SCREEN RESULTS SUMMARY ==========
