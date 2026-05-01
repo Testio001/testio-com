@@ -19,6 +19,9 @@ const DISPOSABLE = new Set<string>([
   "spambog.com","spamgourmet.com","tempemail.net","tempemail.co",
   "20minutemail.com","1secmail.com","1secmail.net","1secmail.org",
   "anonymousmail.org","throwam.com","minitts.net","minitts.com",
+  // User-reported temp-mail domains (Nov 2025)
+  "inraud.com","yzcalo.com","bltiwd.com","wnbaldwy.com","bwmyga.com",
+  "ozsaip.com","lnovic.com","ruutukf.com","gmeenramy.com","racuacte.com",
 ]);
 
 const DISPOSABLE_KEYWORDS = [
