@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -30,9 +30,10 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
   // Track per-question answers for review
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   useEffect(() => {
-    setLoading(true);
     fetchQuizzes();
     fetchPlan();
   }, [documentId]);
@@ -51,6 +52,9 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
   const maxCap = isLimitedPlan ? 20 : 100;
 
   const fetchQuizzes = async () => {
+    // Only show full loader if we have nothing yet; otherwise keep existing
+    // content visible and overlay an inline loader.
+    setLoading(true);
     try {
       const { data } = await supabase
         .from("quizzes")
@@ -146,7 +150,7 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
     }
   };
 
-  if (loading) {
+  if (loading && questions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
@@ -155,7 +159,7 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
     );
   }
 
-  if (quizzes.length === 0) {
+  if (!loading && quizzes.length === 0) {
     return (
       <div className="text-center py-16">
         <p className="text-muted-foreground">No quizzes yet. Click "Generate Quiz" to create one from this document.</p>
@@ -163,7 +167,7 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
     );
   }
 
-  if (questions.length === 0) {
+  if (!loading && questions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
@@ -171,6 +175,15 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
       </div>
     );
   }
+
+  // Inline loading overlay shown on top of last-loaded content during refetches
+  const LoadingOverlay = () =>
+    loading ? (
+      <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-background/70 backdrop-blur-sm rounded-2xl">
+        <Loader2 className="w-7 h-7 text-primary animate-spin" />
+        <p className="text-muted-foreground text-sm">Loading your quiz...</p>
+      </div>
+    ) : null;
 
   // ========== FULL-SCREEN RESULTS SUMMARY ==========
   if (showResult) {
@@ -183,8 +196,9 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="-mx-4 md:-mx-8 px-4 md:px-8 min-h-[calc(100vh-220px)] flex flex-col"
+        className="relative -mx-4 md:-mx-8 px-4 md:px-8 min-h-[calc(100vh-220px)] flex flex-col"
       >
+        <LoadingOverlay />
         {/* Hero score */}
         <div className="w-full max-w-3xl mx-auto text-center pt-6 pb-8">
           <motion.div
@@ -328,8 +342,41 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
   const q = questions[currentIndex];
   const options = getOptions(q);
 
+  // Swipe-to-next gesture (only forward, only after answering).
+  // Leaves the existing "Next Question" button & explanation untouched.
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (selectedAnswer === null) return;
+    const t = e.touches[0];
+    touchStartX.current = t.clientX;
+    touchStartY.current = t.clientY;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const target = e.target as HTMLElement;
+    // Ignore swipes that start on interactive elements (buttons, links, inputs)
+    if (target.closest("button, a, input, textarea, select")) {
+      touchStartX.current = null;
+      touchStartY.current = null;
+      return;
+    }
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX.current;
+    const dy = t.clientY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && dx < 0) {
+      // swipe left → next
+      nextQuestion();
+    }
+  };
+
   return (
-    <div className="-mx-4 md:-mx-8 px-4 md:px-8 min-h-[calc(100vh-220px)] flex flex-col">
+    <div
+      className="relative -mx-4 md:-mx-8 px-4 md:px-8 min-h-[calc(100vh-220px)] flex flex-col"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      <LoadingOverlay />
       <div className="flex items-center justify-between mb-4">
         <span className="text-sm text-muted-foreground">Question {currentIndex + 1} of {questions.length}</span>
         <span className="text-sm text-primary font-medium">Score: {score}/{answered}</span>
