@@ -49,6 +49,17 @@ const DISPOSABLE_DOMAINS = new Set<string>([
   "throwam.com",
   "minitts.net",
   "minitts.com",
+  // User-reported temp-mail domains (Nov 2025)
+  "inraud.com",
+  "yzcalo.com",
+  "bltiwd.com",
+  "wnbaldwy.com",
+  "bwmyga.com",
+  "ozsaip.com",
+  "lnovic.com",
+  "ruutukf.com",
+  "gmeenramy.com",
+  "racuacte.com",
 ]);
 
 // Heuristic keywords commonly found in disposable / throwaway email domains.
