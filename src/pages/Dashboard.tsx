@@ -16,6 +16,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
 import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
+import FirstWeekDiscountBanner from "@/components/app/FirstWeekDiscountBanner";
 import EmptyStateDemo from "@/components/app/EmptyStateDemo";
 import InAppTestimonials from "@/components/app/InAppTestimonials";
 import NotificationBell from "@/components/app/NotificationBell";
@@ -352,6 +353,7 @@ const Dashboard = () => {
         title="Processing your document…"
         subtitle={uploading || "This may take a while. We'll open your summary automatically when it's ready."}
       />
+      <FirstWeekDiscountBanner signupAt={user?.created_at} userPlan={userPlan} />
       {/* Desktop/Tablet header */}
       <header className="border-b border-border/50 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
