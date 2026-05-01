@@ -344,8 +344,10 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
 
   // Swipe-to-next gesture (only forward, only after answering).
   // Leaves the existing "Next Question" button & explanation untouched.
+  const canSwipeBack = currentIndex > 0;
+  const canSwipeNext = selectedAnswer !== null;
   const onTouchStart = (e: React.TouchEvent) => {
-    if (selectedAnswer === null) return;
+    if (!canSwipeNext && !canSwipeBack) return;
     const t = e.touches[0];
     touchStartX.current = t.clientX;
     touchStartY.current = t.clientY;
@@ -364,9 +366,16 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
     const dy = t.clientY - touchStartY.current;
     touchStartX.current = null;
     touchStartY.current = null;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && dx < 0) {
-      // swipe left → next
-      nextQuestion();
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0 && canSwipeNext) {
+        // swipe left → next
+        nextQuestion();
+      } else if (dx > 0 && canSwipeBack) {
+        // swipe right → previous
+        const prev = currentIndex - 1;
+        setCurrentIndex(prev);
+        setSelectedAnswer(answers[prev] ?? null);
+      }
     }
   };
 
