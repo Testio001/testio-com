@@ -37,7 +37,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
     setPlan(isActive ? data.subscription_plan : "free");
   };
 
-  const fetchAllCards = async () => {
+  const fetchAllCards = async (preserveIndex?: number) => {
     const { data: setsData } = await supabase
       .from("flashcard_sets")
       .select("*")
@@ -52,8 +52,23 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
         .order("order_index");
       if (cardsData) {
         setCards(cardsData);
-        setCurrentIndex(0);
-        setFlippedMap({});
+        if (preserveIndex === undefined) {
+          setCurrentIndex(0);
+          setFlippedMap({});
+        } else {
+          // Resume at the user's last position once new cards render
+          const target = Math.min(preserveIndex, cardsData.length - 1);
+          setCurrentIndex(target);
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              cardRefs.current[target]?.scrollIntoView({
+                behavior: "smooth",
+                block: "nearest",
+                inline: "start",
+              });
+            }, 50);
+          });
+        }
       }
     }
   };
@@ -63,6 +78,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
 
   const generateMore = async () => {
     if (cards.length >= maxCap) return;
+    const resumeAt = currentIndex; // remember where the user is
     setGenerating(true);
     try {
       const { error } = await supabase.functions.invoke("generate-flashcards", {
@@ -70,7 +86,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
       });
       if (error) throw error;
       toast({ title: "More flashcards generated!" });
-      await fetchAllCards();
+      await fetchAllCards(resumeAt);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {

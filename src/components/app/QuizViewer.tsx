@@ -111,6 +111,8 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
   };
 
   const generateMore = async () => {
+    // Remember the user's progress so they continue from where they stopped
+    const resumeAt = showResult ? questions.length : currentIndex;
     setGenerating(true);
     try {
       const { error } = await supabase.functions.invoke("generate-quiz", {
@@ -129,6 +131,8 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
       }
       setShowResult(false);
       setSelectedAnswer(null);
+      // Jump to the next unanswered question (where the user left off)
+      setCurrentIndex(resumeAt);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
