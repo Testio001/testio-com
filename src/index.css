@@ -167,4 +167,7 @@
     background: linear-gradient(90deg, transparent, hsl(172, 66%, 50%, 0.6), transparent);
     height: 1px;
   }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
