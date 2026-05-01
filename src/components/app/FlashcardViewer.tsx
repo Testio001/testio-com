@@ -19,10 +19,12 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
   const [generating, setGenerating] = useState(false);
   const [plan, setPlan] = useState<string>("free");
   const [showHint, setShowHint] = useState(true);
+  const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
+    setLoading(true);
     fetchAllCards();
     fetchPlan();
   }, [documentId]);
@@ -38,12 +40,13 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
   };
 
   const fetchAllCards = async (preserveIndex?: number) => {
-    const { data: setsData } = await supabase
+    try {
+      const { data: setsData } = await supabase
       .from("flashcard_sets")
       .select("*")
       .eq("document_id", documentId)
       .order("created_at", { ascending: false });
-    if (setsData && setsData.length > 0) {
+      if (setsData && setsData.length > 0) {
       setSets(setsData);
       const { data: cardsData } = await supabase
         .from("flashcard_cards")
@@ -70,6 +73,9 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
           });
         }
       }
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -136,6 +142,15 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
     scrollToCard(0);
   };
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-muted-foreground text-sm">Loading your flashcards...</p>
+      </div>
+    );
+  }
+
   if (sets.length === 0) {
     return (
       <div className="text-center py-16">
@@ -145,7 +160,12 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
   }
 
   if (cards.length === 0) {
-    return <div className="text-center py-16 text-muted-foreground">Loading cards...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-muted-foreground text-sm">Loading cards...</p>
+      </div>
+    );
   }
 
   const canGenerateMore = cards.length < maxCap;
