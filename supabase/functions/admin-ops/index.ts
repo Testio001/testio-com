@@ -201,6 +201,86 @@ serve(async (req) => {
       return json({ success: true });
     }
 
+    if (action === "referrals") {
+      // Get all referrals
+      const { data: refs, error: refErr } = await supabaseAdmin
+        .from("referrals")
+        .select("referrer_user_id, referred_user_id, created_at")
+        .order("created_at", { ascending: false });
+
+      if (refErr) {
+        console.error("admin-ops referrals error", refErr);
+        return json({ error: "Unable to load referrals" }, 500);
+      }
+
+      const userIds = Array.from(
+        new Set((refs ?? []).flatMap((r) => [r.referrer_user_id, r.referred_user_id])),
+      );
+
+      const profilesMap = new Map<string, { email: string | null; display_name: string | null; subscription_plan: string; subscription_expires_at: string | null }>();
+      if (userIds.length > 0) {
+        const { data: profs } = await supabaseAdmin
+          .from("profiles")
+          .select("user_id, email, display_name, subscription_plan, subscription_expires_at")
+          .in("user_id", userIds);
+        for (const p of profs ?? []) {
+          profilesMap.set(p.user_id, {
+            email: p.email,
+            display_name: p.display_name,
+            subscription_plan: p.subscription_plan,
+            subscription_expires_at: p.subscription_expires_at,
+          });
+        }
+      }
+
+      const nowIso = new Date().toISOString();
+      const isPaid = (uid: string) => {
+        const p = profilesMap.get(uid);
+        if (!p) return false;
+        if (!["basic", "pro", "scholar", "elite"].includes(p.subscription_plan)) return false;
+        return !!p.subscription_expires_at && p.subscription_expires_at > nowIso;
+      };
+
+      const rows = (refs ?? []).map((r) => {
+        const referrer = profilesMap.get(r.referrer_user_id);
+        const referred = profilesMap.get(r.referred_user_id);
+        return {
+          created_at: r.created_at,
+          referrer_user_id: r.referrer_user_id,
+          referrer_email: referrer?.email ?? null,
+          referrer_name: referrer?.display_name ?? null,
+          referred_user_id: r.referred_user_id,
+          referred_email: referred?.email ?? null,
+          referred_name: referred?.display_name ?? null,
+          referred_plan: referred?.subscription_plan ?? "free",
+          referred_is_paid: isPaid(r.referred_user_id),
+        };
+      });
+
+      // Aggregate by referrer
+      const agg = new Map<string, { user_id: string; email: string | null; name: string | null; total: number; paid: number }>();
+      for (const row of rows) {
+        const cur = agg.get(row.referrer_user_id) ?? {
+          user_id: row.referrer_user_id,
+          email: row.referrer_email,
+          name: row.referrer_name,
+          total: 0,
+          paid: 0,
+        };
+        cur.total += 1;
+        if (row.referred_is_paid) cur.paid += 1;
+        agg.set(row.referrer_user_id, cur);
+      }
+      const topReferrers = Array.from(agg.values()).sort((a, b) => b.paid - a.paid || b.total - a.total);
+
+      return json({
+        totalReferrals: rows.length,
+        paidReferrals: rows.filter((r) => r.referred_is_paid).length,
+        topReferrers,
+        rows: rows.slice(0, 200),
+      });
+    }
+
     return json({ error: "Unknown action" }, 400);
   } catch (error) {
     console.error("admin-ops error", error);
