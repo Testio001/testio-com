@@ -197,8 +197,8 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
   const options = getOptions(q);
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="-mx-4 md:-mx-8 px-4 md:px-8 min-h-[calc(100vh-220px)] flex flex-col">
+      <div className="flex items-center justify-between mb-4">
         <span className="text-sm text-muted-foreground">Question {currentIndex + 1} of {questions.length}</span>
         <span className="text-sm text-primary font-medium">Score: {score}/{answered}</span>
       </div>
@@ -210,8 +210,13 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
         />
       </div>
 
-      <motion.div key={currentIndex} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-        <h3 className="text-foreground text-lg font-semibold mb-6">{q.question}</h3>
+      <motion.div
+        key={currentIndex}
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="flex-1 flex flex-col w-full max-w-3xl mx-auto"
+      >
+        <h3 className="text-foreground text-2xl md:text-3xl font-semibold mb-8 leading-snug">{q.question}</h3>
 
         <div className="space-y-3">
           {options.map((option, i) => {
@@ -224,7 +229,7 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
                 key={i}
                 onClick={() => handleAnswer(i)}
                 disabled={selectedAnswer !== null}
-                className={`w-full text-left p-4 rounded-xl border transition-all ${
+                className={`w-full text-left p-5 md:p-6 rounded-2xl border transition-all ${
                   showFeedback && isCorrect
                     ? "border-testio-green bg-testio-green/10"
                     : showFeedback && isSelected && !isCorrect
@@ -234,11 +239,11 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
                     : "border-border hover:border-primary/30 bg-testio-card"
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground font-mono w-6">{String.fromCharCode(65 + i)}.</span>
-                  <span className="text-foreground text-sm flex-1">{option.text}</span>
-                  {showFeedback && isCorrect && <CheckCircle2 className="w-5 h-5 text-testio-green" />}
-                  {showFeedback && isSelected && !isCorrect && <XCircle className="w-5 h-5 text-destructive" />}
+                <div className="flex items-center gap-4">
+                  <span className="shrink-0 w-9 h-9 rounded-full bg-secondary border border-border flex items-center justify-center text-sm font-semibold text-foreground">{String.fromCharCode(65 + i)}</span>
+                  <span className="text-foreground text-base md:text-lg flex-1 leading-relaxed">{option.text}</span>
+                  {showFeedback && isCorrect && <CheckCircle2 className="w-6 h-6 text-testio-green shrink-0" />}
+                  {showFeedback && isSelected && !isCorrect && <XCircle className="w-6 h-6 text-destructive shrink-0" />}
                 </div>
               </button>
             );
@@ -246,15 +251,18 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
         </div>
 
         {selectedAnswer !== null && q.explanation && (
-          <div className="mt-4 p-4 bg-secondary rounded-xl">
-            <p className="text-sm text-muted-foreground">{q.explanation}</p>
+          <div className="mt-6 p-5 bg-secondary rounded-2xl border border-border/50">
+            <p className="text-xs uppercase tracking-wider text-primary font-semibold mb-1">Explanation</p>
+            <p className="text-sm md:text-base text-foreground/90 leading-relaxed">{q.explanation}</p>
           </div>
         )}
 
         {selectedAnswer !== null && (
-          <button onClick={nextQuestion} className="btn-testio-primary text-sm !py-2 !px-6 mt-6">
-            {currentIndex < questions.length - 1 ? "Next Question" : "See Results"}
-          </button>
+          <div className="mt-8 flex justify-end">
+            <button onClick={nextQuestion} className="btn-testio-primary text-base !py-3 !px-8">
+              {currentIndex < questions.length - 1 ? "Next Question" : "See Results"}
+            </button>
+          </div>
         )}
       </motion.div>
     </div>
