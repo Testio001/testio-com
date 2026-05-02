@@ -36,17 +36,23 @@ serve(async (req) => {
 
     // Get user from auth header
     const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     let userId: string | null = null;
     let plan = "free";
 
-    if (authHeader?.startsWith("Bearer ")) {
+    {
       const anonClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_ANON_KEY")!,
         { global: { headers: { Authorization: authHeader } } }
       );
       const { data: { user } } = await anonClient.auth.getUser();
-      if (user) {
+      if (!user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      {
         userId = user.id;
         // Get plan
         const { data: profile } = await supabase.from("profiles").select("subscription_plan, subscription_expires_at").eq("user_id", user.id).single();
@@ -54,6 +60,14 @@ serve(async (req) => {
           const isExpired = profile.subscription_expires_at && new Date(profile.subscription_expires_at) < new Date();
           plan = isExpired ? "free" : (profile.subscription_plan || "free");
         }
+      }
+    }
+
+    // Verify the document belongs to this user
+    {
+      const { data: doc } = await supabase.from("documents").select("user_id").eq("id", documentId).maybeSingle();
+      if (!doc || doc.user_id !== userId) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 

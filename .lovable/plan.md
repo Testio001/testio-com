@@ -1,162 +1,69 @@
+## Security audit — what's actually wrong
 
+I scanned the backend (RLS, edge functions, storage, secrets, scanner findings). Here's the honest scorecard.
 
-This is a massive request. Let me break it into atomic changes and present a focused plan. I'll explore key files first to ground the plan in reality.
-<lov-tool-use id="toolu_vrtx_01Jnd9HbZq8cPSMNHysfMe1T" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/app/PodcastPlayer.tsx\"}">
-</lov-tool-use>
+### ✅ Already correct (do not touch)
 
-<lov-tool-use id="toolu_vrtx_013LVxpDkKM7wo9v1Xgxho1U" name="code--view" integration-id="code" data="{\"file_path\": \"supabase/functions/generate-podcast/index.ts\"}">
-</lov-tool-use>
+- **All user data tables** (`documents`, `notes`, `quizzes`, `flashcard_sets`, `chat_messages`, `folders`, `podcasts`, `referrals`, `user_stats SELECT`, `push_subscriptions`, `in_app_notifications`) — RLS is on and scoped by `auth.uid() = user_id`. Users **cannot** read each other's data.
+- **Subscription plan, rate limits, bonus uploads, abuse flags** are stored on `profiles` / `user_stats` and `ai_usage_log` — `profiles` and `user_stats` have no client-writable column for `subscription_plan`/`bonus_uploads` *via dedicated policy*… **except** see issue #1 below.
+- **Lemon Squeezy and Korapay** are called from edge functions only. Secrets (`LEMONSQUEEZY_API_KEY`, `KORAPAY_SECRET_KEY`, `RESEND_API_KEY`, `OPENAI_API_KEY`) live in Supabase secrets, never shipped to the browser.
+- **Korapay webhook** double-verifies via the Korapay API, so a forged webhook cannot grant a subscription even if the signature secret is misconfigured. (Scanner flagged this but it's actually safe — I'll mark it fixed.)
+- **AI rate limits** are enforced server-side via `check_ai_rate_limit` PG function reading `ai_usage_log` (which users cannot insert into — only service role can). Users **cannot** modify their rate limit.
 
-<lov-tool-use id="toolu_vrtx_01Vx9PGcwCxJWtkccezDrEJS" name="code--view" integration-id="code" data="{\"file_path\": \"supabase/functions/_shared/extract-content.ts\"}">
-</lov-tool-use>
+### 🔴 Real issues to fix
 
-<lov-tool-use id="toolu_vrtx_013F4kc8gsen9roi3rHMCPdu" name="code--view" integration-id="code" data="{\"file_path\": \"src/hooks/useGamification.tsx\"}">
-</lov-tool-use>
+**1. Profile self-upgrade vulnerability (CRITICAL)**
+The `profiles` UPDATE policy is `auth.uid() = user_id` with no column restriction. A logged-in user can run:
 
-<lov-tool-use id="toolu_vrtx_01PTwd5XkEKfFuT7wCMeu3s2" name="code--view" integration-id="code" data="{\"file_path\": \"supabase/functions/process-document/index.ts\"}">
-</lov-tool-use>
+```js
+supabase.from('profiles').update({ subscription_plan: 'elite', subscription_expires_at: '2099-01-01' }).eq('user_id', myId)
+```
 
-<lov-tool-use id="toolu_vrtx_013d2HoT5XFQSfbfLU52GZmt" name="code--view" integration-id="code" data="{\"file_path\": \"supabase/functions/manage-gamification/index.ts\"}">
-</lov-tool-use>
+…and instantly become an Elite subscriber, bypassing payment entirely.
+**Fix:** Add a trigger that blocks changes to `subscription_plan` and `subscription_expires_at` unless the caller is `service_role`. Users can still update `display_name`. No UI breakage.
 
-<lov-tool-use id="toolu_vrtx_01DUzhhuSNCV7ghpKo8bv5BA" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/DocumentView.tsx\"}">
-</lov-tool-use>
+**2. AI edge functions accept anonymous calls (HIGH)**
+`process-document`, `generate-notes`, `generate-quiz`, `generate-flashcards`, `generate-podcast` deploy with `verify_jwt = false` and never call `getClaims()`. Anyone with a document UUID can burn the owner's AI quota and overwrite their notes/quizzes.
+**Fix:** Add JWT validation at the top of each function and verify `doc.user_id === caller.id` before processing. The frontend already sends the auth header via `supabase.functions.invoke`, so this won't break legitimate flows.
 
-<lov-tool-use id="toolu_vrtx_01JSJAaYesCFqh6rCiLg7yP7" name="code--view" integration-id="code" data="{\"file_path\": \"supabase/functions/generate-flashcards/index.ts\"}">
-</lov-tool-use>
+**3. Hardcoded admin code "4171" in client bundle (HIGH)**
+`AdminCodeGate.tsx` ships `ACCESS_CODE = "4171"` to every visitor, and `admin-ops` accepts it as the only auth. Anyone can read it from the JS bundle and call admin-ops directly to read user lookups, modify streaks, and view dashboards.
+**Fix:** Replace with proper role check — require the caller to be authenticated and have the `admin` role in `user_roles` (table already exists with `has_role()` function). Remove the constant from the client; gate the admin page by checking `has_role(auth.uid(), 'admin')`. You'll need your own user_id added to `user_roles` once — I'll provide an insert.
+**⚠️ This will require you to be granted the admin role once before you can re-enter `/admin`. Confirm before I proceed.**
 
-<lov-tool-use id="toolu_vrtx_019cJyK1AVkUxYAWSLmuKwB6" name="code--view" integration-id="code" data="{\"file_path\": \"supabase/functions/generate-quiz/index.ts\"}">
-</lov-tool-use>
+**4. `podcasts` storage bucket has a "public read" policy (MEDIUM)**
+Even though the bucket is private, a leftover policy lets anyone with a file path stream any user's podcast.
+**Fix:** Drop the `Public can read podcasts` storage policy. Signed URLs continue to work.
 
-<lov-tool-use id="toolu_vrtx_01P8UD5ijEjBi9fmAgi1aDei" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/app/PodcastPlayer.tsx\"}">
-</lov-tool-use>
+**5. Realtime channel leak on `user_stats` (MEDIUM)**
+`user_stats` is published to Realtime with no channel-level RLS, so any authenticated user could subscribe and receive other users' stat updates (referral codes, abuse flags).
+**Fix:** Add an RLS policy on `realtime.messages` restricting subscriptions to the user's own topic. App code already only subscribes to its own user, so no UI breakage.
 
-<lov-tool-use id="toolu_vrtx_01EKKL5g73XU5jnVP9Avnhhe" name="code--view" integration-id="code" data="{\"file_path\": \"supabase/functions/generate-podcast/index.ts\"}">
-</lov-tool-use>
+**6. Edge functions leak internal error details (LOW)**
+`process-document`, `generate-podcast`, etc., return raw Supabase/OpenAI error messages to the client.
+**Fix:** Catch and return generic `"An internal error occurred"`; keep details in `console.error` only.
 
-<lov-tool-use id="toolu_vrtx_018BQnG7BL77TGMDaZLDyGvm" name="code--view" integration-id="code" data="{\"file_path\": \"supabase/functions/_shared/extract-content.ts\"}">
-</lov-tool-use>
+**7. Storage `documents` bucket missing UPDATE policy (LOW, defense-in-depth)**
+**Fix:** Add an owner-scoped UPDATE policy on `storage.objects` for the `documents` bucket.
 
-<lov-tool-use id="toolu_vrtx_01XdPk1MpZ4cLDmrgnTw4Y1m" name="code--view" integration-id="code" data="{\"file_path\": \"src/hooks/useGamification.tsx\"}">
-</lov-tool-use>
+**8. RLS policies scoped to `public` instead of `authenticated` (LOW, hygiene)**
+Many policies are evaluated against anonymous role even though `auth.uid()` is null then. Tightening the role makes intent explicit.
+**Fix:** Recreate the affected policies with `TO authenticated`. Behaviour-equivalent — no UI breakage.
 
-<lov-tool-use id="toolu_vrtx_01EUxiwrGKLLWwBpFErWEAqQ" name="code--view" integration-id="code" data="{\"file_path\": \"supabase/functions/process-document/index.ts\"}">
-</lov-tool-use>
+### ❓ Rate limiting (your question)
 
-<lov-tool-use id="toolu_vrtx_015oPBRT4enppm8wMcERXfHr" name="code--view" integration-id="code" data="{\"file_path\": \"supabase/functions/manage-gamification/index.ts\"}">
-</lov-tool-use>
+- **AI calls:** rate-limited per user in `check_ai_rate_limit` (10/hr free, 60/hr paid, 200/hr scholar). Tied to `user_id` from the document owner — not bypassable from the client.
+- **No IP-based limit.** Lovable Cloud doesn't have first-class rate-limit primitives, and adding ad-hoc IP throttling can break shared-WiFi users (dorms, campuses). I recommend **leaving it user-based** unless you've actually seen abuse.
+- **Login/signup:** abuse-checked by device fingerprint + email-domain blocklist (`check-signup-abuse`).
 
-<lov-tool-use id="toolu_vrtx_01UYDhgApmmNfHKY9z4kpdT9" name="code--view" integration-id="code" data="{\"file_path\": \"supabase/functions/generate-flashcards/index.ts\"}">
-</lov-tool-use>
+### Implementation order
 
-<lov-tool-use id="toolu_vrtx_01UAaBsbQdm1nRbMZKAT7vzR" name="code--view" integration-id="code" data="{\"file_path\": \"supabase/functions/generate-quiz/index.ts\"}">
-</lov-tool-use>
-I have enough context to build a comprehensive plan. Let me check a couple more relevant files briefly.
-<lov-tool-use id="toolu_vrtx_01MoibLn3wtEeXZvVeBqovQ8" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/DocumentView.tsx\", \"lines\": \"1-120\"}">
-</lov-tool-use>
+1. Migration: profile self-upgrade trigger (#1) + storage update policy (#7) + drop public podcast policy (#4) + realtime RLS (#5) + tighten policies to `authenticated` (#8).
+2. Edge functions: add JWT + ownership checks to 5 AI functions (#2), generic error responses (#6).
+3. Admin: replace code-gate with role check on `admin-ops` and `AdminCodeGate.tsx` (#3) — **awaiting your go-ahead** because it locks you out until I insert your admin role.
+4. Mark scanner findings resolved.
+5. Admin is [Testimony.bankole@elizadeuniversity.edu.ng](mailto:Testimony.bankole@elizadeuniversity.edu.ng) 
 
-<lov-tool-use id="toolu_vrtx_019J7ZMEEdfrHCau4KDdQb4H" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/Pricing.tsx\", \"lines\": \"1-80\"}">
-</lov-tool-use>
-I have enough context. Let me present the plan.
+### Question before I start
 
-<lov-plan>
-
-This is a large multi-area request. I'll group it into clear workstreams.
-
-## 1. Podcast Player — fix root-cause seek bug
-
-Current bug: `<audio src={blobUrl} ... />` with `blobUrl` in state ⇒ React re-renders and reassigns `src` on every state update (currentTime, playing, etc.), reloading audio and resetting to 0. The Blob fetch is also failing on signed URLs (CORS/expiry), per console logs.
-
-Fixes in `src/components/app/PodcastPlayer.tsx`:
-- Remove ALL Blob/`URL.createObjectURL` logic for playback (`loadAudioAsBlob`, `blobUrl` state, `blobUrlRef`).
-- Set `src` once via `useEffect` + ref:
-  ```ts
-  useEffect(() => {
-    if (audioRef.current && podcast?.audio_url) {
-      audioRef.current.src = podcast.audio_url;
-      audioRef.current.load();
-    }
-  }, [podcast?.audio_url]);
-  ```
-- Render `<audio ref={audioRef} preload="metadata" controlsList="nodownload" />` — NO `src` prop, NO conditional mount based on state.
-- Memoize the player with `React.memo` and isolate currentTime updates so they don't cascade re-renders that touch the audio element.
-- Keep Download MP3 button — it can fetch as blob ONLY when user clicks download (separate from playback).
-
-In `supabase/functions/generate-podcast/index.ts`:
-- Switch from `createSignedUrl` to **`getPublicUrl`** so the audio source is a stable, public, byte-range-supporting URL (already on `documents` bucket; ensure the file path is publicly readable — add a public read storage policy for `podcast_*.mp3` paths or move podcasts to a dedicated public bucket).
-- Add a migration to create a public bucket `podcasts` (or add a public-read policy on `documents` for objects with prefix `*/podcast_*.mp3`).
-
-## 2. Auto-generate notes on upload + auto-show on open
-
-- After `process-document` succeeds, **invoke `generate-notes` automatically** (chained call) so summary exists immediately. Quizzes/flashcards/podcast/chat already depend on it.
-- In `DocumentView.tsx`, when notes exist, default to the Notes tab (already does) and skip the "Generate Notes" button — it's already auto-shown. Add a fallback: if status=completed and no notes after 30s, show a one-click retry.
-
-## 3. Podcast length per plan — fix "always longest"
-
-Currently `generate-podcast` uses `maxExchanges` as a hard target, so a 2-page PDF still produces 24 exchanges of padded fluff (or short empty chunks).
-- Change logic: `maxExchanges` becomes a CAP. Compute target exchanges from `sourceContent.length` (e.g., `Math.min(cap, Math.max(4, Math.floor(content.length / 600)))`).
-- Pro user with tiny doc → naturally short podcast, but never above their cap.
-
-## 4. Quiz/Flashcard caps + no repeats
-
-- **Backend enforcement** in `generate-quiz` and `generate-flashcards`: load user's plan + count of existing questions/cards for that document. Block if Free user already has ≥20 quiz questions for the doc. Apply same per-plan rules for flashcards.
-- **No repeats**: currently passes only last 30 existing fronts. Change to pass ALL existing fronts/questions (truncated by token budget) and add explicit "generate questions covering DIFFERENT subtopics than the list above" instruction. Also raise temperature slightly and pass `seed` variance.
-
-## 5. Image/PPT/DOCX processing parity
-
-`extract-content.ts` already uses Gemini 2.5 Flash Lite for PDFs and images. Issues:
-- Image processing failing → confirm `extractFromImage` is being called from the main `extractDocumentContent` flow for `source_type === "image"`. Add explicit branch + better error messages.
-- Add PPTX support: PPTX is also a ZIP. Reuse `findZipEntries` to extract `ppt/slides/slide*.xml` text, mirror the DOCX flow. Fall back to Gemini if local parsing fails.
-- All visual extraction routes (PDF OCR, image, PPTX-with-images) → Gemini 2.5 Flash Lite. All text post-processing (notes, flashcards, quiz, chat) → GPT-4o-mini. Podcast TTS → gpt-4o-mini-audio-preview. (Already aligned; just close the image gap.)
-
-## 6. Free plan = 3 uploads LIFETIME (not monthly)
-
-- `manage-gamification`: remove any monthly reset for free uploads (none exists currently — `uploads_used` is already lifetime, just need to confirm and document). Update copy on Pricing/Home from "3 uploads / month" → "3 uploads (lifetime)".
-- Same lifetime treatment for free podcast (1 lifetime).
-
-## 7. Block re-signup abuse
-
-- New table `account_history` with `email_hash`, `device_fingerprint` (optional), `last_plan`, `deleted_at`.
-- On `delete-account`: insert hashed email into `account_history`.
-- On signup (via DB trigger on `auth.users` insert OR in `handle_new_user`): if email hash exists in `account_history`, mark new profile with `subscription_plan = 'free'` AND `bonus_uploads = 0` AND set a flag `previously_deleted = true` on profiles so they don't get the "first 3 uploads" — they get 0 bonus credits. Show a banner: "Welcome back — your previous account history was preserved."
-
-## 8. Seed streaks for current 22 users
-
-- Migration: assign `current_streak` randomly 88–200 for the 22 existing users; set Bankole (testimony.bankole / find by email) to 321.
-- Add `is_seeded_user boolean default false` on `user_stats`. Mark these 22 as seeded.
-- Edge function (cron daily) auto-increments `current_streak` for seeded users regardless of upload activity.
-- In Leaderboard view: for users with streak < 80, show message *"You're not in the Top 10,000 yet — keep studying to reach there."* instead of rank.
-
-## 9. Smart Upgrade CTA tier escalation
-
-In `UpgradePrompt.tsx` and any "Upgrade to Pro" CTAs:
-- Free → Pro CTA (current behavior).
-- Basic → Pro CTA (medium pressure).
-- Pro → Scholar CTA (soft, low-pressure copy: *"Need more? Scholar unlocks 12 podcasts & unlimited tutor."*).
-- Scholar → no upgrade CTA, show "You're on the top plan 👑".
-
-## 10. "Elite Members" pricing banner
-
-- Add to top of `Pricing.tsx`: *"Current rates locked for the first 1,000 'Elite' members. 997/1000 slots taken."* (static initially; can be backed by a `system_settings` row later.)
-- Add a recurring banner component that appears every 5 minutes ONLY for free users on dashboard/document pages. Use `setInterval` + dismiss state.
-
-## 11. "Did you know" tips
-
-- Extend the rotating tips array in `ProcessingOverlay.tsx` and the recurring banner with: *"Did you know you can become a top student for less than the price of a weekly coffee?"* and similar value-prop tips.
-
-## 12. Architecture summary (deliverable to user in chat after implementation)
-
-I'll produce a clear breakdown of: upload pipeline → extraction (Gemini) → notes (GPT-4o-mini) → flashcards/quiz/chat (GPT-4o-mini using SUMMARY only) → podcast (gpt-4o-mini-audio-preview using full notes capped at 8K chars), exact token boundaries, and what's sent to each model on each click.
-
----
-
-## Files to change
-
-**Edit**: `src/components/app/PodcastPlayer.tsx`, `supabase/functions/generate-podcast/index.ts`, `supabase/functions/process-document/index.ts`, `supabase/functions/_shared/extract-content.ts` (PPTX + image fix), `supabase/functions/generate-flashcards/index.ts`, `supabase/functions/generate-quiz/index.ts`, `supabase/functions/manage-gamification/index.ts`, `supabase/functions/delete-account/index.ts`, `src/pages/Pricing.tsx`, `src/pages/Home.tsx`, `src/pages/DocumentView.tsx`, `src/pages/Dashboard.tsx`, `src/components/app/UpgradePrompt.tsx`, `src/components/app/Leaderboard.tsx`, `src/components/app/ProcessingOverlay.tsx`, `src/hooks/useGamification.tsx`.
-
-**Create**: `src/components/app/ElitePricingBanner.tsx`, `src/components/app/RecurringUpsellBanner.tsx`, migration for `account_history` + `is_seeded_user` + storage public-read policy, migration for streak seeding, scheduled function `daily-streak-bump-seeded`.
-
-## Open question
-
-Could you confirm the **22 seeded user emails** (or should I select all current users in `profiles` ordered by `created_at` ascending limit 22)? And confirm Bankole's email to find his account.
-
+Items 1, 2, 4–8 are safe drop-ins (no UX change). **Item 3 (admin role gate)** requires me to grant your account the admin role via a one-line insert — tell me which email is yours so I add it in the same migration. Without that, you'd lose access to the admin dashboard until it's done.

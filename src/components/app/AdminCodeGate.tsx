@@ -1,44 +1,50 @@
-import { FormEvent, ReactNode, useEffect, useState } from "react";
-import { LockKeyhole } from "lucide-react";
-import { toast } from "sonner";
+import { ReactNode, useEffect, useState } from "react";
+import { LockKeyhole, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-
-const ACCESS_CODE = "4171";
-const STORAGE_KEY = "testio-admin-code-granted";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 type AdminCodeGateProps = {
   title: string;
   description: string;
-  children: (code: string) => ReactNode;
+  children: () => ReactNode;
 };
 
 const AdminCodeGate = ({ title, description, children }: AdminCodeGateProps) => {
-  const [code, setCode] = useState("");
-  const [unlocked, setUnlocked] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [checking, setChecking] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    setUnlocked(window.sessionStorage.getItem(STORAGE_KEY) === "true");
-  }, []);
+    let cancelled = false;
+    const check = async () => {
+      if (!user) { setChecking(false); setIsAdmin(false); return; }
+      const { data, error } = await supabase.rpc("has_role", {
+        _user_id: user.id,
+        _role: "admin",
+      });
+      if (!cancelled) {
+        setIsAdmin(!error && !!data);
+        setChecking(false);
+      }
+    };
+    if (!authLoading) check();
+    return () => { cancelled = true; };
+  }, [user, authLoading]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (code.trim() !== ACCESS_CODE) {
-      toast.error("Incorrect code");
-      return;
-    }
-
-    window.sessionStorage.setItem(STORAGE_KEY, "true");
-    setUnlocked(true);
-  };
-
-  if (unlocked) {
-    return <>{children(ACCESS_CODE)}</>;
+  if (authLoading || checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
   }
+
+  if (isAdmin) return <>{children()}</>;
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 text-foreground">
@@ -53,20 +59,15 @@ const AdminCodeGate = ({ title, description, children }: AdminCodeGateProps) => 
               <CardDescription>{description}</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <Input
-                autoFocus
-                inputMode="numeric"
-                maxLength={4}
-                placeholder="Enter code"
-                value={code}
-                onChange={(event) => setCode(event.target.value)}
-              />
-              <Button type="submit" className="w-full">
-                Enter
-              </Button>
-            </form>
+          <CardContent className="space-y-3 text-center">
+            <p className="text-sm text-muted-foreground">
+              {user
+                ? "Your account does not have admin access."
+                : "Sign in with an admin account to continue."}
+            </p>
+            <Button onClick={() => navigate(user ? "/dashboard" : "/auth")} className="w-full">
+              {user ? "Back to dashboard" : "Sign in"}
+            </Button>
           </CardContent>
         </Card>
       </div>

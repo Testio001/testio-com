@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getValidatedContent, isCorruptedNotes } from "../_shared/extract-content.ts";
+import { getAuthedUserId } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,6 +72,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const callerId = await getAuthedUserId(req);
+    if (!callerId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const { documentId, maxExchanges } = await req.json();
     // maxExchanges is the CAP per plan (not a target). We compute the actual
     // target based on document length so small docs get short podcasts.
@@ -81,6 +86,9 @@ serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
+    if (doc.user_id !== callerId) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // Rate limit check (per-user, per-function)
     const { data: rl } = await supabase.rpc("check_ai_rate_limit", {
