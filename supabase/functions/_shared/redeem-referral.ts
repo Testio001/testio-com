@@ -46,6 +46,28 @@ export async function redeemPendingReferralOnUpgrade(
         .eq("user_id", ref.referrer_user_id);
     }
 
+    // Also reward the referred user (+1 bonus upload) — both sides win.
+    const { data: refdStats } = await admin
+      .from("user_stats")
+      .select("bonus_uploads")
+      .eq("user_id", referredUserId)
+      .maybeSingle();
+    if (refdStats) {
+      await admin
+        .from("user_stats")
+        .update({ bonus_uploads: (refdStats.bonus_uploads || 0) + 1 })
+        .eq("user_id", referredUserId);
+    }
+
+    // Notify referred user too
+    await admin.from("in_app_notifications").insert({
+      user_id: referredUserId,
+      type: "referral_reward",
+      title: "🎉 Referral bonus unlocked!",
+      body: "Thanks for upgrading — you earned +1 bonus upload as a referral reward.",
+      link: "/dashboard",
+    });
+
     // Notify referrer
     await admin.from("in_app_notifications").insert({
       user_id: ref.referrer_user_id,
