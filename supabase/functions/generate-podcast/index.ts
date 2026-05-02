@@ -103,6 +103,21 @@ serve(async (req) => {
       }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Plan gate: Starter plan does NOT include podcasts
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("subscription_plan, subscription_expires_at")
+      .eq("user_id", doc.user_id)
+      .maybeSingle();
+    const planActive = prof?.subscription_expires_at && new Date(prof.subscription_expires_at) > new Date();
+    const activePlan = planActive ? prof?.subscription_plan : "free";
+    if (activePlan === "starter") {
+      return new Response(JSON.stringify({
+        error: "Podcasts are not included on the Starter plan. Upgrade to Basic, Pro, or Scholar to generate podcasts.",
+        planBlocked: true,
+      }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Use notes only if not corrupted
     const { data: notes } = await supabase.from("notes").select("content").eq("document_id", documentId);
     const noteContent = notes?.map((n: any) => n.content).filter((c: string) => !isCorruptedNotes(c)).join("\n\n");
