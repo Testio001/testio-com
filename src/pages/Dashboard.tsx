@@ -595,6 +595,7 @@ const Dashboard = () => {
             <GamificationSidebar
               onUpgrade={() => navigate("/pricing")}
               gamification={gamification}
+              userPlan={userPlan}
             />
           </div>
         </div>
@@ -604,6 +605,7 @@ const Dashboard = () => {
           <GamificationSidebar
             onUpgrade={() => navigate("/pricing")}
             gamification={gamification}
+            userPlan={userPlan}
           />
         </div>
 
