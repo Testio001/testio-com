@@ -641,18 +641,24 @@ export type Database = {
           id: string
           referred_user_id: string
           referrer_user_id: string
+          rewarded_at: string | null
+          status: string
         }
         Insert: {
           created_at?: string
           id?: string
           referred_user_id: string
           referrer_user_id: string
+          rewarded_at?: string | null
+          status?: string
         }
         Update: {
           created_at?: string
           id?: string
           referred_user_id?: string
           referrer_user_id?: string
+          rewarded_at?: string | null
+          status?: string
         }
         Relationships: []
       }

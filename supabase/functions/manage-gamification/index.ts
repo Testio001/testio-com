@@ -498,79 +498,26 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Referral rewards are paid-plan only
-        const { data: referrerProfileRow } = await supabaseAdmin
-          .from("profiles")
-          .select("subscription_plan, subscription_expires_at")
-          .eq("user_id", referrer.user_id)
-          .single();
-        const refPlan = referrerProfileRow?.subscription_plan || "free";
-        const refExpires = referrerProfileRow?.subscription_expires_at
-          ? new Date(referrerProfileRow.subscription_expires_at).getTime()
-          : 0;
-        const referrerOnPaidPlan =
-          ["basic", "pro", "scholar", "elite"].includes(refPlan) && refExpires > Date.now();
-        if (!referrerOnPaidPlan) {
-          result = {
-            success: false,
-            message: "Referral rewards are only available on paid plans.",
-          };
-          break;
-        }
-
+        // NEW POLICY: Record the referral as PENDING. The referrer only earns
+        // their bonus upload once this referred user upgrades to ANY paid plan.
         await supabaseAdmin.from("referrals").insert({
           referrer_user_id: referrer.user_id,
           referred_user_id: userId,
+          status: "pending",
         });
 
-        await supabaseAdmin
-          .from("user_stats")
-          .update({
-            bonus_uploads: referrer.bonus_uploads + 1,
-            streak_freezes: referrer.streak_freezes + 1,
-            referrals_this_month: referrer.referrals_this_month + 1,
-          })
-          .eq("user_id", referrer.user_id);
-
-        const myStats = await getOrCreateStats();
-        if (myStats) {
-          await supabaseAdmin
-            .from("user_stats")
-            .update({ bonus_uploads: myStats.bonus_uploads + 1 })
-            .eq("user_id", userId);
-        }
-
-        // Send referral success email to referrer
-        const referrerProfile = await getUserEmail(supabaseAdmin, referrer.user_id);
-        if (referrerProfile?.email) {
-          await sendEmail(supabaseAdmin, "referral-success", referrerProfile.email, `referral-success-${referrer.user_id}-${userId}`, {
-            displayName: referrerProfile.display_name || referrerProfile.email.split("@")[0],
-          });
-        }
-
-        // Push notification to referrer
-        await sendPush(supabaseAdmin, referrer.user_id, {
-          title: "🎉 Referral confirmed!",
-          body: "A friend just joined using your link! You earned 1 bonus upload + 1 streak freeze.",
-          url: "/dashboard"
-        });
-
+        // Notify the referrer that someone signed up via their link (no reward yet)
         await createInAppNotification(supabaseAdmin, referrer.user_id, {
-          type: "referral_reward",
-          title: "🎉 Referral reward!",
-          body: "A friend joined using your link. You got +1 bonus upload and +1 streak freeze.",
-          link: "/dashboard",
-        });
-        await createInAppNotification(supabaseAdmin, userId, {
-          type: "referral_welcome",
-          title: "🎁 Welcome bonus applied",
-          body: "Your referral code worked! You got +1 bonus upload to start.",
+          type: "referral_pending",
+          title: "👀 A friend joined using your link!",
+          body: "You'll earn +1 bonus upload as soon as they upgrade to a paid plan.",
           link: "/dashboard",
         });
 
         result = {
           success: true,
-          message: "Referral applied! You earned 1 bonus upload.",
+          message:
+            "Referral linked! Your friend needs to upgrade to a paid plan for you to earn your bonus upload.",
         };
         break;
       }

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { redeemPendingReferralOnUpgrade } from "../_shared/redeem-referral.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -113,6 +114,7 @@ Deno.serve(async (req) => {
       // Reset monthly usage counter so the user starts the new plan with a fresh quota.
       await admin.from("user_stats").update({ uploads_used: 0 }).eq("user_id", user.id);
       await sendCongratsEmail({ isAddon: false, expiresAt });
+      await redeemPendingReferralOnUpgrade(admin, user.id, tx.plan);
 
       return new Response(JSON.stringify({ success: true, plan: tx.plan, expires_at: expiresAt }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

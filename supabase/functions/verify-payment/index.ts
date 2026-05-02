@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createHmac } from "node:crypto";
+import { redeemPendingReferralOnUpgrade } from "../_shared/redeem-referral.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -108,6 +109,7 @@ Deno.serve(async (req) => {
           }).eq("user_id", userId);
 
           console.log(`Activated ${finalPlan} for user ${userId}`);
+          await redeemPendingReferralOnUpgrade(adminClient, userId, finalPlan);
         }
 
         return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
