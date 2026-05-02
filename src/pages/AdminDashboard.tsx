@@ -107,7 +107,7 @@ const FeatureUsageCard = ({
   </Card>
 );
 
-const AdminDashboardContent = ({ code }: { code: string }) => {
+const AdminDashboardContent = () => {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [referrals, setReferrals] = useState<ReferralData | null>(null);
@@ -117,7 +117,7 @@ const AdminDashboardContent = ({ code }: { code: string }) => {
     setLoading(true);
 
     const { data, error } = await supabase.functions.invoke("admin-ops", {
-      body: { action: "dashboard", code },
+      body: { action: "dashboard" },
     });
 
     if (error || data?.error) {
@@ -128,12 +128,12 @@ const AdminDashboardContent = ({ code }: { code: string }) => {
 
     setMetrics(data as DashboardMetrics);
     setLoading(false);
-  }, [code]);
+  }, []);
 
   const fetchReferrals = useCallback(async () => {
     setRefLoading(true);
     const { data, error } = await supabase.functions.invoke("admin-ops", {
-      body: { action: "referrals", code },
+      body: { action: "referrals" },
     });
     if (error || data?.error) {
       toast.error(error?.message || data?.error || "Unable to load referrals");
@@ -142,7 +142,7 @@ const AdminDashboardContent = ({ code }: { code: string }) => {
     }
     setReferrals(data as ReferralData);
     setRefLoading(false);
-  }, [code]);
+  }, []);
 
   useEffect(() => {
     void fetchMetrics();
@@ -319,9 +319,9 @@ const AdminDashboardContent = ({ code }: { code: string }) => {
 const AdminDashboard = () => (
   <AdminCodeGate
     title="Admin Dashboard"
-    description="Enter the admin code to view the aggregate metrics dashboard."
+    description="Sign in with an admin account to view the dashboard."
   >
-    {(code) => <AdminDashboardContent code={code} />}
+    {() => <AdminDashboardContent />}
   </AdminCodeGate>
 );
 
