@@ -14,7 +14,7 @@ type LookupResult = {
   longest_streak: number;
 };
 
-const AdminStreakAssignContent = ({ code }: { code: string }) => {
+const AdminStreakAssignContent = () => {
   const [email, setEmail] = useState("");
   const [streak, setStreak] = useState("");
   const [target, setTarget] = useState<LookupResult | null>(null);
@@ -25,7 +25,7 @@ const AdminStreakAssignContent = ({ code }: { code: string }) => {
     setBusy(true);
     setTarget(null);
     const { data, error } = await supabase.functions.invoke("admin-ops", {
-      body: { action: "lookup-user", code, email: email.trim() },
+      body: { action: "lookup-user", email: email.trim() },
     });
     setBusy(false);
     if (error || data?.error) { toast.error(error?.message || data?.error || "Lookup failed"); return; }
@@ -41,7 +41,7 @@ const AdminStreakAssignContent = ({ code }: { code: string }) => {
     if (Number.isNaN(n) || n < 0) { toast.error("Enter a valid non-negative number"); return; }
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("admin-ops", {
-      body: { action: "set-streak", code, targetUserId: target.user_id, streak: n },
+      body: { action: "set-streak", targetUserId: target.user_id, streak: n },
     });
     setBusy(false);
     if (error || data?.error) { toast.error(error?.message || data?.error || "Update failed"); return; }
@@ -99,9 +99,9 @@ const AdminStreakAssignContent = ({ code }: { code: string }) => {
 const AdminStreakAssign = () => (
   <AdminCodeGate
     title="Streak Admin"
-    description="Enter the admin code to search for a user and update their streak."
+    description="Sign in with an admin account to manage streaks."
   >
-    {(code) => <AdminStreakAssignContent code={code} />}
+    {() => <AdminStreakAssignContent />}
   </AdminCodeGate>
 );
 
