@@ -27,8 +27,6 @@ const GamificationSidebar = ({ onUpgrade, gamification, userPlan }: Gamification
 
   if (loading || !stats) return null;
 
-  const isPaid = !!userPlan && ["basic", "pro", "scholar", "elite"].includes(userPlan);
-
   return (
     <div className="space-y-4">
       {/* Uploads counter */}
@@ -71,39 +69,16 @@ const GamificationSidebar = ({ onUpgrade, gamification, userPlan }: Gamification
 
       <StreakDisplay stats={stats} />
 
-      {isPaid ? (
-        <ReferralCard
-          referralLink={getReferralLink()}
-          referralsThisMonth={stats.referrals_this_month}
-          maxReferrals={MAX_REFERRALS_PER_MONTH}
-          canRefer={canRefer}
-          daysUntilReset={daysUntilReferralReset}
-          referralsRemaining={referralsRemaining}
-          uploadsRemaining={uploadsRemaining}
-          totalAllowed={totalUploadsAllowed}
-        />
-      ) : (
-        <div className="bg-testio-card rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-              <Crown className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-foreground font-semibold text-sm">Refer & Earn</p>
-              <p className="text-muted-foreground text-xs">Available on paid plans</p>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Upgrade to unlock your referral link and earn 1 free upload for every friend who joins.
-          </p>
-          <button
-            onClick={onUpgrade}
-            className="w-full flex items-center justify-center gap-1.5 py-2 bg-primary/10 hover:bg-primary/20 rounded-lg text-xs font-medium text-primary transition-colors"
-          >
-            <Crown className="w-3.5 h-3.5" /> Upgrade to unlock
-          </button>
-        </div>
-      )}
+      <ReferralCard
+        referralLink={getReferralLink()}
+        referralsThisMonth={stats.referrals_this_month}
+        maxReferrals={MAX_REFERRALS_PER_MONTH}
+        canRefer={canRefer}
+        daysUntilReset={daysUntilReferralReset}
+        referralsRemaining={referralsRemaining}
+        uploadsRemaining={uploadsRemaining}
+        totalAllowed={totalUploadsAllowed}
+      />
 
       <BadgesDisplay badges={badges} currentStreak={stats.current_streak} />
 
