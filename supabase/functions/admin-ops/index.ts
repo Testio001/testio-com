@@ -6,8 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ACCESS_CODE = "4171";
-
 type DashboardCounts = {
   totalUsers: number;
   totalUploads: number;
@@ -31,16 +29,41 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Authenticate caller and require admin role
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(
+      authHeader.replace("Bearer ", ""),
+    );
+    if (claimsErr || !claimsData?.claims?.sub) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+    const callerId = claimsData.claims.sub as string;
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    const { data: isAdmin, error: roleErr } = await supabaseAdmin.rpc("has_role", {
+      _user_id: callerId,
+      _role: "admin",
+    });
+    if (roleErr || !isAdmin) {
+      return json({ error: "Forbidden" }, 403);
+    }
+
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") return json({ error: "Invalid request body" }, 400);
 
-    const { action, code } = body as { action?: string; code?: string };
-    if (code !== ACCESS_CODE) return json({ error: "Invalid code" }, 403);
+    const { action } = body as { action?: string };
 
     if (action === "dashboard") {
       const [
@@ -284,6 +307,6 @@ serve(async (req) => {
     return json({ error: "Unknown action" }, 400);
   } catch (error) {
     console.error("admin-ops error", error);
-    return json({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
+    return json({ error: "An internal error occurred" }, 500);
   }
 });
