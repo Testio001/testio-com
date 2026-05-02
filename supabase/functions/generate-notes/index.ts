@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getValidatedContent } from "../_shared/extract-content.ts";
+import { getAuthedUserId } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const callerId = await getAuthedUserId(req);
+    if (!callerId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const { documentId } = await req.json();
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
@@ -19,6 +24,9 @@ serve(async (req) => {
 
     // Get validated content using shared helper (auto re-extracts if needed)
     const { doc, content } = await getValidatedContent(supabase, documentId, OPENAI_API_KEY);
+    if (doc.user_id !== callerId) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const { data: existingNote } = await supabase
       .from("notes")
