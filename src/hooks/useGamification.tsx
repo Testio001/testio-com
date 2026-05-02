@@ -94,7 +94,9 @@ export function useGamification(): GamificationData {
   const [loading, setLoading] = useState(true);
   const [uploadsRemaining, setUploadsRemaining] = useState(0);
   const [totalUploadsAllowed, setTotalUploadsAllowed] = useState(FREE_UPLOAD_LIMIT);
-  const [canUpload, setCanUpload] = useState(true);
+  // Default to FALSE — only allow uploads after the server confirms remaining quota.
+  // Otherwise a stale/loading state lets users sneak in an extra upload.
+  const [canUpload, setCanUpload] = useState(false);
   const [referralsRemaining, setReferralsRemaining] = useState(MAX_REFERRALS_PER_MONTH);
   const [canRefer, setCanRefer] = useState(true);
   const [isAbuseFlagged, setIsAbuseFlagged] = useState(false);
