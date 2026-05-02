@@ -498,6 +498,26 @@ Deno.serve(async (req) => {
           break;
         }
 
+        // Referral rewards are paid-plan only
+        const { data: referrerProfileRow } = await supabaseAdmin
+          .from("profiles")
+          .select("subscription_plan, subscription_expires_at")
+          .eq("user_id", referrer.user_id)
+          .single();
+        const refPlan = referrerProfileRow?.subscription_plan || "free";
+        const refExpires = referrerProfileRow?.subscription_expires_at
+          ? new Date(referrerProfileRow.subscription_expires_at).getTime()
+          : 0;
+        const referrerOnPaidPlan =
+          ["basic", "pro", "scholar", "elite"].includes(refPlan) && refExpires > Date.now();
+        if (!referrerOnPaidPlan) {
+          result = {
+            success: false,
+            message: "Referral rewards are only available on paid plans.",
+          };
+          break;
+        }
+
         await supabaseAdmin.from("referrals").insert({
           referrer_user_id: referrer.user_id,
           referred_user_id: userId,
