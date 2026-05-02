@@ -75,8 +75,12 @@ serve(async (req) => {
     // sees the notes when it refreshes.
     try {
       console.log("Auto-invoking generate-notes for document", documentId);
+      // Forward the caller's Authorization header so generate-notes can authenticate
+      // the request (it requires a JWT after the security hardening).
+      const callerAuth = req.headers.get("Authorization") || "";
       const { error: notesErr } = await supabase.functions.invoke("generate-notes", {
         body: { documentId },
+        headers: callerAuth ? { Authorization: callerAuth } : undefined,
       });
       if (notesErr) {
         console.warn("Auto-generate-notes failed (non-fatal):", notesErr);

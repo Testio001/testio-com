@@ -24,6 +24,8 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken, curr
 
   // Scholar users see no upgrade CTA (top plan)
   const isTopPlan = currentPlan === "scholar";
+  // Refer-and-earn is paid-only
+  const canRefer = ["basic", "pro", "scholar", "elite"].includes(currentPlan);
 
   // Tier escalation
   const upgradeCopy: Record<string, { title: string; description: string; cta: string; pressure: "high" | "medium" | "soft" }> = {
@@ -99,12 +101,22 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken, curr
               <Icon className="w-3.5 h-3.5" /> {msg.cta}
             </button>
           )}
-          <button
-            onClick={onRefer}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-secondary hover:bg-secondary/80 rounded-full text-xs font-medium text-foreground transition-colors"
-          >
-            <Gift className="w-3.5 h-3.5" /> Refer a Friend
-          </button>
+          {canRefer ? (
+            <button
+              onClick={onRefer}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-secondary hover:bg-secondary/80 rounded-full text-xs font-medium text-foreground transition-colors"
+            >
+              <Gift className="w-3.5 h-3.5" /> Refer a Friend
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/pricing")}
+              title="Refer & Earn is available on paid plans"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-secondary/60 hover:bg-secondary rounded-full text-xs font-medium text-muted-foreground transition-colors"
+            >
+              <Crown className="w-3.5 h-3.5" /> Refer (Paid plans)
+            </button>
+          )}
         </div>
       )}
     </div>
