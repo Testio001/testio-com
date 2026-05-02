@@ -248,7 +248,8 @@ const DocumentView = () => {
   };
 
   const getPodcastLimit = () => {
-    const baseLimit = PODCAST_LIMITS[subscriptionPlan] || 2;
+    // Use ?? so Starter's 0 isn't treated as falsy and replaced with a default.
+    const baseLimit = PODCAST_LIMITS[subscriptionPlan] ?? 0;
     return baseLimit + bonusPodcasts;
   };
 
