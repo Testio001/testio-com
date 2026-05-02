@@ -418,9 +418,9 @@ const Home = () => {
           </div>
           <h2 className={`text-3xl font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>Invite Friends, Earn Free Uploads</h2>
           <p className={`max-w-2xl mx-auto mb-10 text-lg ${isDark ? "text-gray-300" : "text-gray-600"}`}>
-            Love Testio? Share it with your classmates! For every friend who signs up using your referral link, 
-            you both get <span className="font-bold text-indigo-500">bonus uploads</span> and 
-            <span className="font-bold text-indigo-500"> streak rewards</span>. The more you share, the more you earn.
+            Share Testio with your classmates. When a friend you invite upgrades to <span className="font-bold text-indigo-500">any paid plan</span> (Starter and up),
+            you instantly earn <span className="font-bold text-indigo-500">+1 bonus upload</span> and a <span className="font-bold text-indigo-500">streak freeze</span>.
+            No reward until they upgrade — keeps it fair for everyone.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 max-w-3xl mx-auto mb-10">
             <div className="bg-white rounded-xl p-6 border border-indigo-100">
@@ -429,11 +429,11 @@ const Home = () => {
             </div>
             <div className="bg-white rounded-xl p-6 border border-indigo-100">
               <div className="text-3xl font-extrabold text-indigo-600 mb-2">2</div>
-              <p className="text-sm text-gray-700 font-medium">Your friend signs up & uploads</p>
+              <p className="text-sm text-gray-700 font-medium">Your friend signs up & upgrades to any paid plan</p>
             </div>
             <div className="bg-white rounded-xl p-6 border border-indigo-100">
               <div className="text-3xl font-extrabold text-indigo-600 mb-2">3</div>
-              <p className="text-sm text-gray-700 font-medium">You both earn bonus uploads & streak perks</p>
+              <p className="text-sm text-gray-700 font-medium">You earn +1 bonus upload + streak freeze instantly</p>
             </div>
           </div>
           <button

@@ -63,6 +63,10 @@ const ReferralCard = ({
         </div>
       </div>
 
+      <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+        You'll earn <span className="text-primary font-medium">+1 bonus upload</span> when your friend upgrades to any paid plan (Starter and up).
+      </p>
+
       <div className="flex items-center gap-1 mb-3">
         {Array.from({ length: maxReferrals }).map((_, i) => (
           <div
