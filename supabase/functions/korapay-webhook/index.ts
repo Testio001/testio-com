@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { redeemPendingReferralOnUpgrade } from "../_shared/redeem-referral.ts";
 import { createHmac } from "node:crypto";
 
 const corsHeaders = {
@@ -132,6 +133,7 @@ Deno.serve(async (req) => {
           await admin.from("user_stats").update({ uploads_used: 0 }).eq("user_id", tx.user_id);
           await sendCongratsEmail({ isAddon: false, expiresAt });
           console.log(`Webhook: activated ${tx.plan} for`, tx.user_id);
+          await redeemPendingReferralOnUpgrade(admin, tx.user_id, tx.plan);
           await admin.from("in_app_notifications").insert({
             user_id: tx.user_id,
             type: "plan_activated",
