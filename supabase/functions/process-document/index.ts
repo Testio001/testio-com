@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { extractDocumentContent, sanitizeForDb } from "../_shared/extract-content.ts";
+import { getAuthedUserId } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const callerId = await getAuthedUserId(req);
+    if (!callerId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const { documentId } = await req.json();
 
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
@@ -20,6 +25,9 @@ serve(async (req) => {
 
     const { data: doc } = await supabase.from("documents").select("*").eq("id", documentId).single();
     if (!doc) throw new Error("Document not found");
+    if (doc.user_id !== callerId) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     await supabase.from("documents").update({ status: "processing" }).eq("id", documentId);
 
