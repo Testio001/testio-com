@@ -431,14 +431,20 @@ const Dashboard = () => {
               <div>
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">My Documents</h1>
                 <p className="text-muted-foreground text-xs sm:text-sm mt-1">
-                  {gamification.canUpload
-                    ? `${gamification.uploadsRemaining} upload${gamification.uploadsRemaining > 1 ? "s" : ""} remaining`
-                    : "Upload limit reached"}
+                  {gamification.loading
+                    ? "Loading…"
+                    : gamification.canUpload
+                      ? `${gamification.uploadsRemaining} upload${gamification.uploadsRemaining > 1 ? "s" : ""} remaining`
+                      : "Upload limit reached"}
                 </p>
               </div>
               {/* Upload button hidden on mobile (bottom nav has it), shown on sm+ */}
-              <button onClick={tryUpload} className="hidden sm:flex btn-testio-primary text-sm items-center gap-2 !py-2 !px-4 md:!py-2.5 md:!px-6 md:text-base">
-                <Plus className="w-4 h-4 md:w-5 md:h-5" /> Upload
+              <button
+                onClick={tryUpload}
+                disabled={gamification.loading}
+                className="hidden sm:flex btn-testio-primary text-sm items-center gap-2 !py-2 !px-4 md:!py-2.5 md:!px-6 md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus className="w-4 h-4 md:w-5 md:h-5" /> {gamification.loading ? "Loading…" : "Upload"}
               </button>
             </div>
 
@@ -523,7 +529,7 @@ const Dashboard = () => {
               </div>
             )}
 
-            {loading ? (
+            {loading || gamification.loading ? (
               <div className="text-center text-muted-foreground py-20">Loading...</div>
             ) : filteredDocs.length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16 sm:py-20">
