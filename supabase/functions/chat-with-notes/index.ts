@@ -9,6 +9,7 @@ const corsHeaders = {
 
 const QUESTION_LIMITS: Record<string, number> = {
   free: 5,
+  starter: 10,
   basic: 21,
   pro: 21,
 };
@@ -80,11 +81,15 @@ serve(async (req) => {
         .eq("user_id", userId)
         .eq("role", "user");
 
-      const limit = QUESTION_LIMITS[plan] || 5;
+      const limit = QUESTION_LIMITS[plan] ?? 5;
       if ((count ?? 0) >= limit) {
         const upgradeMsg = plan === "free"
-          ? "You've used all 5 free questions for this document. Upgrade to Basic or Pro for 21 questions per document."
-          : "You've reached the 21-question limit for this document.";
+          ? "You've used up your AI Tutor questions for this document (5/5). Upgrade to get more."
+          : plan === "starter"
+          ? "You've used up your AI Tutor questions for this document (10/10). Upgrade to Basic or Pro for 21 questions per document."
+          : plan === "scholar"
+          ? "You've reached the question limit for this document."
+          : "You've used up your AI Tutor questions for this document (21/21). Upgrade to Scholar for unlimited."; 
         return new Response(JSON.stringify({ error: upgradeMsg, limitReached: true }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
