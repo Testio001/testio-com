@@ -32,7 +32,7 @@ export async function redeemPendingReferralOnUpgrade(
 
     const { data: rStats } = await admin
       .from("user_stats")
-      .select("bonus_uploads, streak_freezes")
+      .select("bonus_uploads, streak_freezes, uploads_used")
       .eq("user_id", ref.referrer_user_id)
       .maybeSingle();
 
@@ -42,6 +42,9 @@ export async function redeemPendingReferralOnUpgrade(
         .update({
           bonus_uploads: (rStats.bonus_uploads || 0) + 1,
           streak_freezes: (rStats.streak_freezes || 0) + 1,
+          // Also free up one slot from prior usage so the +1 bonus is
+          // immediately usable even if the referrer had already hit their cap.
+          uploads_used: Math.max(0, (rStats.uploads_used || 0) - 1),
         })
         .eq("user_id", ref.referrer_user_id);
     }
@@ -49,13 +52,16 @@ export async function redeemPendingReferralOnUpgrade(
     // Also reward the referred user (+1 bonus upload) — both sides win.
     const { data: refdStats } = await admin
       .from("user_stats")
-      .select("bonus_uploads")
+      .select("bonus_uploads, uploads_used")
       .eq("user_id", referredUserId)
       .maybeSingle();
     if (refdStats) {
       await admin
         .from("user_stats")
-        .update({ bonus_uploads: (refdStats.bonus_uploads || 0) + 1 })
+        .update({
+          bonus_uploads: (refdStats.bonus_uploads || 0) + 1,
+          uploads_used: Math.max(0, (refdStats.uploads_used || 0) - 1),
+        })
         .eq("user_id", referredUserId);
     }
 
