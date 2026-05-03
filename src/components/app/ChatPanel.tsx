@@ -9,6 +9,7 @@ type ChatMessage = Tables<"chat_messages">;
 
 const QUESTION_LIMITS: Record<string, number> = {
   free: 5,
+  starter: 10,
   basic: 21,
   pro: 21,
 };
@@ -21,7 +22,7 @@ const ChatPanel = ({ documentId, subscriptionPlan = "free" }: { documentId: stri
   const [limitReached, setLimitReached] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const questionLimit = QUESTION_LIMITS[subscriptionPlan] || 5;
+  const questionLimit = QUESTION_LIMITS[subscriptionPlan] ?? 5;
   const userQuestionCount = messages.filter(m => m.role === "user").length;
   const questionsRemaining = Math.max(0, questionLimit - userQuestionCount);
 
@@ -42,7 +43,7 @@ const ChatPanel = ({ documentId, subscriptionPlan = "free" }: { documentId: stri
     if (data) {
       setMessages(data);
       const userCount = data.filter(m => m.role === "user").length;
-      const limit = QUESTION_LIMITS[subscriptionPlan] || 5;
+      const limit = QUESTION_LIMITS[subscriptionPlan] ?? 5;
       setLimitReached(userCount >= limit);
     }
   };
@@ -144,8 +145,8 @@ const ChatPanel = ({ documentId, subscriptionPlan = "free" }: { documentId: stri
           {limitReached ? (
             <span className="flex items-center justify-center gap-1 text-destructive">
               <Lock className="w-3 h-3" />
-              Question limit reached ({questionLimit}/{questionLimit}).
-              {subscriptionPlan !== "pro" && " Upgrade for more."}
+              You've used up your AI Tutor questions for this document ({questionLimit}/{questionLimit}).
+              {subscriptionPlan !== "pro" && subscriptionPlan !== "scholar" && " Upgrade for more."}
             </span>
           ) : (
             <span>{questionsRemaining} question{questionsRemaining !== 1 ? "s" : ""} remaining ({userQuestionCount}/{questionLimit})</span>
