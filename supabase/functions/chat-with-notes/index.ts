@@ -12,6 +12,8 @@ const QUESTION_LIMITS: Record<string, number> = {
   starter: 10,
   basic: 21,
   pro: 21,
+  scholar: 9999,
+  elite: 9999,
 };
 
 function extractSummary(noteContent: string): string {
