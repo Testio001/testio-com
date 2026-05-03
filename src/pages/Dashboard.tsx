@@ -132,6 +132,7 @@ const Dashboard = () => {
   };
 
   const tryUpload = () => {
+    if (gamification.loading) return;
     if (!gamification.canUpload) {
       if (gamification.isAbuseFlagged && (!userPlan || userPlan === "free")) {
         toast({
