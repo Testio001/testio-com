@@ -529,7 +529,7 @@ const Dashboard = () => {
               </div>
             )}
 
-            {loading ? (
+            {loading || gamification.loading ? (
               <div className="text-center text-muted-foreground py-20">Loading...</div>
             ) : filteredDocs.length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16 sm:py-20">
