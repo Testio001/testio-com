@@ -561,6 +561,11 @@ export async function extractDocumentContent(params: ExtractParams): Promise<Ext
   if (doc.source_type === "docx" || fileExt === "docx") {
     console.log("Extracting DOCX content...");
 
+    // Reject documents that are too large to process reliably
+    if (fileData.size && fileData.size > 15 * 1024 * 1024) {
+      return { content: "", method: "docx_local", success: false, error: "Document too long. Please upload a shorter document." };
+    }
+
     // Stage A: Local OOXML parsing
     const localText = await extractDocxTextAsync(fileData);
     console.log(`Local DOCX extraction: ${localText.length} chars`);
@@ -587,7 +592,17 @@ export async function extractDocumentContent(params: ExtractParams): Promise<Ext
   if (fileExt === "pdf") {
     const arrayBuffer = await fileData.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
+
+    // Reject PDFs that are too large to process reliably (size or content length)
+    if (uint8Array.byteLength > 15 * 1024 * 1024) {
+      return { content: "", method: "regex", success: false, error: "Document too long. Please upload a shorter document." };
+    }
+
     const rawText = new TextDecoder("latin1").decode(uint8Array);
+
+    if (rawText.length > 8_000_000) {
+      return { content: "", method: "regex", success: false, error: "Document too long. Please upload a shorter document." };
+    }
 
     const regexContent = extractPdfTextRegex(rawText);
     console.log(`Regex PDF extraction: ${regexContent.length} chars`);
