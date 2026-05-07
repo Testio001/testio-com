@@ -3,6 +3,7 @@ import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Us
 import { useTheme } from "@/hooks/useTheme";
 import { Moon, Sun } from "lucide-react";
 import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
+import SampleDocumentGallery from "@/components/app/SampleDocumentGallery";
 
 const features = [
   {
@@ -276,6 +277,7 @@ const Home = () => {
               />
             </div>
           </div>
+          <SampleDocumentGallery />
         </div>
       </section>
 

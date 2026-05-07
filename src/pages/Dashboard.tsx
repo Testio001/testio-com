@@ -23,6 +23,8 @@ import InAppTestimonials from "@/components/app/InAppTestimonials";
 import NotificationBell from "@/components/app/NotificationBell";
 import ProcessingOverlay from "@/components/app/ProcessingOverlay";
 import { useCurrency, priceFor, periodFor, entryPlanFor } from "@/hooks/useCurrency";
+import LimitReachedModal from "@/components/app/LimitReachedModal";
+import CelebrationScreen from "@/components/app/CelebrationScreen";
 
 type Document = Tables<"documents">;
 
@@ -42,6 +44,9 @@ const Dashboard = () => {
   const [renameValue, setRenameValue] = useState("");
   const [userPlan, setUserPlan] = useState<string | null>(null);
   const [showPeriodicUpgrade, setShowPeriodicUpgrade] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [celebration, setCelebration] = useState<{ title: string; seconds: number } | null>(null);
+  const [uploadStartedAt, setUploadStartedAt] = useState<number | null>(null);
   const isAndroidApp = useIsAndroidApp();
 
   const sendStudyDeckReadyNotification = async (docTitle: string) => {
@@ -143,9 +148,15 @@ const Dashboard = () => {
         navigate("/pricing");
         return;
       }
-      setShowReferral(true);
+      // Free users: show aggressive limit-reached modal with countdown
+      if (!userPlan || userPlan === "free") {
+        setShowLimitModal(true);
+      } else {
+        setShowReferral(true);
+      }
       return;
     }
+    setUploadStartedAt(Date.now());
     setShowUpload(true);
   };
 
@@ -193,7 +204,16 @@ const Dashboard = () => {
         setUploading(null);
         toast({ title: "Done!", description: "Your document has been processed." });
         sendStudyDeckReadyNotification(doc.title);
-        navigate(`/document/${doc.id}`);
+        // First-document celebration
+        const isFirst = !localStorage.getItem("testio_first_doc_celebrated");
+        if (isFirst) {
+          localStorage.setItem("testio_first_doc_celebrated", "1");
+          const secs = uploadStartedAt ? Math.max(8, Math.round((Date.now() - uploadStartedAt) / 1000)) : 38;
+          setCelebration({ title: doc.title, seconds: secs });
+          setTimeout(() => navigate(`/document/${doc.id}`), 4500);
+        } else {
+          navigate(`/document/${doc.id}`);
+        }
       } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the document. Please try re-uploading or try again later.", variant: "destructive" });
@@ -652,6 +672,28 @@ const Dashboard = () => {
 
       {/* Recurring "Did you know?" upsell banner — free users only, every ~5 min */}
       <RecurringUpsellBanner userPlan={userPlan} />
+
+      <LimitReachedModal
+        open={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        signupAt={user?.created_at}
+        onRefer={() => {
+          const link = gamification.getReferralLink();
+          if (navigator.share) {
+            navigator.share({ title: "Join Testio!", text: "Study smarter with AI-powered notes.", url: link });
+          } else {
+            navigator.clipboard.writeText(link);
+            toast({ title: "Link copied!", description: "Share it with friends to earn uploads." });
+          }
+        }}
+      />
+
+      <CelebrationScreen
+        open={!!celebration}
+        onClose={() => setCelebration(null)}
+        docTitle={celebration?.title || ""}
+        elapsedSeconds={celebration?.seconds || 38}
+      />
     </div>
   );
 };
