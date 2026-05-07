@@ -408,6 +408,42 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "use-streak-freeze": {
+        const activePlan = await getActivePlan(supabaseAdmin, userId);
+        if (!["pro", "scholar", "elite"].includes(activePlan)) {
+          result = { success: false, message: "Streak Freeze is a Pro feature. Upgrade to protect your streak." };
+          break;
+        }
+        const { data: freshStats } = await supabaseAdmin
+          .from("user_stats")
+          .select("*")
+          .eq("user_id", userId)
+          .single();
+        if (!freshStats) {
+          result = { success: false, message: "Stats not found" };
+          break;
+        }
+        // 1 freeze per 7 days
+        if (freshStats.last_streak_freeze_at) {
+          const lastUsed = new Date(freshStats.last_streak_freeze_at).getTime();
+          const daysSince = (Date.now() - lastUsed) / (1000 * 60 * 60 * 24);
+          if (daysSince < 7) {
+            const daysLeft = Math.ceil(7 - daysSince);
+            result = { success: false, message: `You can use another Streak Freeze in ${daysLeft} day${daysLeft > 1 ? "s" : ""}.` };
+            break;
+          }
+        }
+        await supabaseAdmin
+          .from("user_stats")
+          .update({
+            streak_freezes: (freshStats.streak_freezes || 0) + 1,
+            last_streak_freeze_at: new Date().toISOString(),
+          })
+          .eq("user_id", userId);
+        result = { success: true, message: "Streak Freeze activated! Your streak is protected for one missed day." };
+        break;
+      }
+
       case "process-referral": {
         const { referralCode } = params;
         if (!referralCode) {
