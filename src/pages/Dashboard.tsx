@@ -23,6 +23,8 @@ import InAppTestimonials from "@/components/app/InAppTestimonials";
 import NotificationBell from "@/components/app/NotificationBell";
 import ProcessingOverlay from "@/components/app/ProcessingOverlay";
 import { useCurrency, priceFor, periodFor, entryPlanFor } from "@/hooks/useCurrency";
+import LimitReachedModal from "@/components/app/LimitReachedModal";
+import CelebrationScreen from "@/components/app/CelebrationScreen";
 
 type Document = Tables<"documents">;
 
@@ -42,6 +44,9 @@ const Dashboard = () => {
   const [renameValue, setRenameValue] = useState("");
   const [userPlan, setUserPlan] = useState<string | null>(null);
   const [showPeriodicUpgrade, setShowPeriodicUpgrade] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [celebration, setCelebration] = useState<{ title: string; seconds: number } | null>(null);
+  const [uploadStartedAt, setUploadStartedAt] = useState<number | null>(null);
   const isAndroidApp = useIsAndroidApp();
 
   const sendStudyDeckReadyNotification = async (docTitle: string) => {
@@ -143,9 +148,15 @@ const Dashboard = () => {
         navigate("/pricing");
         return;
       }
-      setShowReferral(true);
+      // Free users: show aggressive limit-reached modal with countdown
+      if (!userPlan || userPlan === "free") {
+        setShowLimitModal(true);
+      } else {
+        setShowReferral(true);
+      }
       return;
     }
+    setUploadStartedAt(Date.now());
     setShowUpload(true);
   };
 
