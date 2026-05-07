@@ -4,7 +4,6 @@ import { useTheme } from "@/hooks/useTheme";
 import { Moon, Sun } from "lucide-react";
 import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
 import SampleDocumentGallery from "@/components/app/SampleDocumentGallery";
-import LiveCounter from "@/components/app/LiveCounter";
 
 const features = [
   {
