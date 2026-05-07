@@ -768,6 +768,7 @@ export type Database = {
           id: string
           is_abuse_flagged: boolean
           is_seeded_user: boolean
+          last_streak_freeze_at: string | null
           last_upload_date: string | null
           longest_streak: number
           referral_code: string
@@ -788,6 +789,7 @@ export type Database = {
           id?: string
           is_abuse_flagged?: boolean
           is_seeded_user?: boolean
+          last_streak_freeze_at?: string | null
           last_upload_date?: string | null
           longest_streak?: number
           referral_code: string
@@ -808,6 +810,7 @@ export type Database = {
           id?: string
           is_abuse_flagged?: boolean
           is_seeded_user?: boolean
+          last_streak_freeze_at?: string | null
           last_upload_date?: string | null
           longest_streak?: number
           referral_code?: string
