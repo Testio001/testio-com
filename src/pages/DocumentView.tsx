@@ -468,50 +468,54 @@ const DocumentView = () => {
         </div>
 
         {/* Action buttons */}
-        {activeTab === "flashcards" && !hasFlashcards && (
-          <div className="mb-6">
-            <button onClick={generateFlashcards} disabled={generating === "flashcards"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
-              {generating === "flashcards" ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
-              Generate Flashcards
-            </button>
-          </div>
-        )}
-
-        {activeTab === "quiz" && !hasQuiz && (
-          <div className="mb-6">
-            <button onClick={generateQuiz} disabled={generating === "quiz"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
-              {generating === "quiz" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
-              Generate Quiz
-            </button>
-            {subscriptionPlan === "free" && (
-              <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
-                <Crown className="w-3 h-3" /> Free plan: up to {FREE_QUIZ_MAX_QUESTIONS} questions per quiz
-              </p>
+        {!loadingContent && (
+          <>
+            {activeTab === "flashcards" && !hasFlashcards && (
+              <div className="mb-6">
+                <button onClick={generateFlashcards} disabled={generating === "flashcards"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
+                  {generating === "flashcards" ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
+                  Generate Flashcards
+                </button>
+              </div>
             )}
-          </div>
-        )}
 
-        {activeTab === "podcast" && !hasPodcast && (
-          <div className="mb-6">
-            <button onClick={generatePodcast} disabled={generating === "podcast"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
-              {generating === "podcast" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
-              Generate Podcast
-            </button>
-            <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
-              <Crown className="w-3 h-3" />
-              {podcastsRemaining > 0
-                ? `${podcastsRemaining} podcast${podcastsRemaining !== 1 ? "s" : ""} remaining (${podcastCount}/${podcastLimitTotal})`
-                : "Podcast limit reached"
-              }
-              {subscriptionPlan !== "pro" && " · Upgrade for more"}
-            </p>
-            {generating === "podcast" && (
-              <p className="text-muted-foreground text-xs mt-3 flex items-center gap-2">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                This may take up to 3-5 minutes. Please do not close this page while the podcast is being generated.
-              </p>
+            {activeTab === "quiz" && !hasQuiz && (
+              <div className="mb-6">
+                <button onClick={generateQuiz} disabled={generating === "quiz"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
+                  {generating === "quiz" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
+                  Generate Quiz
+                </button>
+                {subscriptionPlan === "free" && (
+                  <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
+                    <Crown className="w-3 h-3" /> Free plan: up to {FREE_QUIZ_MAX_QUESTIONS} questions per quiz
+                  </p>
+                )}
+              </div>
             )}
-          </div>
+
+            {activeTab === "podcast" && !hasPodcast && (
+              <div className="mb-6">
+                <button onClick={generatePodcast} disabled={generating === "podcast"} className="btn-testio-primary text-sm !py-2 !px-6 flex items-center gap-2">
+                  {generating === "podcast" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
+                  Generate Podcast
+                </button>
+                <p className="text-muted-foreground text-xs mt-2 flex items-center gap-1">
+                  <Crown className="w-3 h-3" />
+                  {podcastsRemaining > 0
+                    ? `${podcastsRemaining} podcast${podcastsRemaining !== 1 ? "s" : ""} remaining (${podcastCount}/${podcastLimitTotal})`
+                    : "Podcast limit reached"
+                  }
+                  {subscriptionPlan !== "pro" && " · Upgrade for more"}
+                </p>
+                {generating === "podcast" && (
+                  <p className="text-muted-foreground text-xs mt-3 flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    This may take up to 3-5 minutes. Please do not close this page while the podcast is being generated.
+                  </p>
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {/* Content */}
