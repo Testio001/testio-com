@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import testioLogo from "@/assets/testio-logo.png";
 import ElitePricingBanner from "@/components/app/ElitePricingBanner";
 import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
+import ComparisonReceipt from "@/components/app/ComparisonReceipt";
 
 type PlanId = "free" | "starter" | "basic" | "pro" | "scholar";
 
@@ -487,6 +488,8 @@ const Pricing = () => {
           </p>
           <p className="text-muted-foreground text-[10px]">Created by <span className="font-semibold">TechWorld</span></p>
         </div>
+
+        <ComparisonReceipt />
 
         {/* Testimonials */}
         <section className="mt-20">

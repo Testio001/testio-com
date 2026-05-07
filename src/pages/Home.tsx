@@ -277,6 +277,7 @@ const Home = () => {
               />
             </div>
           </div>
+          <SampleDocumentGallery />
         </div>
       </section>
 
