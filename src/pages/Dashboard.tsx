@@ -204,7 +204,16 @@ const Dashboard = () => {
         setUploading(null);
         toast({ title: "Done!", description: "Your document has been processed." });
         sendStudyDeckReadyNotification(doc.title);
-        navigate(`/document/${doc.id}`);
+        // First-document celebration
+        const isFirst = !localStorage.getItem("testio_first_doc_celebrated");
+        if (isFirst) {
+          localStorage.setItem("testio_first_doc_celebrated", "1");
+          const secs = uploadStartedAt ? Math.max(8, Math.round((Date.now() - uploadStartedAt) / 1000)) : 38;
+          setCelebration({ title: doc.title, seconds: secs });
+          setTimeout(() => navigate(`/document/${doc.id}`), 4500);
+        } else {
+          navigate(`/document/${doc.id}`);
+        }
       } catch {
         setUploading(null);
         toast({ title: "Processing failed", description: "Couldn't process the document. Please try re-uploading or try again later.", variant: "destructive" });
@@ -663,6 +672,28 @@ const Dashboard = () => {
 
       {/* Recurring "Did you know?" upsell banner — free users only, every ~5 min */}
       <RecurringUpsellBanner userPlan={userPlan} />
+
+      <LimitReachedModal
+        open={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        signupAt={user?.created_at}
+        onRefer={() => {
+          const link = gamification.getReferralLink();
+          if (navigator.share) {
+            navigator.share({ title: "Join Testio!", text: "Study smarter with AI-powered notes.", url: link });
+          } else {
+            navigator.clipboard.writeText(link);
+            toast({ title: "Link copied!", description: "Share it with friends to earn uploads." });
+          }
+        }}
+      />
+
+      <CelebrationScreen
+        open={!!celebration}
+        onClose={() => setCelebration(null)}
+        docTitle={celebration?.title || ""}
+        elapsedSeconds={celebration?.seconds || 38}
+      />
     </div>
   );
 };

@@ -1,18 +1,50 @@
-import { Flame, Shield, Snowflake } from "lucide-react";
+import { Flame, Snowflake, Lock } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { UserStats } from "@/hooks/useGamification";
 
 interface StreakDisplayProps {
   stats: UserStats | null;
   compact?: boolean;
+  userPlan?: string | null;
+  onUpdated?: () => void;
 }
 
-const StreakDisplay = ({ stats, compact }: StreakDisplayProps) => {
+const StreakDisplay = ({ stats, compact, userPlan, onUpdated }: StreakDisplayProps) => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
   if (!stats) return null;
 
   const streak = stats.current_streak;
   const nextBonus = stats.current_streak > 0
     ? 10 - (stats.current_streak % 10)
     : 10;
+  const isPaidPlus = ["pro", "scholar", "elite"].includes(userPlan || "");
+
+  const useFreeze = async () => {
+    if (!isPaidPlus) {
+      toast({ title: "Pro feature", description: "Streak Freeze is available on Pro and above." });
+      navigate("/pricing");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { data } = await supabase.functions.invoke("manage-gamification", {
+        body: { action: "use-streak-freeze" },
+      });
+      if (data?.success) {
+        toast({ title: "❄️ Streak Freeze activated", description: data.message });
+        onUpdated?.();
+      } else {
+        toast({ title: "Can't activate", description: data?.message || "Try again later.", variant: "destructive" });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (compact) {
     return (
@@ -62,6 +94,18 @@ const StreakDisplay = ({ stats, compact }: StreakDisplayProps) => {
         <p className="text-xs text-muted-foreground">
           Your streak was broken. Refer a friend to earn a Streak Freeze for next time!
         </p>
+      )}
+
+      {userPlan !== undefined && (
+        <button
+          onClick={useFreeze}
+          disabled={busy}
+          className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 disabled:opacity-60"
+          title={isPaidPlus ? "Protect your streak (1×/week)" : "Upgrade to Pro to unlock Streak Freeze"}
+        >
+          {isPaidPlus ? <Snowflake className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+          {isPaidPlus ? "Use Streak Freeze (1×/week)" : "Streak Freeze — Pro feature"}
+        </button>
       )}
     </div>
   );
