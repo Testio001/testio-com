@@ -67,7 +67,7 @@ const GamificationSidebar = ({ onUpgrade, gamification, userPlan }: Gamification
         )}
       </div>
 
-      <StreakDisplay stats={stats} />
+      <StreakDisplay stats={stats} userPlan={userPlan} onUpdated={() => gamification.fetchStats()} />
 
       <ReferralCard
         referralLink={getReferralLink()}
