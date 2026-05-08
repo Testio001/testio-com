@@ -601,7 +601,8 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {filteredDocs.map((doc, i) => (
                   <motion.div key={doc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                    onClick={() => navigate(`/document/${doc.id}`)} className="bg-testio-card rounded-xl p-4 sm:p-5 cursor-pointer hover:border-primary/30 transition-all group">
+                    onClick={() => { if (doc.status !== "failed") navigate(`/document/${doc.id}`); }}
+                    className={`bg-testio-card rounded-xl p-4 sm:p-5 transition-all group ${doc.status === "failed" ? "opacity-70 cursor-default" : "cursor-pointer hover:border-primary/30"}`}>
                     <div className="flex items-start justify-between mb-3">
                       <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-primary/60" />
                       <div className="flex items-center gap-1">
@@ -640,6 +641,9 @@ const Dashboard = () => {
                       <h3 className="text-foreground font-semibold text-sm mb-1 truncate">{doc.title}</h3>
                     )}
                     <p className="text-muted-foreground text-xs">{doc.source_type.toUpperCase()} · {new Date(doc.created_at).toLocaleDateString()}</p>
+                    {doc.status === "failed" && (
+                      <p className="text-destructive text-[11px] mt-2">Document too long or unreadable. Please delete and upload a shorter version.</p>
+                    )}
                   </motion.div>
                 ))}
               </div>
