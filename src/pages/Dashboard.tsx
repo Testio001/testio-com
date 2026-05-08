@@ -165,6 +165,16 @@ const Dashboard = () => {
     if (!file || !user) return;
     const fileExt = file.name.split(".").pop();
     const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+    // Pre-upload size guard — reject obviously-too-large PDFs before we pay for storage + AI
+    if ((fileExt?.toLowerCase() === "pdf") && file.size > 15 * 1024 * 1024) {
+      toast({
+        title: "Document too long",
+        description: "This PDF is too large to process. Please upload a shorter document (under ~15 MB).",
+        variant: "destructive",
+      });
+      e.target.value = "";
+      return;
+    }
     setUploading("Uploading document...");
     setShowUpload(false);
     const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
@@ -214,10 +224,13 @@ const Dashboard = () => {
         } else {
           navigate(`/document/${doc.id}`);
         }
-      } catch {
+      } catch (err: any) {
+        const msg = await extractFnErrorMessage(err, "Couldn't process the document. Please try re-uploading or try again later.");
         setUploading(null);
-        toast({ title: "Processing failed", description: "Couldn't process the document. Please try re-uploading or try again later.", variant: "destructive" });
+        toast({ title: msg.includes("too long") ? "Document too long" : "Processing failed", description: msg, variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
+        // Clean up orphaned storage file so we don't pay for unusable uploads
+        try { await supabase.storage.from("documents").remove([filePath]); } catch {}
         fetchData();
       }
     } else {
@@ -248,9 +261,10 @@ const Dashboard = () => {
         toast({ title: "Done!", description: "Your text has been processed." });
         sendStudyDeckReadyNotification(doc.title);
         navigate(`/document/${doc.id}`);
-      } catch {
+      } catch (err: any) {
+        const msg = await extractFnErrorMessage(err, "Couldn't process the text. Please try again.");
         setUploading(null);
-        toast({ title: "Processing failed", description: "Couldn't process the text. Please try again.", variant: "destructive" });
+        toast({ title: msg.includes("too long") ? "Document too long" : "Processing failed", description: msg, variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
         fetchData();
       }
@@ -290,10 +304,12 @@ const Dashboard = () => {
         toast({ title: "Done!", description: "Your image has been processed." });
         sendStudyDeckReadyNotification(doc.title);
         navigate(`/document/${doc.id}`);
-      } catch {
+      } catch (err: any) {
+        const msg = await extractFnErrorMessage(err, "Couldn't process the image. Please try again.");
         setUploading(null);
-        toast({ title: "Processing failed", description: "Couldn't process the image. Please try again.", variant: "destructive" });
+        toast({ title: msg.includes("too long") ? "Document too long" : "Processing failed", description: msg, variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
+        try { await supabase.storage.from("documents").remove([filePath]); } catch {}
         fetchData();
       }
     } else {
