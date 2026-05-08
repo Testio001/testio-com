@@ -9,9 +9,10 @@ interface GamificationSidebarProps {
   onUpgrade: () => void;
   gamification: GamificationData;
   userPlan?: string | null;
+  onUpload?: () => void;
 }
 
-const GamificationSidebar = ({ onUpgrade, gamification, userPlan }: GamificationSidebarProps) => {
+const GamificationSidebar = ({ onUpgrade, gamification, userPlan, onUpload }: GamificationSidebarProps) => {
   const {
     stats,
     badges,
@@ -30,7 +31,15 @@ const GamificationSidebar = ({ onUpgrade, gamification, userPlan }: Gamification
   return (
     <div className="space-y-4">
       {/* Uploads counter */}
-      <div className="bg-testio-card rounded-xl p-4">
+      <button
+        type="button"
+        onClick={() => {
+          if (uploadsRemaining <= 0) onUpgrade();
+          else onUpload?.();
+        }}
+        className="w-full text-left bg-testio-card rounded-xl p-4 hover:ring-2 hover:ring-primary/40 transition-all"
+        title={uploadsRemaining <= 0 ? "Upload limit reached — upgrade for more" : "Tap to upload a document"}
+      >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Upload className="w-4 h-4 text-primary" />
@@ -52,20 +61,21 @@ const GamificationSidebar = ({ onUpgrade, gamification, userPlan }: Gamification
             style={{ width: `${Math.min(100, (stats.uploads_used / totalUploadsAllowed) * 100)}%` }}
           />
         </div>
-        {uploadsRemaining <= 0 && (
-          <button
-            onClick={onUpgrade}
-            className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 bg-primary/10 hover:bg-primary/20 rounded-lg text-xs font-medium text-primary transition-colors"
-          >
+        {uploadsRemaining <= 0 ? (
+          <div className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 bg-primary/10 rounded-lg text-xs font-medium text-primary">
             <Crown className="w-3 h-3" /> Get more uploads
-          </button>
+          </div>
+        ) : (
+          <div className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 bg-primary/10 rounded-lg text-xs font-medium text-primary">
+            <Upload className="w-3 h-3" /> Tap to upload
+          </div>
         )}
         {stats.bonus_uploads > 0 && (
           <p className="text-[10px] text-muted-foreground mt-1.5">
             Includes {stats.bonus_uploads} bonus upload{stats.bonus_uploads > 1 ? "s" : ""} from streaks & referrals
           </p>
         )}
-      </div>
+      </button>
 
       <StreakDisplay stats={stats} userPlan={userPlan} onUpdated={() => gamification.fetchStats()} />
 

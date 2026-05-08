@@ -492,13 +492,13 @@ const Dashboard = () => {
                       : "Upload limit reached"}
                 </p>
               </div>
-              {/* Upload button hidden on mobile (bottom nav has it), shown on sm+ */}
+              {/* Prominent upload button — visible on every screen size */}
               <button
                 onClick={tryUpload}
                 disabled={gamification.loading}
-                className="hidden sm:flex btn-testio-primary text-sm items-center gap-2 !py-2 !px-4 md:!py-2.5 md:!px-6 md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto btn-testio-primary text-sm flex items-center justify-center gap-2 !py-2.5 !px-5 md:!py-3 md:!px-7 md:text-base shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus className="w-4 h-4 md:w-5 md:h-5" /> {gamification.loading ? "Loading…" : "Upload"}
+                <Plus className="w-4 h-4 md:w-5 md:h-5" /> {gamification.loading ? "Loading…" : "Upload document"}
               </button>
             </div>
 
@@ -660,6 +660,7 @@ const Dashboard = () => {
               onUpgrade={() => navigate("/pricing")}
               gamification={gamification}
               userPlan={userPlan}
+              onUpload={tryUpload}
             />
           </div>
         </div>
@@ -670,6 +671,7 @@ const Dashboard = () => {
             onUpgrade={() => navigate("/pricing")}
             gamification={gamification}
             userPlan={userPlan}
+            onUpload={tryUpload}
           />
         </div>
 
