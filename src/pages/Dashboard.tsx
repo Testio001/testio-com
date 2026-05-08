@@ -28,6 +28,23 @@ import CelebrationScreen from "@/components/app/CelebrationScreen";
 
 type Document = Tables<"documents">;
 
+// Pull the real error message out of a supabase.functions.invoke() failure.
+// Non-2xx responses live on err.context (a Response); we read its JSON body
+// to surface the edge function's `error` field (e.g. "Document too long...").
+async function extractFnErrorMessage(err: any, fallback: string): Promise<string> {
+  try {
+    const ctx = err?.context;
+    if (ctx && typeof ctx.json === "function") {
+      const body = await ctx.clone().json().catch(() => null);
+      if (body?.error && typeof body.error === "string") return body.error;
+    }
+    if (typeof err?.message === "string" && err.message && !/edge function/i.test(err.message)) {
+      return err.message;
+    }
+  } catch {}
+  return fallback;
+}
+
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
