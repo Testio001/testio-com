@@ -28,6 +28,23 @@ import CelebrationScreen from "@/components/app/CelebrationScreen";
 
 type Document = Tables<"documents">;
 
+// Pull the real error message out of a supabase.functions.invoke() failure.
+// Non-2xx responses live on err.context (a Response); we read its JSON body
+// to surface the edge function's `error` field (e.g. "Document too long...").
+async function extractFnErrorMessage(err: any, fallback: string): Promise<string> {
+  try {
+    const ctx = err?.context;
+    if (ctx && typeof ctx.json === "function") {
+      const body = await ctx.clone().json().catch(() => null);
+      if (body?.error && typeof body.error === "string") return body.error;
+    }
+    if (typeof err?.message === "string" && err.message && !/edge function/i.test(err.message)) {
+      return err.message;
+    }
+  } catch {}
+  return fallback;
+}
+
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -165,6 +182,16 @@ const Dashboard = () => {
     if (!file || !user) return;
     const fileExt = file.name.split(".").pop();
     const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+    // Pre-upload size guard — reject obviously-too-large PDFs before we pay for storage + AI
+    if ((fileExt?.toLowerCase() === "pdf") && file.size > 15 * 1024 * 1024) {
+      toast({
+        title: "Document too long",
+        description: "This PDF is too large to process. Please upload a shorter document (under ~15 MB).",
+        variant: "destructive",
+      });
+      e.target.value = "";
+      return;
+    }
     setUploading("Uploading document...");
     setShowUpload(false);
     const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
@@ -214,10 +241,13 @@ const Dashboard = () => {
         } else {
           navigate(`/document/${doc.id}`);
         }
-      } catch {
+      } catch (err: any) {
+        const msg = await extractFnErrorMessage(err, "Couldn't process the document. Please try re-uploading or try again later.");
         setUploading(null);
-        toast({ title: "Processing failed", description: "Couldn't process the document. Please try re-uploading or try again later.", variant: "destructive" });
+        toast({ title: msg.includes("too long") ? "Document too long" : "Processing failed", description: msg, variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
+        // Clean up orphaned storage file so we don't pay for unusable uploads
+        try { await supabase.storage.from("documents").remove([filePath]); } catch {}
         fetchData();
       }
     } else {
@@ -248,9 +278,10 @@ const Dashboard = () => {
         toast({ title: "Done!", description: "Your text has been processed." });
         sendStudyDeckReadyNotification(doc.title);
         navigate(`/document/${doc.id}`);
-      } catch {
+      } catch (err: any) {
+        const msg = await extractFnErrorMessage(err, "Couldn't process the text. Please try again.");
         setUploading(null);
-        toast({ title: "Processing failed", description: "Couldn't process the text. Please try again.", variant: "destructive" });
+        toast({ title: msg.includes("too long") ? "Document too long" : "Processing failed", description: msg, variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
         fetchData();
       }
@@ -290,10 +321,12 @@ const Dashboard = () => {
         toast({ title: "Done!", description: "Your image has been processed." });
         sendStudyDeckReadyNotification(doc.title);
         navigate(`/document/${doc.id}`);
-      } catch {
+      } catch (err: any) {
+        const msg = await extractFnErrorMessage(err, "Couldn't process the image. Please try again.");
         setUploading(null);
-        toast({ title: "Processing failed", description: "Couldn't process the image. Please try again.", variant: "destructive" });
+        toast({ title: msg.includes("too long") ? "Document too long" : "Processing failed", description: msg, variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
+        try { await supabase.storage.from("documents").remove([filePath]); } catch {}
         fetchData();
       }
     } else {
@@ -568,7 +601,8 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {filteredDocs.map((doc, i) => (
                   <motion.div key={doc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                    onClick={() => navigate(`/document/${doc.id}`)} className="bg-testio-card rounded-xl p-4 sm:p-5 cursor-pointer hover:border-primary/30 transition-all group">
+                    onClick={() => { if (doc.status !== "failed") navigate(`/document/${doc.id}`); }}
+                    className={`bg-testio-card rounded-xl p-4 sm:p-5 transition-all group ${doc.status === "failed" ? "opacity-70 cursor-default" : "cursor-pointer hover:border-primary/30"}`}>
                     <div className="flex items-start justify-between mb-3">
                       <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-primary/60" />
                       <div className="flex items-center gap-1">
@@ -607,6 +641,9 @@ const Dashboard = () => {
                       <h3 className="text-foreground font-semibold text-sm mb-1 truncate">{doc.title}</h3>
                     )}
                     <p className="text-muted-foreground text-xs">{doc.source_type.toUpperCase()} · {new Date(doc.created_at).toLocaleDateString()}</p>
+                    {doc.status === "failed" && (
+                      <p className="text-destructive text-[11px] mt-2">Document too long or unreadable. Please delete and upload a shorter version.</p>
+                    )}
                   </motion.div>
                 ))}
               </div>

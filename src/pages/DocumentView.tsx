@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGamification } from "@/hooks/useGamification";
 import { motion } from "framer-motion";
-import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Mic, Loader2, Crown, ArrowDown, X } from "lucide-react";
+import { ArrowLeft, FileText, BookOpen, Brain, MessageSquare, Mic, Loader2, Crown, ArrowDown, X, AlertTriangle, Trash2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import NoteViewer from "@/components/app/NoteViewer";
@@ -378,6 +378,54 @@ const DocumentView = () => {
       <Loader2 className="w-6 h-6 text-primary animate-spin" />
     </div>
   );
+
+  // Failed documents: show a clear failure screen instead of feature tabs so
+  // users can't trigger doomed Generate calls on content that was never extracted.
+  if (doc.status === "failed") {
+    const handleDelete = async () => {
+      try {
+        if (doc.storage_path) {
+          await supabase.storage.from("documents").remove([doc.storage_path]);
+        }
+        await supabase.from("documents").delete().eq("id", doc.id);
+      } catch {}
+      navigate("/dashboard");
+    };
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="border-b border-border/50 px-6 py-4">
+          <div className="max-w-6xl mx-auto flex items-center gap-4">
+            <button onClick={() => navigate("/dashboard")} className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-lg font-bold text-foreground truncate">{doc.title}</h1>
+              <p className="text-xs text-destructive">Failed to process</p>
+            </div>
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center px-6 py-12">
+          <div className="max-w-md text-center">
+            <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-destructive/15 flex items-center justify-center">
+              <AlertTriangle className="w-8 h-8 text-destructive" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-2">We couldn't process this document</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              It looks like this file is too long or unreadable. Please upload a shorter version (under ~15 MB / ~50 pages) to generate notes, flashcards, quizzes and podcasts.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button onClick={() => navigate("/dashboard")} className="btn-testio-primary text-sm !py-2 !px-5">
+                Upload a shorter document
+              </button>
+              <button onClick={handleDelete} className="inline-flex items-center justify-center gap-2 text-sm px-5 py-2 rounded-md border border-destructive/40 text-destructive hover:bg-destructive/10 transition">
+                <Trash2 className="w-4 h-4" /> Delete document
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const tabs = [
     { id: "notes" as const, label: "Notes", icon: FileText },
