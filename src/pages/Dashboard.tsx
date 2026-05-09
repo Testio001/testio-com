@@ -148,8 +148,14 @@ const Dashboard = () => {
   };
 
   const fetchData = async () => {
-    const docsRes = await supabase.from("documents").select("*").order("created_at", { ascending: false });
-    if (docsRes.data) setDocuments(docsRes.data);
+    // Only fetch lightweight columns needed for the list view. `original_content`
+    // can be ~50KB/row and is never rendered here — pulling it on every mount
+    // was the main Disk I/O hit on Dashboard.
+    const docsRes = await supabase
+      .from("documents")
+      .select("id, user_id, title, status, source_type, source_url, storage_path, folder_id, created_at, updated_at")
+      .order("created_at", { ascending: false });
+    if (docsRes.data) setDocuments(docsRes.data as any);
     setLoading(false);
   };
 
