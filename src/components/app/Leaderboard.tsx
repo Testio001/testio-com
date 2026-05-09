@@ -22,7 +22,43 @@ const Leaderboard = () => {
     fetchLeaderboard();
   }, []);
 
+  // Session-scoped cache to avoid re-hitting the DB on every Dashboard mount.
+  // 60s TTL — leaderboard doesn't need to be real-time.
+  const CACHE_KEY = "lb:top10:v1";
+  const RANK_KEY = user ? `lb:rank:${user.id}:v1` : null;
+  const TTL_MS = 60_000;
+
+  const readCache = <T,>(key: string): T | null => {
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return null;
+      const { v, t } = JSON.parse(raw);
+      if (Date.now() - t > TTL_MS) return null;
+      return v as T;
+    } catch { return null; }
+  };
+  const writeCache = (key: string, v: unknown) => {
+    try { sessionStorage.setItem(key, JSON.stringify({ v, t: Date.now() })); } catch {}
+  };
+
   const fetchLeaderboard = async () => {
+    // Fast path: serve from cache if fresh
+    const cached = readCache<LeaderboardEntry[]>(CACHE_KEY);
+    if (cached && cached.length > 0) {
+      setEntries(cached);
+      if (user) {
+        const inTop = cached.findIndex(e => e.user_id === user.id);
+        if (inTop !== -1) {
+          setUserRank(inTop + 1);
+        } else if (RANK_KEY) {
+          const cachedRank = readCache<number | null>(RANK_KEY);
+          if (cachedRank !== null) setUserRank(cachedRank);
+        }
+      }
+      setLoading(false);
+      return;
+    }
+
     // Use the security-definer function to get leaderboard data
     const { data: statsData } = await supabase.rpc("get_leaderboard", { limit_count: 10 });
 
@@ -45,17 +81,23 @@ const Leaderboard = () => {
       }));
 
       setEntries(mapped);
+      writeCache(CACHE_KEY, mapped);
 
       // Check if the current user is in the top 10
       if (user) {
         const inTop = mapped.findIndex(e => e.user_id === user.id);
         if (inTop === -1) {
-          // User not in top 10 — fetch full leaderboard to find their rank
+          // User not in top 10 — fetch full leaderboard to find their rank.
+          // Heavy query, so cache the resolved rank separately.
           const { data: allData } = await supabase.rpc("get_leaderboard", { limit_count: 1000 });
           if (allData) {
             const rank = allData.findIndex(e => e.user_id === user.id);
-            setUserRank(rank === -1 ? null : rank + 1);
+            const finalRank = rank === -1 ? null : rank + 1;
+            setUserRank(finalRank);
+            if (RANK_KEY) writeCache(RANK_KEY, finalRank);
           }
+        } else {
+          setUserRank(inTop + 1);
         }
       }
     }
