@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, BarChart3, Brain, Gift, Headphones, RefreshCw, Upload, Users } from "lucide-react";
+import { Activity, BarChart3, Brain, Crown, Gift, Headphones, RefreshCw, Upload, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import AdminCodeGate from "@/components/app/AdminCodeGate";
@@ -51,6 +51,22 @@ type ReferralData = {
   paidReferrals: number;
   topReferrers: ReferralAgg[];
   rows: ReferralRow[];
+};
+
+type PayingUser = {
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  subscription_plan: string;
+  subscription_expires_at: string | null;
+  created_at: string;
+  is_active: boolean;
+};
+
+type PayingUsersData = {
+  users: PayingUser[];
+  total: number;
+  active: number;
 };
 
 const formatNumber = (value: number) => value.toLocaleString();
@@ -112,6 +128,8 @@ const AdminDashboardContent = () => {
   const [loading, setLoading] = useState(true);
   const [referrals, setReferrals] = useState<ReferralData | null>(null);
   const [refLoading, setRefLoading] = useState(true);
+  const [payingUsers, setPayingUsers] = useState<PayingUsersData | null>(null);
+  const [payingLoading, setPayingLoading] = useState(true);
 
   const fetchMetrics = useCallback(async () => {
     setLoading(true);
@@ -144,10 +162,25 @@ const AdminDashboardContent = () => {
     setRefLoading(false);
   }, []);
 
+  const fetchPayingUsers = useCallback(async () => {
+    setPayingLoading(true);
+    const { data, error } = await supabase.functions.invoke("admin-ops", {
+      body: { action: "paying-users" },
+    });
+    if (error || data?.error) {
+      toast.error(error?.message || data?.error || "Unable to load paying users");
+      setPayingLoading(false);
+      return;
+    }
+    setPayingUsers(data as PayingUsersData);
+    setPayingLoading(false);
+  }, []);
+
   useEffect(() => {
     void fetchMetrics();
     void fetchReferrals();
-  }, [fetchMetrics, fetchReferrals]);
+    void fetchPayingUsers();
+  }, [fetchMetrics, fetchReferrals, fetchPayingUsers]);
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6">
@@ -162,10 +195,11 @@ const AdminDashboardContent = () => {
             onClick={() => {
               void fetchMetrics();
               void fetchReferrals();
+              void fetchPayingUsers();
             }}
-            disabled={loading || refLoading}
+            disabled={loading || refLoading || payingLoading}
           >
-            <RefreshCw className={`h-4 w-4 ${loading || refLoading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${loading || refLoading || payingLoading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
@@ -207,6 +241,62 @@ const AdminDashboardContent = () => {
             <FeatureUsageCard title="Flashcards" metric={metrics?.featureUsage.flashcards ?? { total: 0, today: 0 }} icon={BarChart3} />
             <FeatureUsageCard title="Podcast" metric={metrics?.featureUsage.podcasts ?? { total: 0, today: 0 }} icon={Headphones} />
           </div>
+        </section>
+
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Crown className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Paying users</h2>
+            {!payingLoading && payingUsers && (
+              <span className="text-sm text-muted-foreground">
+                ({payingUsers.active} active / {payingUsers.total} total)
+              </span>
+            )}
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">All paid subscribers</CardTitle>
+              <CardDescription>Every user on a Basic, Pro, Scholar, or Elite plan</CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b border-border">
+                    <th className="py-2 pr-3 font-medium">User</th>
+                    <th className="py-2 pr-3 font-medium">Email</th>
+                    <th className="py-2 pr-3 font-medium">Plan</th>
+                    <th className="py-2 pr-3 font-medium">Status</th>
+                    <th className="py-2 pr-3 font-medium">Expires</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payingLoading && (
+                    <tr><td colSpan={5} className="py-3 text-muted-foreground">Loading…</td></tr>
+                  )}
+                  {!payingLoading && (payingUsers?.users ?? []).length === 0 && (
+                    <tr><td colSpan={5} className="py-3 text-muted-foreground">No paying users yet.</td></tr>
+                  )}
+                  {(payingUsers?.users ?? []).map((u) => (
+                    <tr key={u.user_id} className="border-b border-border/50">
+                      <td className="py-2 pr-3">{u.display_name || "—"}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{u.email || "—"}</td>
+                      <td className="py-2 pr-3">
+                        <Badge variant="default" className="uppercase text-[10px]">{u.subscription_plan}</Badge>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <Badge variant={u.is_active ? "default" : "outline"} className="text-[10px]">
+                          {u.is_active ? "Active" : "Expired"}
+                        </Badge>
+                      </td>
+                      <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">
+                        {u.subscription_expires_at ? new Date(u.subscription_expires_at).toLocaleDateString() : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
         </section>
 
         <section className="space-y-3">
