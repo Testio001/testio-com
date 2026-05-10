@@ -224,6 +224,27 @@ serve(async (req) => {
       return json({ success: true });
     }
 
+    if (action === "paying-users") {
+      const { data, error } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id, email, display_name, subscription_plan, subscription_expires_at, created_at")
+        .in("subscription_plan", ["basic", "pro", "scholar", "elite"])
+        .order("subscription_expires_at", { ascending: false });
+
+      if (error) {
+        console.error("admin-ops paying-users error", error);
+        return json({ error: "Unable to load paying users" }, 500);
+      }
+
+      const now = Date.now();
+      const users = (data ?? []).map((u) => ({
+        ...u,
+        is_active: u.subscription_expires_at ? new Date(u.subscription_expires_at).getTime() > now : false,
+      }));
+
+      return json({ users, total: users.length, active: users.filter((u) => u.is_active).length });
+    }
+
     if (action === "referrals") {
       // Get all referrals
       const { data: refs, error: refErr } = await supabaseAdmin
