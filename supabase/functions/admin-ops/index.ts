@@ -228,7 +228,7 @@ serve(async (req) => {
       const { data, error } = await supabaseAdmin
         .from("profiles")
         .select("user_id, email, display_name, subscription_plan, subscription_expires_at, created_at")
-        .in("subscription_plan", ["basic", "pro", "scholar", "elite"])
+        .in("subscription_plan", ["starter", "basic", "pro", "scholar", "elite"])
         .order("subscription_expires_at", { ascending: false });
 
       if (error) {

@@ -256,7 +256,7 @@ const AdminDashboardContent = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">All paid subscribers</CardTitle>
-              <CardDescription>Every user on a Basic, Pro, Scholar, or Elite plan</CardDescription>
+              <CardDescription>Every user on a Starter, Basic, Pro, Scholar, or Elite plan</CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="w-full text-sm">
