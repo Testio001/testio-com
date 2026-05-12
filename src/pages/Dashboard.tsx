@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import GamificationSidebar from "@/components/app/GamificationSidebar";
+import PremiumTeaseSidebar from "@/components/app/PremiumTeaseSidebar";
 import UpgradePrompt from "@/components/app/UpgradePrompt";
 import StreakDisplay from "@/components/app/StreakDisplay";
 import type { Tables } from "@/integrations/supabase/types";
@@ -668,6 +669,9 @@ const Dashboard = () => {
               userPlan={userPlan}
               onUpload={tryUpload}
             />
+            <div className="mt-6">
+              <PremiumTeaseSidebar subscriptionPlan={userPlan} />
+            </div>
           </div>
         </div>
 
@@ -679,6 +683,9 @@ const Dashboard = () => {
             userPlan={userPlan}
             onUpload={tryUpload}
           />
+          <div className="mt-6">
+            <PremiumTeaseSidebar subscriptionPlan={userPlan} />
+          </div>
         </div>
 
         {/* TechWorld branding */}
