@@ -15,6 +15,7 @@ import PodcastPlayer from "@/components/app/PodcastPlayer";
 import PodcastLimitModal from "@/components/app/PodcastLimitModal";
 import ProcessingOverlay from "@/components/app/ProcessingOverlay";
 import UpgradePrompt from "@/components/app/UpgradePrompt";
+import PremiumTeaseSidebar from "@/components/app/PremiumTeaseSidebar";
 import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 
@@ -483,6 +484,8 @@ const DocumentView = () => {
       </header>
 
       <div className={`${activeTab === "notes" ? "max-w-7xl" : "max-w-6xl"} mx-auto px-4 md:px-8 py-6`}>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex-1 min-w-0">
         {/* Tabs */}
         <div className="relative grid grid-cols-5 bg-secondary rounded-lg p-1 mb-6 max-w-lg">
           {tabs.map((tab) => (
@@ -584,6 +587,9 @@ const DocumentView = () => {
             {activeTab === "chat" && <ChatPanel documentId={id!} subscriptionPlan={subscriptionPlan} />}
           </motion.div>
         )}
+          </div>
+          <PremiumTeaseSidebar subscriptionPlan={subscriptionPlan} />
+        </div>
       </div>
 
       <PodcastLimitModal
