@@ -46,6 +46,54 @@ async function extractFnErrorMessage(err: any, fallback: string): Promise<string
   return fallback;
 }
 
+// Classify upload/processing failures so users see the real cause instead of a
+// blanket "document too long" message. Returns a toast title + description.
+function classifyProcessingError(
+  rawMsg: string,
+  err: any,
+  kind: "document" | "text" | "image",
+): { title: string; description: string } {
+  const msg = (rawMsg || "").toLowerCase();
+  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+  const isNetwork =
+    offline ||
+    err?.name === "TypeError" ||
+    /network|failed to fetch|fetch failed|load failed|timeout|timed out|connection|offline|net::|err_internet|err_network/i.test(
+      rawMsg || "",
+    );
+  const isTooLong = /too long|too large|exceeds|length limit|max(imum)? (length|size|pages?)|page limit/i.test(msg);
+  const isServerSide = /ai|openai|model|generation|extract|ocr|parse|server|internal|500|502|503|504|gateway|rate limit/i.test(
+    msg,
+  );
+
+  if (isNetwork) {
+    return {
+      title: "Connection problem",
+      description:
+        "We couldn't reach our servers. Check your internet connection and try again.",
+    };
+  }
+  if (isTooLong) {
+    return {
+      title: "Document too long",
+      description: rawMsg || "Please upload a shorter document and try again.",
+    };
+  }
+  if (isServerSide) {
+    return {
+      title: "Processing failed on our end",
+      description:
+        "Our AI couldn't process this " +
+        kind +
+        " right now. This is on our side — please try again in a moment.",
+    };
+  }
+  return {
+    title: "Processing failed",
+    description: rawMsg || `Couldn't process the ${kind}. Please try again.`,
+  };
+}
+
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -251,7 +299,8 @@ const Dashboard = () => {
       } catch (err: any) {
         const msg = await extractFnErrorMessage(err, "Couldn't process the document. Please try re-uploading or try again later.");
         setUploading(null);
-        toast({ title: msg.includes("too long") ? "Document too long" : "Processing failed", description: msg, variant: "destructive" });
+        const t = classifyProcessingError(msg, err, "document");
+        toast({ title: t.title, description: t.description, variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
         // Clean up orphaned storage file so we don't pay for unusable uploads
         try { await supabase.storage.from("documents").remove([filePath]); } catch {}
@@ -288,7 +337,8 @@ const Dashboard = () => {
       } catch (err: any) {
         const msg = await extractFnErrorMessage(err, "Couldn't process the text. Please try again.");
         setUploading(null);
-        toast({ title: msg.includes("too long") ? "Document too long" : "Processing failed", description: msg, variant: "destructive" });
+        const t = classifyProcessingError(msg, err, "text");
+        toast({ title: t.title, description: t.description, variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
         fetchData();
       }
@@ -331,7 +381,8 @@ const Dashboard = () => {
       } catch (err: any) {
         const msg = await extractFnErrorMessage(err, "Couldn't process the image. Please try again.");
         setUploading(null);
-        toast({ title: msg.includes("too long") ? "Document too long" : "Processing failed", description: msg, variant: "destructive" });
+        const t = classifyProcessingError(msg, err, "image");
+        toast({ title: t.title, description: t.description, variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
         try { await supabase.storage.from("documents").remove([filePath]); } catch {}
         fetchData();
