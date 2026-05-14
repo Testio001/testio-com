@@ -436,12 +436,6 @@ const AdminDashboardContent = () => {
   );
 };
 
-/* placeholder removed */
-      </div>
-    </div>
-  );
-};
-
 const AdminDashboard = () => (
   <AdminCodeGate
     title="Admin Dashboard"
