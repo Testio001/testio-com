@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, BarChart3, Brain, Crown, Gift, Headphones, RefreshCw, Upload, Users } from "lucide-react";
+import { Activity, BarChart3, Brain, Crown, Eye, Gift, Headphones, RefreshCw, TrendingUp, Upload, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import AdminCodeGate from "@/components/app/AdminCodeGate";
@@ -69,6 +69,18 @@ type PayingUsersData = {
   active: number;
 };
 
+type ActiveUser = {
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  subscription_plan: string;
+  uploads_used: number;
+  uploads_limit: number;
+  uploads_remaining: number;
+  visit_count: number;
+  last_visit_at: string | null;
+};
+
 const formatNumber = (value: number) => value.toLocaleString();
 
 const MetricCard = ({
@@ -130,6 +142,8 @@ const AdminDashboardContent = () => {
   const [refLoading, setRefLoading] = useState(true);
   const [payingUsers, setPayingUsers] = useState<PayingUsersData | null>(null);
   const [payingLoading, setPayingLoading] = useState(true);
+  const [activeUsers, setActiveUsers] = useState<ActiveUser[] | null>(null);
+  const [activeLoading, setActiveLoading] = useState(true);
 
   const fetchMetrics = useCallback(async () => {
     setLoading(true);
@@ -176,11 +190,26 @@ const AdminDashboardContent = () => {
     setPayingLoading(false);
   }, []);
 
+  const fetchActiveUsers = useCallback(async () => {
+    setActiveLoading(true);
+    const { data, error } = await supabase.functions.invoke("admin-ops", {
+      body: { action: "active-users" },
+    });
+    if (error || data?.error) {
+      toast.error(error?.message || data?.error || "Unable to load active users");
+      setActiveLoading(false);
+      return;
+    }
+    setActiveUsers((data?.users ?? []) as ActiveUser[]);
+    setActiveLoading(false);
+  }, []);
+
   useEffect(() => {
     void fetchMetrics();
     void fetchReferrals();
     void fetchPayingUsers();
-  }, [fetchMetrics, fetchReferrals, fetchPayingUsers]);
+    void fetchActiveUsers();
+  }, [fetchMetrics, fetchReferrals, fetchPayingUsers, fetchActiveUsers]);
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6">
@@ -196,10 +225,11 @@ const AdminDashboardContent = () => {
               void fetchMetrics();
               void fetchReferrals();
               void fetchPayingUsers();
+              void fetchActiveUsers();
             }}
-            disabled={loading || refLoading || payingLoading}
+            disabled={loading || refLoading || payingLoading || activeLoading}
           >
-            <RefreshCw className={`h-4 w-4 ${loading || refLoading || payingLoading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${loading || refLoading || payingLoading || activeLoading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
@@ -290,6 +320,61 @@ const AdminDashboardContent = () => {
                       </td>
                       <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">
                         {u.subscription_expires_at ? new Date(u.subscription_expires_at).toLocaleDateString() : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Top 15 most active users</h2>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Ranked by uploads used</CardTitle>
+              <CardDescription>Uploads consumed, remaining quota, and total site visits</CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b border-border">
+                    <th className="py-2 pr-3 font-medium">#</th>
+                    <th className="py-2 pr-3 font-medium">User</th>
+                    <th className="py-2 pr-3 font-medium">Plan</th>
+                    <th className="py-2 pr-3 font-medium text-right">Uploads used</th>
+                    <th className="py-2 pr-3 font-medium text-right">Remaining</th>
+                    <th className="py-2 pr-3 font-medium text-right">Visits</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeLoading && (
+                    <tr><td colSpan={6} className="py-3 text-muted-foreground">Loading…</td></tr>
+                  )}
+                  {!activeLoading && (activeUsers ?? []).length === 0 && (
+                    <tr><td colSpan={6} className="py-3 text-muted-foreground">No activity yet.</td></tr>
+                  )}
+                  {(activeUsers ?? []).map((u, i) => (
+                    <tr key={u.user_id} className="border-b border-border/50">
+                      <td className="py-2 pr-3 text-muted-foreground">{i + 1}</td>
+                      <td className="py-2 pr-3">
+                        <div>{u.display_name || "—"}</div>
+                        <div className="text-xs text-muted-foreground">{u.email || "—"}</div>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <Badge variant="outline" className="uppercase text-[10px]">{u.subscription_plan}</Badge>
+                      </td>
+                      <td className="py-2 pr-3 text-right font-semibold">{u.uploads_used} / {u.uploads_limit}</td>
+                      <td className="py-2 pr-3 text-right">{u.uploads_remaining}</td>
+                      <td className="py-2 pr-3 text-right">
+                        <span className="inline-flex items-center gap-1">
+                          <Eye className="h-3 w-3 text-muted-foreground" />
+                          {u.visit_count}
+                        </span>
                       </td>
                     </tr>
                   ))}

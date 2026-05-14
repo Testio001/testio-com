@@ -33,6 +33,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // send-transactional-email dedupes on idempotencyKey per user.
       if (event === "SIGNED_IN" && session?.user) {
         const user = session.user;
+        // Track site visit (once per browser session)
+        try {
+          const visitKey = `testio-visit-counted-${user.id}`;
+          if (typeof window !== "undefined" && !window.sessionStorage.getItem(visitKey)) {
+            window.sessionStorage.setItem(visitKey, "1");
+            supabase.rpc("increment_user_visit").then(({ error }) => {
+              if (error) console.error("increment_user_visit failed", error);
+            });
+          }
+        } catch (e) {
+          console.error("visit tracking failed", e);
+        }
+
         const createdAt = new Date(user.created_at).getTime();
         const isFresh = Date.now() - createdAt < 5 * 60 * 1000;
         const flagKey = `testio-welcome-sent-${user.id}`;
