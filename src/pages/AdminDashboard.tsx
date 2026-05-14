@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, BarChart3, Brain, Crown, Gift, Headphones, RefreshCw, Upload, Users } from "lucide-react";
+import { Activity, BarChart3, Brain, Crown, Eye, Gift, Headphones, RefreshCw, TrendingUp, Upload, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import AdminCodeGate from "@/components/app/AdminCodeGate";
@@ -69,6 +69,18 @@ type PayingUsersData = {
   active: number;
 };
 
+type ActiveUser = {
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  subscription_plan: string;
+  uploads_used: number;
+  uploads_limit: number;
+  uploads_remaining: number;
+  visit_count: number;
+  last_visit_at: string | null;
+};
+
 const formatNumber = (value: number) => value.toLocaleString();
 
 const MetricCard = ({
@@ -130,6 +142,8 @@ const AdminDashboardContent = () => {
   const [refLoading, setRefLoading] = useState(true);
   const [payingUsers, setPayingUsers] = useState<PayingUsersData | null>(null);
   const [payingLoading, setPayingLoading] = useState(true);
+  const [activeUsers, setActiveUsers] = useState<ActiveUser[] | null>(null);
+  const [activeLoading, setActiveLoading] = useState(true);
 
   const fetchMetrics = useCallback(async () => {
     setLoading(true);
@@ -176,11 +190,26 @@ const AdminDashboardContent = () => {
     setPayingLoading(false);
   }, []);
 
+  const fetchActiveUsers = useCallback(async () => {
+    setActiveLoading(true);
+    const { data, error } = await supabase.functions.invoke("admin-ops", {
+      body: { action: "active-users" },
+    });
+    if (error || data?.error) {
+      toast.error(error?.message || data?.error || "Unable to load active users");
+      setActiveLoading(false);
+      return;
+    }
+    setActiveUsers((data?.users ?? []) as ActiveUser[]);
+    setActiveLoading(false);
+  }, []);
+
   useEffect(() => {
     void fetchMetrics();
     void fetchReferrals();
     void fetchPayingUsers();
-  }, [fetchMetrics, fetchReferrals, fetchPayingUsers]);
+    void fetchActiveUsers();
+  }, [fetchMetrics, fetchReferrals, fetchPayingUsers, fetchActiveUsers]);
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6">
@@ -196,10 +225,11 @@ const AdminDashboardContent = () => {
               void fetchMetrics();
               void fetchReferrals();
               void fetchPayingUsers();
+              void fetchActiveUsers();
             }}
-            disabled={loading || refLoading || payingLoading}
+            disabled={loading || refLoading || payingLoading || activeLoading}
           >
-            <RefreshCw className={`h-4 w-4 ${loading || refLoading || payingLoading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${loading || refLoading || payingLoading || activeLoading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
