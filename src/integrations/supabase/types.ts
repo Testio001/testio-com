@@ -824,6 +824,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_visits: {
+        Row: {
+          created_at: string
+          last_visit_at: string
+          user_id: string
+          visit_count: number
+        }
+        Insert: {
+          created_at?: string
+          last_visit_at?: string
+          user_id: string
+          visit_count?: number
+        }
+        Update: {
+          created_at?: string
+          last_visit_at?: string
+          user_id?: string
+          visit_count?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       public_profiles: {
@@ -897,6 +918,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_user_visit: { Args: never; Returns: number }
       move_to_dlq: {
         Args: {
           dlq_name: string
