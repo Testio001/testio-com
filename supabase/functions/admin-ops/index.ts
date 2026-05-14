@@ -246,6 +246,74 @@ serve(async (req) => {
     }
 
     if (action === "referrals") {
+      // handled below
+    }
+
+    if (action === "active-users") {
+      const FREE = 2, STARTER = 10, BASIC = 15, PRO = 40, SCHOLAR = 80, ELITE = 80;
+      const limitFor = (plan: string, expires: string | null) => {
+        const active = expires && new Date(expires).getTime() > Date.now();
+        const p = active ? plan : "free";
+        switch (p) {
+          case "starter": return STARTER;
+          case "basic": return BASIC;
+          case "pro": return PRO;
+          case "scholar": return SCHOLAR;
+          case "elite": return ELITE;
+          default: return FREE;
+        }
+      };
+
+      const { data: stats, error: statsErr } = await supabaseAdmin
+        .from("user_stats")
+        .select("user_id, uploads_used, bonus_uploads, streak_bonus_uploads")
+        .order("uploads_used", { ascending: false })
+        .limit(15);
+
+      if (statsErr) {
+        console.error("admin-ops active-users stats error", statsErr);
+        return json({ error: "Unable to load active users" }, 500);
+      }
+
+      const ids = (stats ?? []).map((s) => s.user_id);
+      const [profilesRes, visitsRes] = await Promise.all([
+        ids.length
+          ? supabaseAdmin.from("profiles").select("user_id, email, display_name, subscription_plan, subscription_expires_at").in("user_id", ids)
+          : Promise.resolve({ data: [], error: null } as any),
+        ids.length
+          ? supabaseAdmin.from("user_visits").select("user_id, visit_count, last_visit_at").in("user_id", ids)
+          : Promise.resolve({ data: [], error: null } as any),
+      ]);
+
+      const profMap = new Map<string, any>();
+      for (const p of profilesRes.data ?? []) profMap.set(p.user_id, p);
+      const visitMap = new Map<string, any>();
+      for (const v of visitsRes.data ?? []) visitMap.set(v.user_id, v);
+
+      const users = (stats ?? []).map((s) => {
+        const p = profMap.get(s.user_id) ?? {};
+        const limit = limitFor(p.subscription_plan ?? "free", p.subscription_expires_at ?? null);
+        const bonus = (s.bonus_uploads ?? 0) + (s.streak_bonus_uploads ?? 0);
+        const totalAllowed = limit + bonus;
+        const used = s.uploads_used ?? 0;
+        const v = visitMap.get(s.user_id);
+        return {
+          user_id: s.user_id,
+          email: p.email ?? null,
+          display_name: p.display_name ?? null,
+          subscription_plan: p.subscription_plan ?? "free",
+          uploads_used: used,
+          uploads_limit: totalAllowed,
+          uploads_remaining: Math.max(0, totalAllowed - used),
+          visit_count: v?.visit_count ?? 0,
+          last_visit_at: v?.last_visit_at ?? null,
+        };
+      });
+
+      return json({ users });
+    }
+
+    if (action === "referrals") {
       // Get all referrals
       const { data: refs, error: refErr } = await supabaseAdmin
         .from("referrals")
