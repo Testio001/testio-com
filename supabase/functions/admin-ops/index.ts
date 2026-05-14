@@ -264,7 +264,7 @@ serve(async (req) => {
         .from("user_stats")
         .select("user_id, uploads_used, bonus_uploads, streak_bonus_uploads")
         .order("uploads_used", { ascending: false })
-        .limit(15);
+        .limit(30);
 
       if (statsErr) {
         console.error("admin-ops active-users stats error", statsErr);

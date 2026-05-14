@@ -332,12 +332,12 @@ const AdminDashboardContent = () => {
         <section className="space-y-3">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Top 15 most active users</h2>
+            <h2 className="text-lg font-semibold">Top 30 most active users</h2>
           </div>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Ranked by uploads used</CardTitle>
-              <CardDescription>Uploads consumed, remaining quota, and total site visits</CardDescription>
+              <CardDescription>Uploads consumed, remaining quota, and lifetime site visits</CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="w-full text-sm">
