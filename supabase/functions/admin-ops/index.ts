@@ -245,10 +245,6 @@ serve(async (req) => {
       return json({ users, total: users.length, active: users.filter((u) => u.is_active).length });
     }
 
-    if (action === "referrals") {
-      // handled below
-    }
-
     if (action === "active-users") {
       const FREE = 2, STARTER = 10, BASIC = 15, PRO = 40, SCHOLAR = 80, ELITE = 80;
       const limitFor = (plan: string, expires: string | null) => {
