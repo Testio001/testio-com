@@ -331,6 +331,61 @@ const AdminDashboardContent = () => {
 
         <section className="space-y-3">
           <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Top 15 most active users</h2>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Ranked by uploads used</CardTitle>
+              <CardDescription>Uploads consumed, remaining quota, and total site visits</CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b border-border">
+                    <th className="py-2 pr-3 font-medium">#</th>
+                    <th className="py-2 pr-3 font-medium">User</th>
+                    <th className="py-2 pr-3 font-medium">Plan</th>
+                    <th className="py-2 pr-3 font-medium text-right">Uploads used</th>
+                    <th className="py-2 pr-3 font-medium text-right">Remaining</th>
+                    <th className="py-2 pr-3 font-medium text-right">Visits</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeLoading && (
+                    <tr><td colSpan={6} className="py-3 text-muted-foreground">Loading…</td></tr>
+                  )}
+                  {!activeLoading && (activeUsers ?? []).length === 0 && (
+                    <tr><td colSpan={6} className="py-3 text-muted-foreground">No activity yet.</td></tr>
+                  )}
+                  {(activeUsers ?? []).map((u, i) => (
+                    <tr key={u.user_id} className="border-b border-border/50">
+                      <td className="py-2 pr-3 text-muted-foreground">{i + 1}</td>
+                      <td className="py-2 pr-3">
+                        <div>{u.display_name || "—"}</div>
+                        <div className="text-xs text-muted-foreground">{u.email || "—"}</div>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <Badge variant="outline" className="uppercase text-[10px]">{u.subscription_plan}</Badge>
+                      </td>
+                      <td className="py-2 pr-3 text-right font-semibold">{u.uploads_used} / {u.uploads_limit}</td>
+                      <td className="py-2 pr-3 text-right">{u.uploads_remaining}</td>
+                      <td className="py-2 pr-3 text-right">
+                        <span className="inline-flex items-center gap-1">
+                          <Eye className="h-3 w-3 text-muted-foreground" />
+                          {u.visit_count}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
             <Gift className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Referrals</h2>
           </div>
