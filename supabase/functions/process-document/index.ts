@@ -69,6 +69,25 @@ serve(async (req) => {
 
     console.log("Document content saved successfully");
 
+    // 🧹 Delete the raw uploaded file from Storage now that we have the
+    // extracted text in the DB. Saves on storage cost and avoids retaining
+    // user-uploaded source files indefinitely.
+    try {
+      if (doc.storage_path) {
+        const { error: rmErr } = await supabase.storage
+          .from("documents")
+          .remove([doc.storage_path]);
+        if (rmErr) {
+          console.warn("Failed to delete raw file from storage (non-fatal):", rmErr.message);
+        } else {
+          console.log("Deleted raw file from storage:", doc.storage_path);
+          await supabase.from("documents").update({ storage_path: null }).eq("id", documentId);
+        }
+      }
+    } catch (e) {
+      console.warn("Storage cleanup threw (non-fatal):", e);
+    }
+
     // 🔥 Auto-generate notes (summary) immediately so quizzes/flashcards/podcast/chat
     // can use the summary instead of the full document — saves AI cost on every
     // future feature click. Fire-and-forget but await briefly so the dashboard
