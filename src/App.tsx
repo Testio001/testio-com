@@ -26,6 +26,7 @@ import PromoVideo from "./pages/PromoVideo";
 import ThemeToggle from "./components/ThemeToggle";
 import AdminStreakAssign from "./pages/AdminStreakAssign";
 import AdminDashboard from "./pages/AdminDashboard";
+import AuthCallback from "./pages/AuthCallback";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<EntryPoint />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/reset-password" element={<ResetPassword />} />
