@@ -113,7 +113,7 @@ const VerifyEmail = () => {
   }, [code]);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-3 sm:px-4 py-6">
       <div className="absolute inset-0 bg-testio-glow pointer-events-none" />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
@@ -131,8 +131,8 @@ const VerifyEmail = () => {
           </p>
         </div>
 
-        <div className="bg-testio-card rounded-2xl p-8 space-y-6">
-          <div className="flex justify-center gap-2" onPaste={handlePaste}>
+        <div className="bg-testio-card rounded-2xl p-5 sm:p-8 space-y-6">
+          <div className="flex justify-center gap-1.5 sm:gap-2 w-full" onPaste={handlePaste}>
             {code.map((digit, index) => (
               <motion.input
                 key={index}
@@ -146,7 +146,7 @@ const VerifyEmail = () => {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.04 }}
-                className={`w-10 h-12 text-center text-lg font-bold rounded-xl border-2 bg-background text-foreground focus:outline-none transition-all duration-200 ${
+                className={`flex-1 min-w-0 max-w-[3rem] aspect-[5/6] text-center text-base sm:text-lg font-bold rounded-lg sm:rounded-xl border-2 bg-background text-foreground focus:outline-none transition-all duration-200 ${
                   digit ? "border-primary shadow-[0_0_12px_hsl(var(--primary)/0.3)]" : "border-border hover:border-muted-foreground/50"
                 } focus:border-primary focus:shadow-[0_0_12px_hsl(var(--primary)/0.3)]`}
               />
