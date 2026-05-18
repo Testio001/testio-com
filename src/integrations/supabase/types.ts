@@ -864,6 +864,8 @@ export type Database = {
       }
     }
     Functions: {
+      _mig_dump_auth_identities: { Args: never; Returns: Json[] }
+      _mig_dump_auth_users: { Args: never; Returns: Json[] }
       admin_lookup_user_by_email: {
         Args: { _email: string }
         Returns: {
