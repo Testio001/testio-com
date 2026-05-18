@@ -94,6 +94,17 @@ function classifyProcessingError(
   };
 }
 
+async function createDocumentUpload(payload: {
+  title: string;
+  sourceType: "pdf" | "docx" | "text" | "image";
+  fileExt?: string;
+  originalContent?: string;
+}) {
+  const { data, error } = await supabase.functions.invoke("create-document-upload", { body: payload });
+  if (error) throw error;
+  return data as { document: Document; upload: { path: string; token: string } | null };
+}
+
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
