@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
-import MaintenanceBanner from "@/components/MaintenanceBanner";
 import Onboarding from "./pages/Onboarding";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -46,7 +45,6 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <MaintenanceBanner />
             <Routes>
               <Route path="/" element={<EntryPoint />} />
               <Route path="/auth" element={<Auth />} />

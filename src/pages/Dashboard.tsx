@@ -94,6 +94,17 @@ function classifyProcessingError(
   };
 }
 
+async function createDocumentUpload(payload: {
+  title: string;
+  sourceType: "pdf" | "docx" | "text" | "image";
+  fileExt?: string;
+  originalContent?: string;
+}) {
+  const { data, error } = await supabase.functions.invoke("create-document-upload", { body: payload });
+  if (error) throw error;
+  return data as { document: Document; upload: { path: string; token: string } | null };
+}
+
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -249,8 +260,6 @@ const Dashboard = () => {
     }
     setUploading("Uploading document...");
     setShowUpload(false);
-    const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
-    if (uploadError) { setUploading(null); toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
     setUploading("Creating document...");
     const ext = fileExt?.toLowerCase() || "";
     const imageExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
@@ -264,10 +273,26 @@ const Dashboard = () => {
       return;
     }
 
-    const { data: doc, error: docError } = await supabase.from("documents").insert({
-      user_id: user.id, title: file.name.replace(`.${fileExt}`, ""), source_type: sourceType, storage_path: filePath, status: "pending",
-    }).select().single();
-    if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
+    let doc: Document | null = null;
+    try {
+      const created = await createDocumentUpload({
+        title: file.name.replace(`.${fileExt}`, ""),
+        sourceType: sourceType as "pdf" | "docx" | "text" | "image",
+        fileExt,
+      });
+      doc = created.document;
+      if (!created.upload) throw new Error("Could not prepare upload");
+      const { error: uploadError } = await supabase.storage
+        .from("documents")
+        .uploadToSignedUrl(created.upload.path, created.upload.token, file);
+      if (uploadError) throw uploadError;
+    } catch (err: any) {
+      setUploading(null);
+      if (doc) await supabase.from("documents").delete().eq("id", doc.id);
+      const msg = await extractFnErrorMessage(err, err?.message || "Could not upload this document.");
+      toast({ title: "Upload failed", description: msg, variant: "destructive" });
+      return;
+    }
     setUploading("Processing with AI... This may take a moment.");
 
     fetchData();
