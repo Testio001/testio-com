@@ -8,7 +8,7 @@ const AuthCallback = () => {
 
   useEffect(() => {
     const handleCallback = async () => {
-      // Guard clause: Prevents React StrictMode from double-executing
+      // Guard clause: Prevents React StrictMode from double-executing 
       // and breaking the PKCE verifier state string in storage
       if (hasExchanged.current) return;
 
@@ -20,7 +20,7 @@ const AuthCallback = () => {
           hasExchanged.current = true;
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
-
+          
           navigate("/dashboard", { replace: true });
           return;
         }
