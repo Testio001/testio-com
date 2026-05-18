@@ -339,9 +339,9 @@ function extractPdfTextRegex(rawText: string): string {
  * Use OpenAI to extract text from a PDF file (OCR/vision fallback).
  */
 async function extractWithGemini(uint8Array: Uint8Array, title: string): Promise<string> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
-    console.error("LOVABLE_API_KEY not configured, cannot use Gemini for OCR");
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+  if (!GEMINI_API_KEY) {
+    console.error("GEMINI_API_KEY not configured, cannot use Gemini for OCR");
     return "";
   }
 
@@ -352,21 +352,23 @@ async function extractWithGemini(uint8Array: Uint8Array, title: string): Promise
   }
   const pdfBase64 = btoa(binary);
 
-  const ocrRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash-lite",
-      messages: [{
-        role: "user",
-        content: [
-          { type: "text", text: "Extract ALL text content from this PDF document. Return every word, heading, paragraph, bullet point, table entry, and piece of text exactly as it appears. Preserve the document structure with headings and paragraphs. Do NOT add commentary, do NOT describe the document, do NOT summarize - just output the raw text content. If the document is completely blank or unreadable, respond with exactly one word: EXTRACTION_FAILED" },
-          { type: "image_url", image_url: { url: `data:application/pdf;base64,${pdfBase64}` } },
-        ],
-      }],
-      max_tokens: 16000,
-    }),
-  });
+  const ocrRes = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          role: "user",
+          parts: [
+            { text: "Extract ALL text content from this PDF document. Return every word, heading, paragraph, bullet point, table entry, and piece of text exactly as it appears. Preserve the document structure with headings and paragraphs. Do NOT add commentary, do NOT describe the document, do NOT summarize - just output the raw text content. If the document is completely blank or unreadable, respond with exactly one word: EXTRACTION_FAILED" },
+            { inline_data: { mime_type: "application/pdf", data: pdfBase64 } },
+          ],
+        }],
+        generationConfig: { maxOutputTokens: 16000 },
+      }),
+    },
+  );
 
   if (!ocrRes.ok) {
     console.error("Gemini OCR failed:", ocrRes.status, await ocrRes.text());
@@ -374,16 +376,16 @@ async function extractWithGemini(uint8Array: Uint8Array, title: string): Promise
   }
 
   const ocrData = await ocrRes.json();
-  return ocrData.choices?.[0]?.message?.content || "";
+  return ocrData.candidates?.[0]?.content?.parts?.map((p: any) => p.text || "").join("") || "";
 }
 
 /**
  * Use OpenAI Vision to extract text from an image.
  */
 async function extractFromImage(uint8Array: Uint8Array, mimeType: string): Promise<string> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
-    console.error("LOVABLE_API_KEY not configured, cannot use Gemini for vision");
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+  if (!GEMINI_API_KEY) {
+    console.error("GEMINI_API_KEY not configured, cannot use Gemini for vision");
     return "";
   }
 
@@ -398,21 +400,23 @@ async function extractFromImage(uint8Array: Uint8Array, mimeType: string): Promi
   // Retry up to 2 times on transient failures
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const visionRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
-          messages: [{
-            role: "user",
-            content: [
-              { type: "text", text: "Extract ALL text content from this image. Include every word, number, heading, label, equation, table cell, and piece of text you can see. Preserve the structure and reading order. Do NOT add commentary, do NOT describe the image visually — just output the raw text content. If the image is completely blank or has no text, respond with exactly: EXTRACTION_FAILED" },
-              { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
-            ],
-          }],
-          max_tokens: 8000,
-        }),
-      });
+      const visionRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              role: "user",
+              parts: [
+                { text: "Extract ALL text content from this image. Include every word, number, heading, label, equation, table cell, and piece of text you can see. Preserve the structure and reading order. Do NOT add commentary, do NOT describe the image visually — just output the raw text content. If the image is completely blank or has no text, respond with exactly: EXTRACTION_FAILED" },
+                { inline_data: { mime_type: mimeType, data: base64 } },
+              ],
+            }],
+            generationConfig: { maxOutputTokens: 8000 },
+          }),
+        },
+      );
 
       if (!visionRes.ok) {
         const errText = await visionRes.text();
@@ -425,7 +429,7 @@ async function extractFromImage(uint8Array: Uint8Array, mimeType: string): Promi
       }
 
       const visionData = await visionRes.json();
-      const content = visionData.choices?.[0]?.message?.content || "";
+      const content = visionData.candidates?.[0]?.content?.parts?.map((p: any) => p.text || "").join("") || "";
       console.log(`Gemini Vision returned ${content.length} chars`);
       return content;
     } catch (e) {
