@@ -1,19 +1,25 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
+    // Prevent double execution in development mode
+    if (hasProcessed.current) return;
+
+    const handleAuthExchange = async () => {
       try {
-        // 1. Parse the URL query parameters to look for the PKCE code
+        // 1. Check for PKCE code in the URL query parameters (?code=...)
         const params = new URLSearchParams(window.location.search);
         const code = params.get("code");
 
         if (code) {
-          // 2. Explicitly exchange the single-use auth code for an active user session
+          hasProcessed.current = true;
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
 
@@ -21,21 +27,34 @@ const AuthCallback = () => {
           return;
         }
 
-        // 3. Fallback check: see if a session already exists natively
+        // 2. Fallback: check if a session already exists instantly
         const { data } = await supabase.auth.getSession();
         if (data.session) {
           navigate("/dashboard", { replace: true });
         } else {
-          navigate("/auth", { replace: true });
+          // Fallback timeout in case of slow connection parsing
+          setTimeout(async () => {
+            const { data: retryData } = await supabase.auth.getSession();
+            if (retryData.session) {
+              navigate("/dashboard", { replace: true });
+            } else {
+              navigate("/auth", { replace: true });
+            }
+          }, 2000);
         }
-      } catch (error) {
-        console.error("Error exchanging code for session:", error);
+      } catch (error: any) {
+        console.error("Error exchanging auth code:", error);
+        toast({
+          title: "Sign in failed",
+          description: error.message || "Could not exchange authorization code.",
+          variant: "destructive",
+        });
         navigate("/auth", { replace: true });
       }
     };
 
-    handleAuthCallback();
-  }, [navigate]);
+    handleAuthExchange();
+  }, [navigate, toast]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
