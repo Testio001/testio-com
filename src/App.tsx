@@ -56,12 +56,54 @@ const App = () => (
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/home" element={<Home />} />
               <Route path="/promo" element={<PromoVideo />} />
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/document/:id" element={<ProtectedRoute><DocumentView /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
-              <Route path="/waitlist-analytics" element={<ProtectedRoute><WaitlistAnalytics /></ProtectedRoute>} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/document/:id"
+                element={
+                  <ProtectedRoute>
+                    <DocumentView />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/leaderboard"
+                element={
+                  <ProtectedRoute>
+                    <LeaderboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/waitlist-analytics"
+                element={
+                  <ProtectedRoute>
+                    <WaitlistAnalytics />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
               <Route path="/_internal/streak-admin-x7k2" element={<AdminStreakAssign />} />
               <Route path="*" element={<NotFound />} />
