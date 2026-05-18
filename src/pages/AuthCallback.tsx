@@ -6,18 +6,21 @@ const AuthCallback = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) navigate("/dashboard", { replace: true });
+    // 1. Set up the state listener to catch the session when it finishes parsing
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        navigate("/dashboard", { replace: true });
+      } else if (event === "SIGNED_OUT" || (event === "INITIALIZED" && !session)) {
+        // Fallback only if the authentication manager has completely initialized and confirmed no session exists
+        navigate("/auth", { replace: true });
+      }
     });
 
+    // 2. Immediate check in case the session was already parsed instantly
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate("/dashboard", { replace: true });
-      else
-        setTimeout(() => {
-          supabase.auth.getSession().then(({ data }) => {
-            if (!data.session) navigate("/auth", { replace: true });
-          });
-        }, 2000);
+      if (data.session) {
+        navigate("/dashboard", { replace: true });
+      }
     });
 
     return () => sub.subscription.unsubscribe();
