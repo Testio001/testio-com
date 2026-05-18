@@ -6,31 +6,42 @@ const AuthCallback = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 1. Set up the state listener to catch the session when it finishes parsing
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate("/dashboard", { replace: true });
-      } else if (event === "SIGNED_OUT" || (event === "INITIALIZED" && !session)) {
-        // Fallback only if the authentication manager has completely initialized and confirmed no session exists
+    const handleAuthCallback = async () => {
+      try {
+        // 1. Parse the URL query parameters to look for the PKCE code
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
+
+        if (code) {
+          // 2. Explicitly exchange the single-use auth code for an active user session
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+
+          navigate("/dashboard", { replace: true });
+          return;
+        }
+
+        // 3. Fallback check: see if a session already exists natively
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          navigate("/dashboard", { replace: true });
+        } else {
+          navigate("/auth", { replace: true });
+        }
+      } catch (error) {
+        console.error("Error exchanging code for session:", error);
         navigate("/auth", { replace: true });
       }
-    });
+    };
 
-    // 2. Immediate check in case the session was already parsed instantly
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        navigate("/dashboard", { replace: true });
-      }
-    });
-
-    return () => sub.subscription.unsubscribe();
+    handleAuthCallback();
   }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
         <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-        <p className="text-muted-foreground">Signing you in...</p>
+        <p className="text-muted-foreground">Completing secure sign in...</p>
       </div>
     </div>
   );
