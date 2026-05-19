@@ -25,7 +25,7 @@ async function callAudioAPI(apiKey: string, systemContent: string, voice: string
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "gpt-4o-mini-audio-preview",
+          model: "gpt-4o-audio-preview",
           modalities: ["text", "audio"],
           audio: { voice, format: "mp3" },
           messages: [
