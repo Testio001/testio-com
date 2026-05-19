@@ -376,16 +376,30 @@ const Dashboard = () => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
     const fileExt = file.name.split(".").pop();
-    const filePath = `${user.id}/${Date.now()}.${fileExt}`;
     setUploading("Uploading image...");
     setShowUpload(false);
-    const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
-    if (uploadError) { setUploading(null); toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" }); return; }
-    setUploading("Creating document...");
-    const { data: doc, error: docError } = await supabase.from("documents").insert({
-      user_id: user.id, title: file.name.replace(`.${fileExt}`, ""), source_type: "image", storage_path: filePath, status: "pending",
-    }).select().single();
-    if (docError) { setUploading(null); toast({ title: "Error", description: docError.message, variant: "destructive" }); return; }
+    let doc: Document | null = null;
+    let filePath = "";
+    try {
+      const created = await createDocumentUpload({
+        title: file.name.replace(`.${fileExt}`, ""),
+        sourceType: "image",
+        fileExt,
+      });
+      doc = created.document;
+      filePath = doc?.storage_path || "";
+      if (!created.upload) throw new Error("Could not prepare upload");
+      const { error: uploadError } = await supabase.storage
+        .from("documents")
+        .uploadToSignedUrl(created.upload.path, created.upload.token, file);
+      if (uploadError) throw uploadError;
+    } catch (err: any) {
+      setUploading(null);
+      if (doc) await supabase.from("documents").delete().eq("id", doc.id);
+      const msg = await extractFnErrorMessage(err, err?.message || "Could not upload this image.");
+      toast({ title: "Upload failed", description: msg, variant: "destructive" });
+      return;
+    }
     setUploading("Extracting text from image with AI... This may take a moment.");
 
     fetchData();
@@ -409,7 +423,7 @@ const Dashboard = () => {
         const t = classifyProcessingError(msg, err, "image");
         toast({ title: t.title, description: t.description, variant: "destructive" });
         await supabase.from("documents").update({ status: "failed" }).eq("id", doc.id);
-        try { await supabase.storage.from("documents").remove([filePath]); } catch {}
+        try { if (filePath) await supabase.storage.from("documents").remove([filePath]); } catch {}
         fetchData();
       }
     } else {
