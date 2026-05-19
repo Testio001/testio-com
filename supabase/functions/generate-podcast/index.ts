@@ -133,7 +133,7 @@ serve(async (req) => {
     const needsUpgradeCTA = exchangeCap < 24; // Free + Basic only
     const conversation: Array<{ speaker: string; text: string }> = [];
     const audioChunks: Uint8Array[] = [];
-    const materialContext = sourceContent.substring(0, 8000);
+    const materialContext = sourceContent.substring(0, 16000);
 
     // We always reserve the LAST exchange for a proper sign-off ("pleasantries" close).
     // Total = (exchangeLimit - 1) substantive exchanges + 1 outro.
@@ -157,18 +157,18 @@ serve(async (req) => {
 
       let instruction: string;
       if (isFirst) {
-        instruction = `You are Alex, the host of a friendly study podcast. This is the VERY FIRST line. You MUST start with EXACTLY these words: "Welcome to Testio.online." Then in ONE more sentence, introduce your co-host Sam and the topic from the study material. EXACTLY 2 sentences total. End with a natural handoff like "Sam, what's your take?" inside the second sentence so Sam knows it's their turn.`;
+        instruction = `You are Alex, the warm and energetic host of a friendly study podcast. This is the VERY FIRST line. Start with EXACTLY: "Welcome to Testio.online." Then, in 2–4 more sentences, greet your co-host Sam with genuine warmth, tease the topic from the study material, and invite Sam in with a natural handoff (e.g., "Sam, what jumped out at you?"). Sound excited and human.`;
       } else if (isFinalClose) {
-        instruction = `You are Alex. This is the VERY LAST line of the podcast. Say EXACTLY these two sentences and nothing else: "If you want to create a podcast like this with your notes, head over to Testio.online now. Thanks for listening, and we'll see you next time." Do NOT add anything else, do NOT introduce new content.`;
+        instruction = `You are Alex. This is the VERY LAST line of the podcast. Say warmly: "If you want to create a podcast like this with your own notes, head over to Testio.online. Thanks so much for studying with us — we'll catch you next time!" Keep it to those two sentences, delivered with real warmth.`;
       } else if (isOutro) {
-        instruction = `You are Alex, wrapping up the podcast. This is the OUTRO — do NOT introduce new ideas or topics. Briefly thank Sam and recap in EXACTLY 2 sentences. Do NOT mention Testio.online here — that comes in the next line.`;
+        instruction = `You are Alex, wrapping up the podcast. Do NOT introduce new ideas. In 3–5 sentences, warmly thank Sam, recap 2–3 of the most important takeaways from the study material that you actually discussed, and leave the listener feeling motivated. Do NOT mention Testio.online here — that's the next line.`;
       } else if (speaker === "Sam") {
-        instruction = `You are Sam, Alex's co-host and a curious learner. WAIT for Alex to finish — Alex JUST said: "${lastLine?.text || ''}". Briefly acknowledge Alex's point, then ask ONE thoughtful follow-up question. EXACTLY 2 sentences. Do NOT repeat what Alex just said verbatim. End the second sentence with a clear question so Alex knows it's their turn.`;
+        instruction = `You are Sam, Alex's curious, expressive co-host. Alex JUST said: "${lastLine?.text || ''}". React naturally with real emotion (curiosity, an "oh wow", a soft laugh, a "wait, really?"), then dig into the study material — paraphrase a specific concept Alex raised, share a quick thought or analogy, and end by asking Alex ONE genuine follow-up question. Aim for 3–6 sentences. Stay 100% grounded in the study material below — do not invent facts.`;
       } else {
-        instruction = `You are Alex, the host and expert. WAIT for Sam to finish — Sam JUST asked: "${lastLine?.text || ''}". Directly answer Sam's question using the study material with one quick example. EXACTLY 2 sentences. End naturally — either by inviting Sam's reaction ("Does that make sense, Sam?") or pivoting to the next sub-topic.`;
+        instruction = `You are Alex, the host and friendly expert. Sam JUST said: "${lastLine?.text || ''}". Directly answer Sam using SPECIFIC facts, terms, or examples from the study material below. Be expressive and warm — show enthusiasm for the topic. Aim for 3–6 sentences. End naturally, either by checking in with Sam ("Does that click, Sam?") or smoothly pivoting to the next idea from the material.`;
       }
 
-      const systemContent = `${instruction}\n\nCRITICAL RULES:\n- HARD LIMIT: Speak in EXACTLY 2 sentences. NEVER exceed 2 sentences. The third sentence belongs to the OTHER speaker — stop and hand off after your 2nd sentence.\n- Every sentence must end with proper punctuation (. ! or ?). Stop completely after your 2nd sentence — hand off to the other speaker.\n- You MUST start with a fresh, complete sentence. NEVER start mid-sentence, NEVER trail off, NEVER end mid-word.\n- The previous speaker has COMPLETELY FINISHED. Do not interrupt, do not overlap, do not echo their last words.\n- Speak at a natural, calm pace. Finish your final sentence completely before stopping.\n- Do NOT use stage directions like [pause] or *laughs*.\n- Speak ONLY your own lines — do not voice the other person.\n\nStudy material:\n${materialContext}${fullConvo ? `\n\nFull conversation so far (the other speaker has FINISHED their last line):\n${fullConvo}` : ""}`;
+      const systemContent = `${instruction}\n\nCRITICAL RULES:\n- Ground EVERY response in the Study Material below. Use real terms, names, and concepts from it. Do NOT make up facts that aren't in the material.\n- Speak naturally with real emotion — warmth, curiosity, excitement, occasional light laughter — like two real friends teaching each other. Vary sentence length.\n- Always speak in complete sentences with proper punctuation. Never start mid-sentence, never trail off, never end mid-word. Finish your final sentence before stopping.\n- The previous speaker has COMPLETELY FINISHED. Do not interrupt, overlap, or echo their last words verbatim.\n- Hand off cleanly when you're done — ask a question or invite a reaction so the other speaker knows it's their turn.\n- Do NOT use stage directions like [pause] or *laughs* — express emotion through your actual delivery and word choice.\n- Speak ONLY your own lines — never voice the other person.\n\nStudy material (this is the ONLY source of truth for facts):\n${materialContext}${fullConvo ? `\n\nFull conversation so far (the other speaker has FINISHED their last line):\n${fullConvo}` : ""}`;
 
       const { transcript, audioData } = await callAudioAPI(OPENAI_API_KEY, systemContent, voice);
 
