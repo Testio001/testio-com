@@ -26,19 +26,17 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [script, setScript] = useState<PodcastSegment[]>([]);
+  const [audioError, setAudioError] = useState<string>("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     fetchPodcast();
   }, [documentId]);
 
-  // Detect bucket + path from raw path, public URL, or legacy signed URL.
-  // Legacy podcasts may live in the "documents" bucket; new ones in "podcasts".
   const resolveAudio = (val: string): { bucket: "podcasts" | "documents"; path: string; legacyUrl?: string } => {
     if (!val.startsWith("http")) {
       return { bucket: "podcasts", path: val };
     }
-    // Strip query string before parsing path
     const noQuery = val.split("?")[0];
     const podMarker = "/podcasts/";
     const docMarker = "/documents/";
@@ -54,34 +52,61 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   };
 
   const signAudio = async (val: string): Promise<string> => {
+    if (!val) return "";
     const { bucket, path, legacyUrl } = resolveAudio(val);
-    const { data: signed } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
-    if (signed?.signedUrl) return signed.signedUrl;
-    // Fallback: legacy signed URL still works until it expires
+    console.log(`Signing audio: bucket=${bucket}, path=${path}`);
+
+    try {
+      const { data: signed, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+
+      if (error) {
+        console.error("Signed URL error:", error.message);
+      }
+      if (signed?.signedUrl) {
+        console.log("Signed URL created successfully");
+        return signed.signedUrl;
+      }
+    } catch (e) {
+      console.error("signAudio threw:", e);
+    }
+
     return legacyUrl || "";
   };
 
   const fetchPodcast = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("podcasts")
       .select("*")
       .eq("document_id", documentId)
       .order("created_at", { ascending: false })
       .limit(1);
 
+    console.log("Podcast fetch:", data, error);
+
     if (data && data.length > 0) {
       const p = data[0] as Podcast;
       setPodcast(p);
+      console.log("audio_url value:", p.audio_url);
+
       try {
         setScript(JSON.parse(p.script || "[]"));
       } catch {
         setScript([]);
       }
-      // Bucket is now private — always generate a fresh signed URL.
-      // Handles new path-only values, legacy public URLs, and legacy URLs in the documents bucket.
+
       if (p.audio_url) {
         const url = await signAudio(p.audio_url);
-        if (url) setSignedUrl(url);
+        console.log("Final signed URL:", url);
+        if (url) {
+          setSignedUrl(url);
+          setAudioError("");
+        } else {
+          console.error("Could not generate signed URL");
+          setAudioError("Could not load audio. Please try regenerating the podcast.");
+        }
+      } else {
+        console.error("No audio_url in podcast record");
+        setAudioError("Audio file not found. Please regenerate the podcast.");
       }
     }
     setLoading(false);
@@ -89,7 +114,6 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
 
   const handleDownload = async () => {
     if (!podcast?.audio_url) return;
-    // Always re-sign for download to ensure a fresh URL
     const url = (await signAudio(podcast.audio_url)) || signedUrl;
     if (!url) return;
     setDownloading(true);
@@ -117,7 +141,10 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
-      audio.play().catch(console.error);
+      audio.play().catch((e) => {
+        console.error("Play failed:", e);
+        setAudioError("Playback failed. Try downloading the MP3 instead.");
+      });
     } else {
       audio.pause();
     }
@@ -180,6 +207,10 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => setPlaying(false)}
+        onError={(e) => {
+          console.error("Audio element error:", e);
+          setAudioError("Audio failed to load. Please try downloading instead.");
+        }}
       />
 
       <div className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 rounded-2xl p-6">
@@ -194,7 +225,14 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
           </div>
         </div>
 
-        {/* Visual-only progress bar — no seek interaction */}
+        {/* Audio error banner */}
+        {audioError && (
+          <div className="mb-4 px-4 py-2.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs text-center">
+            {audioError}
+          </div>
+        )}
+
+        {/* Progress bar */}
         <div className="mb-4">
           <div className="w-full h-1.5 rounded-full bg-border overflow-hidden">
             <div
@@ -221,7 +259,8 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
           </button>
           <button
             onClick={togglePlay}
-            className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 transition-opacity"
+            disabled={!signedUrl}
+            className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-40"
           >
             {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
           </button>
@@ -230,11 +269,11 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
           </button>
         </div>
 
-        {/* Prominent download CTA */}
+        {/* Download */}
         <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
           <button
             onClick={handleDownload}
-            disabled={downloading}
+            disabled={downloading || !signedUrl}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
@@ -247,30 +286,32 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
       </div>
 
       {/* Transcript */}
-      <div>
-        <h3 className="text-foreground font-bold text-sm mb-3">Transcript</h3>
-        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-          {script.map((segment, i) => (
-            <div key={i} className={`flex gap-3 ${segment.speaker === "Alex" ? "" : "flex-row-reverse"}`}>
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  segment.speaker === "Alex" ? "bg-primary/20 text-primary" : "bg-testio-green/20 text-testio-green"
-                }`}
-              >
-                {segment.speaker[0]}
+      {script.length > 0 && (
+        <div>
+          <h3 className="text-foreground font-bold text-sm mb-3">Transcript</h3>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+            {script.map((segment, i) => (
+              <div key={i} className={`flex gap-3 ${segment.speaker === "Alex" ? "" : "flex-row-reverse"}`}>
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    segment.speaker === "Alex" ? "bg-primary/20 text-primary" : "bg-testio-green/20 text-testio-green"
+                  }`}
+                >
+                  {segment.speaker[0]}
+                </div>
+                <div
+                  className={`rounded-xl px-4 py-2.5 max-w-[80%] text-sm ${
+                    segment.speaker === "Alex" ? "bg-secondary text-foreground" : "bg-primary/10 text-foreground"
+                  }`}
+                >
+                  <span className="font-semibold text-xs text-muted-foreground block mb-0.5">{segment.speaker}</span>
+                  {segment.text}
+                </div>
               </div>
-              <div
-                className={`rounded-xl px-4 py-2.5 max-w-[80%] text-sm ${
-                  segment.speaker === "Alex" ? "bg-secondary text-foreground" : "bg-primary/10 text-foreground"
-                }`}
-              >
-                <span className="font-semibold text-xs text-muted-foreground block mb-0.5">{segment.speaker}</span>
-                {segment.text}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
