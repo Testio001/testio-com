@@ -30,9 +30,9 @@ async function callAudioAPI(apiKey: string, systemContent: string, voice: string
           audio: { voice, format: "mp3" },
           messages: [
             { role: "system", content: systemContent },
-            { role: "user", content: "Generate your next line in the podcast conversation. Speak naturally, with depth and detail. Do NOT be brief." },
+            { role: "user", content: "Generate your next line in the podcast conversation. Speak naturally and expressively, grounded in the study material. Bring real emotion — curiosity, excitement, surprise, warmth, the occasional light laugh — like two real friends learning together. Vary sentence length. Do NOT be robotic or overly brief." },
           ],
-          max_tokens: 600,
+          max_tokens: 1200,
         }),
       });
 
