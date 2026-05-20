@@ -24,7 +24,7 @@ const Leaderboard = () => {
 
   // Session-scoped cache to avoid re-hitting the DB on every Dashboard mount.
   // 60s TTL — leaderboard doesn't need to be real-time.
-  const CACHE_KEY = "lb:top10:v1";
+  const CACHE_KEY = "lb:top5:v1";
   const RANK_KEY = user ? `lb:rank:${user.id}:v1` : null;
   const TTL_MS = 60_000;
 
@@ -60,7 +60,7 @@ const Leaderboard = () => {
     }
 
     // Use the security-definer function to get leaderboard data
-    const { data: statsData } = await supabase.rpc("get_leaderboard", { limit_count: 10 });
+    const { data: statsData } = await supabase.rpc("get_leaderboard", { limit_count: 5 });
 
     if (statsData && statsData.length > 0) {
       // Fetch display names via security-definer RPC (no email leak)
@@ -83,11 +83,11 @@ const Leaderboard = () => {
       setEntries(mapped);
       writeCache(CACHE_KEY, mapped);
 
-      // Check if the current user is in the top 10
+      // Check if the current user is in the top 5
       if (user) {
         const inTop = mapped.findIndex(e => e.user_id === user.id);
         if (inTop === -1) {
-          // User not in top 10 — fetch full leaderboard to find their rank.
+          // User not in top 5 — fetch full leaderboard to find their rank.
           // Heavy query, so cache the resolved rank separately.
           const { data: allData } = await supabase.rpc("get_leaderboard", { limit_count: 1000 });
           if (allData) {
@@ -162,9 +162,6 @@ const Leaderboard = () => {
         <div className="mt-4 text-center py-3 px-4 rounded-lg bg-muted/50 border border-border/50">
           <p className="text-sm text-muted-foreground">
             You're not in the Top 1,000 yet — keep studying to reach there! 📚
-          </p>
-          <p className="text-xs text-primary mt-1.5 font-medium">
-            🏆 Top 10 students earn +2 bonus uploads every day!
           </p>
         </div>
       )}
