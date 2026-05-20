@@ -108,6 +108,14 @@ Deno.serve(async (req) => {
             subscription_expires_at: expiresAt.toISOString(),
           }).eq("user_id", userId);
 
+          // Reset monthly usage and clear bonus uploads so the user starts the
+          // new plan with exactly their plan quota (no leftover bonuses).
+          await adminClient.from("user_stats").update({
+            uploads_used: 0,
+            bonus_uploads: 0,
+            streak_bonus_uploads: 0,
+          }).eq("user_id", userId);
+
           console.log(`Activated ${finalPlan} for user ${userId}`);
           await redeemPendingReferralOnUpgrade(adminClient, userId, finalPlan);
         }
