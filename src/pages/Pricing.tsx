@@ -191,130 +191,180 @@ const Pricing = () => {
     if (user) fetchActivePlan();
   }, [user]);
 
+  // ---- Lemon Squeezy (USD) success handler ----
+  // Trigger whenever ANY `payment` param is present (Lemon Squeezy sometimes
+  // strips/changes the value). Poll verify-payment up to 3x every 3s because
+  // the webhook may take 5-10s to land.
   useEffect(() => {
-    if (searchParams.get("payment") === "success" && user) {
-      const verifyPayment = async () => {
+    if (!user) return;
+    const paymentParam = searchParams.get("payment");
+    if (!paymentParam) return;
+    let cancelled = false;
+
+    const run = async () => {
+      const tryVerify = async () => {
         try {
           const { data, error } = await supabase.functions.invoke("verify-payment", { body: {} });
-          if (error) throw error;
-          if (data?.success) {
-            toast({
-              title: "🎉 Payment Successful!",
-              description: `Welcome to Testio ${data.plan}! Enjoy your premium features.`,
-            });
-            navigate("/dashboard", { replace: true });
-          } else {
-            setTimeout(async () => {
-              const { data: retryData } = await supabase.functions.invoke("verify-payment", { body: {} });
-              if (retryData?.success) {
-                toast({ title: "🎉 Payment Successful!", description: `Your subscription is now active!` });
-                navigate("/dashboard", { replace: true });
-              }
-            }, 5000);
-          }
+          if (error) return false;
+          return !!data?.success ? data : false;
         } catch {
-          // silent — webhook handles it
+          return false;
         }
       };
-      verifyPayment();
-    }
+
+      let result: any = await tryVerify();
+      let attempts = 0;
+      while (!result && attempts < 3 && !cancelled) {
+        await new Promise((r) => setTimeout(r, 3000));
+        if (cancelled) return;
+        result = await tryVerify();
+        attempts++;
+      }
+      if (cancelled) return;
+      if (result) {
+        toast({
+          title: "🎉 Payment Successful!",
+          description: result.plan
+            ? `Welcome to Testio ${result.plan}! Enjoy your premium features.`
+            : "Your subscription is now active!",
+        });
+        await fetchActivePlan();
+        navigate("/dashboard", { replace: true });
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams, user]);
 
-  // Korapay payment success handler
+  // ---- Korapay (NGN) success handler ----
+  // Only the `reference` param is required — Korapay sometimes drops the
+  // custom `korapay=success` flag. Poll korapay-verify up to 3x every 3s.
   useEffect(() => {
+    if (!user) return;
     const reference = searchParams.get("reference");
-    if (searchParams.get("korapay") === "success" && user && reference) {
-      (async () => {
+    if (!reference) return;
+    let cancelled = false;
+
+    const run = async () => {
+      const tryVerify = async () => {
         try {
           const { data, error } = await supabase.functions.invoke("korapay-verify", {
             body: { reference },
           });
-          if (error) throw error;
-          if (data?.success) {
-            toast({
-              title: "🎉 Congratulations! Payment confirmed",
-              description: data.addon
-                ? "5 podcast credits have been added to your account. A confirmation email is on the way."
-                : `Your ${data.plan} plan is active for 30 days. A confirmation email is on the way.`,
-            });
-            await fetchActivePlan();
-            navigate("/dashboard", { replace: true });
-          } else {
-            // retry once after delay (webhook may complete shortly)
-            setTimeout(async () => {
-              const { data: retry } = await supabase.functions.invoke("korapay-verify", {
-                body: { reference },
+          if (error) return false;
+          return !!data?.success ? data : false;
+        } catch {
+          return false;
+        }
+      };
+
+      let result: any = await tryVerify();
+      let attempts = 0;
+      while (!result && attempts < 3 && !cancelled) {
+        await new Promise((r) => setTimeout(r, 3000));
+        if (cancelled) return;
+        result = await tryVerify();
+        attempts++;
+      }
+      if (cancelled) return;
+      if (result) {
+        toast({
+          title: "🎉 Congratulations! Payment confirmed",
+          description: result.addon
+            ? "5 podcast credits have been added to your account. A confirmation email is on the way."
+            : `Your ${result.plan} plan is active for 30 days. A confirmation email is on the way.`,
+        });
+        await fetchActivePlan();
+        navigate("/dashboard", { replace: true });
+      } else {
+        toast({
+          title: "Payment pending",
+          description: "We're still confirming your payment. This may take a moment.",
+        });
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, user]);
+
+  // ---- Bulletproof fallback auto-sync ----
+  // On mount (and whenever the user changes), scan for any pending Korapay
+  // transactions started in the last 60 minutes and force-verify each one.
+  // Lemon Squeezy has no local pending table, so we also fire a best-effort
+  // verify-payment which now falls back to scanning Lemon Squeezy orders by
+  // email for the past 24h. Runs silently in the background.
+  useEffect(() => {
+    if (!user) return;
+    // Skip when an explicit handler above is already running
+    if (searchParams.get("payment") || searchParams.get("reference")) return;
+    let cancelled = false;
+
+    (async () => {
+      const sixtyMinutesAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+      // --- Korapay pending sweep ---
+      try {
+        const { data: pending } = await supabase
+          .from("korapay_transactions")
+          .select("reference, status, created_at")
+          .eq("user_id", user.id)
+          .neq("status", "success")
+          .gte("created_at", sixtyMinutesAgo)
+          .order("created_at", { ascending: false });
+
+        if (!cancelled && pending && pending.length > 0) {
+          for (const tx of pending) {
+            if (cancelled) return;
+            try {
+              const { data: vr } = await supabase.functions.invoke("korapay-verify", {
+                body: { reference: tx.reference },
               });
-              if (retry?.success) {
+              if (vr?.success) {
                 toast({
-                  title: "🎉 Congratulations! Payment confirmed",
-                  description: retry.addon
-                    ? "5 podcast credits have been added. Check your inbox for confirmation."
-                    : "Your plan is now active. Check your inbox for confirmation.",
+                  title: "🎉 Payment confirmed",
+                  description: vr.addon
+                    ? "5 podcast credits have been added to your account."
+                    : `Your ${vr.plan} plan is active for 30 days.`,
                 });
                 await fetchActivePlan();
                 navigate("/dashboard", { replace: true });
-              } else {
-                toast({
-                  title: "Payment pending",
-                  description: "We're confirming your payment. This may take a moment.",
-                });
+                return;
               }
-            }, 5000);
+            } catch {
+              /* silent */
+            }
           }
-        } catch (err: any) {
-          toast({
-            title: "Verification error",
-            description: err.message || "Could not verify payment. Contact support if charged.",
-            variant: "destructive",
-          });
         }
-      })();
-    }
-  }, [searchParams, user]);
-
-  // FALLBACK: Korapay sometimes drops the redirect query params.
-  // If the user lands here with no payment params but has a recent pending
-  // tx, poll korapay-verify for it so the congrats toast still fires.
-  useEffect(() => {
-    if (!user) return;
-    if (searchParams.get("korapay") === "success") return; // handled above
-    let cancelled = false;
-    (async () => {
-      const { data: pendingTx } = await supabase
-        .from("korapay_transactions")
-        .select("reference, plan, status, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!pendingTx) return;
-      const ageMs = Date.now() - new Date(pendingTx.created_at).getTime();
-      // Only auto-recover transactions started in the last 30 minutes
-      if (ageMs > 30 * 60 * 1000) return;
-      if (pendingTx.status === "success") {
-        // already granted — show a friendly congrats once if plan just changed
-        return;
+      } catch {
+        /* silent */
       }
-      // Try to verify once; webhook may already have run by the time this fires
+
+      // --- Lemon Squeezy best-effort sweep ---
+      // verify-payment now checks recent paid orders by email if the local
+      // profile is still on free, so calling it once on load self-heals
+      // missed webhooks.
       try {
-        const { data: verifyRes } = await supabase.functions.invoke("korapay-verify", {
-          body: { reference: pendingTx.reference },
-        });
-        if (cancelled) return;
-        if (verifyRes?.success) {
-          toast({
-            title: "🎉 Congratulations! Payment confirmed",
-            description: verifyRes.addon
-              ? "5 podcast credits have been added. Check your inbox for confirmation."
-              : `Your ${verifyRes.plan} plan is active for 30 days. A confirmation email is on the way.`,
-          });
+        const { data: vr } = await supabase.functions.invoke("verify-payment", { body: {} });
+        if (!cancelled && vr?.success && vr?.plan) {
+          const before = activePlan;
           await fetchActivePlan();
+          if (before === "free" || !before) {
+            toast({
+              title: "🎉 Payment Successful!",
+              description: `Welcome to Testio ${vr.plan}! Enjoy your premium features.`,
+            });
+            navigate("/dashboard", { replace: true });
+          }
         }
       } catch {
         /* silent */
       }
     })();
+
     return () => {
       cancelled = true;
     };
