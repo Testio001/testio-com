@@ -61,11 +61,11 @@ export interface GamificationData {
 
 const FREE_UPLOAD_LIMIT = 2;
 const MAX_REFERRALS_PER_MONTH = 5;
-// Podcast exchange counts (each exchange ≈ 30s of audio)
-const FREE_PODCAST_MAX_EXCHANGES = 8;   // ~4 min
-const BASIC_PODCAST_MAX_EXCHANGES = 14; // ~7 min
-const PRO_PODCAST_MAX_EXCHANGES = 24;   // ~12 min
-const SCHOLAR_PODCAST_MAX_EXCHANGES = 30; // ~15 min
+// Podcast exchange counts (each exchange ≈ 35-40s of audio)
+const FREE_PODCAST_MAX_EXCHANGES = 6; // ~4 min
+const BASIC_PODCAST_MAX_EXCHANGES = 11; // ~7 min
+const PRO_PODCAST_MAX_EXCHANGES = 19; // ~12 min
+const SCHOLAR_PODCAST_MAX_EXCHANGES = 23; // ~15 min
 const FREE_QUIZ_MAX_QUESTIONS = 20;
 const STREAK_BONUS_INTERVAL = 10;
 
@@ -94,8 +94,6 @@ export function useGamification(): GamificationData {
   const [loading, setLoading] = useState(true);
   const [uploadsRemaining, setUploadsRemaining] = useState(0);
   const [totalUploadsAllowed, setTotalUploadsAllowed] = useState(FREE_UPLOAD_LIMIT);
-  // Default to FALSE — only allow uploads after the server confirms remaining quota.
-  // Otherwise a stale/loading state lets users sneak in an extra upload.
   const [canUpload, setCanUpload] = useState(false);
   const [referralsRemaining, setReferralsRemaining] = useState(MAX_REFERRALS_PER_MONTH);
   const [canRefer, setCanRefer] = useState(true);
@@ -127,7 +125,6 @@ export function useGamification(): GamificationData {
     fetchStats();
   }, [fetchStats]);
 
-  // Optimistic UI: immediately show streak increment before backend confirms
   const optimisticIncrement = useCallback(() => {
     setStats((prev) => {
       if (!prev) return prev;
@@ -147,11 +144,9 @@ export function useGamification(): GamificationData {
     if (!user || !stats) return;
     try {
       const result = await invokeGamification("record-upload");
-      // Refresh stats from server after recording
       await fetchStats();
       return result;
     } catch {
-      // Rollback optimistic update on failure
       await fetchStats();
       return undefined;
     }
