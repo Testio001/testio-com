@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, BarChart3, Brain, Crown, Eye, Gift, Headphones, RefreshCw, TrendingUp, Upload, Users } from "lucide-react";
+import { Activity, BarChart3, Brain, Crown, Eye, Gift, Headphones, RefreshCw, ShieldCheck, TrendingUp, Upload, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import AdminCodeGate from "@/components/app/AdminCodeGate";
@@ -144,6 +145,7 @@ const AdminDashboardContent = () => {
   const [payingLoading, setPayingLoading] = useState(true);
   const [activeUsers, setActiveUsers] = useState<ActiveUser[] | null>(null);
   const [activeLoading, setActiveLoading] = useState(true);
+  const [reconciling, setReconciling] = useState(false);
 
   const fetchMetrics = useCallback(async () => {
     setLoading(true);
@@ -211,6 +213,25 @@ const AdminDashboardContent = () => {
     void fetchActiveUsers();
   }, [fetchMetrics, fetchReferrals, fetchPayingUsers, fetchActiveUsers]);
 
+  const handleReconcile = useCallback(async () => {
+    setReconciling(true);
+    const { data, error } = await supabase.functions.invoke("admin-ops", {
+      body: { action: "reconcile-payments" },
+    });
+    setReconciling(false);
+    if (error || data?.error) {
+      toast.error(error?.message || data?.error || "Reconciliation failed");
+      return;
+    }
+    const k = data?.korapay ?? { scanned: 0, credited: 0 };
+    const l = data?.lemonsqueezy ?? { scanned: 0, credited: 0 };
+    toast.success(
+      `Recovered ${k.credited + l.credited} users (Korapay: ${k.credited}/${k.scanned}, Lemon Squeezy: ${l.credited}/${l.scanned})`,
+    );
+    void fetchMetrics();
+    void fetchPayingUsers();
+  }, [fetchMetrics, fetchPayingUsers]);
+
   return (
     <div className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6">
       <div className="mx-auto max-w-6xl space-y-6">
@@ -219,19 +240,30 @@ const AdminDashboardContent = () => {
             <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
             <p className="text-sm text-muted-foreground">Aggregate overview only.</p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => {
-              void fetchMetrics();
-              void fetchReferrals();
-              void fetchPayingUsers();
-              void fetchActiveUsers();
-            }}
-            disabled={loading || refLoading || payingLoading || activeLoading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading || refLoading || payingLoading || activeLoading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="default"
+              onClick={() => void handleReconcile()}
+              disabled={reconciling}
+              title="Scan all past Korapay & Lemon Squeezy payments and credit any user who paid but was never rewarded."
+            >
+              <ShieldCheck className={`h-4 w-4 ${reconciling ? "animate-pulse" : ""}`} />
+              {reconciling ? "Recovering…" : "Recover unpaid users"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void fetchMetrics();
+                void fetchReferrals();
+                void fetchPayingUsers();
+                void fetchActiveUsers();
+              }}
+              disabled={loading || refLoading || payingLoading || activeLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading || refLoading || payingLoading || activeLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -389,100 +421,19 @@ const AdminDashboardContent = () => {
             <Gift className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Referrals</h2>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <MetricCard
-              title="Total referrals"
-              value={refLoading ? "—" : formatNumber(referrals?.totalReferrals ?? 0)}
-              description="All-time signups via referral link"
-              icon={Users}
-            />
-            <MetricCard
-              title="Paid referrals"
-              value={refLoading ? "—" : formatNumber(referrals?.paidReferrals ?? 0)}
-              description="Referred users currently on a paid plan"
-              icon={BarChart3}
-            />
-          </div>
-
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Top referrers</CardTitle>
-              <CardDescription>Sorted by paid conversions</CardDescription>
+              <CardTitle className="text-base">Referrals live on a dedicated page</CardTitle>
+              <CardDescription>
+                {refLoading
+                  ? "Loading totals…"
+                  : `${formatNumber(referrals?.totalReferrals ?? 0)} total · ${formatNumber(referrals?.paidReferrals ?? 0)} paid`}
+              </CardDescription>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="py-2 pr-3 font-medium">Referrer</th>
-                    <th className="py-2 pr-3 font-medium">Email</th>
-                    <th className="py-2 pr-3 font-medium text-right">Paid</th>
-                    <th className="py-2 pr-3 font-medium text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {refLoading && (
-                    <tr><td colSpan={4} className="py-3 text-muted-foreground">Loading…</td></tr>
-                  )}
-                  {!refLoading && (referrals?.topReferrers ?? []).length === 0 && (
-                    <tr><td colSpan={4} className="py-3 text-muted-foreground">No referrals yet.</td></tr>
-                  )}
-                  {(referrals?.topReferrers ?? []).slice(0, 25).map((r) => (
-                    <tr key={r.user_id} className="border-b border-border/50">
-                      <td className="py-2 pr-3">{r.name || "—"}</td>
-                      <td className="py-2 pr-3 text-muted-foreground">{r.email || "—"}</td>
-                      <td className="py-2 pr-3 text-right font-semibold text-primary">{r.paid}</td>
-                      <td className="py-2 pr-3 text-right">{r.total}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Recent referred users</CardTitle>
-              <CardDescription>Who referred each new signup (latest 200)</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="py-2 pr-3 font-medium">Date</th>
-                    <th className="py-2 pr-3 font-medium">Referred user</th>
-                    <th className="py-2 pr-3 font-medium">Plan</th>
-                    <th className="py-2 pr-3 font-medium">Referred by</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {refLoading && (
-                    <tr><td colSpan={4} className="py-3 text-muted-foreground">Loading…</td></tr>
-                  )}
-                  {!refLoading && (referrals?.rows ?? []).length === 0 && (
-                    <tr><td colSpan={4} className="py-3 text-muted-foreground">No referrals yet.</td></tr>
-                  )}
-                  {(referrals?.rows ?? []).map((r, i) => (
-                    <tr key={i} className="border-b border-border/50">
-                      <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">
-                        {new Date(r.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="py-2 pr-3">
-                        <div>{r.referred_name || "—"}</div>
-                        <div className="text-xs text-muted-foreground">{r.referred_email || "—"}</div>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <Badge variant={r.referred_is_paid ? "default" : "outline"} className="uppercase text-[10px]">
-                          {r.referred_plan}
-                        </Badge>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <div>{r.referrer_name || "—"}</div>
-                        <div className="text-xs text-muted-foreground">{r.referrer_email || "—"}</div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <CardContent>
+              <Button asChild>
+                <Link to="/admin-referrals">Open referrals dashboard</Link>
+              </Button>
             </CardContent>
           </Card>
         </section>

@@ -178,7 +178,9 @@ Deno.serve(async (req) => {
           );
           const lsJson = await lsRes.json();
           const orders = Array.isArray(lsJson?.data) ? lsJson.data : [];
-          const since = Date.now() - 24 * 60 * 60 * 1000;
+          // Look back 90 days so users who paid days ago but never got credited
+          // (missed webhook, network drop) are still recovered on next visit.
+          const since = Date.now() - 90 * 24 * 60 * 60 * 1000;
           const paid = orders.find((o: any) => {
             const a = o?.attributes || {};
             const created = a.created_at ? new Date(a.created_at).getTime() : 0;
