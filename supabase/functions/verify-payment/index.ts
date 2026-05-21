@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
 
       const { data: profile } = await adminClient
         .from("profiles")
-        .select("subscription_plan, subscription_expires_at")
+        .select("email, subscription_plan, subscription_expires_at")
         .eq("user_id", user.id)
         .single();
 
@@ -158,6 +158,76 @@ Deno.serve(async (req) => {
             JSON.stringify({ success: true, plan: profile.subscription_plan, expires_at: profile.subscription_expires_at }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
+        }
+      }
+
+      // FALLBACK: webhook may have been missed. Query Lemon Squeezy API for the
+      // user's most recent paid order in the last 24h and credit them directly.
+      const lsKey = Deno.env.get("LEMONSQUEEZY_API_KEY");
+      const email = profile?.email || user.email;
+      if (lsKey && email) {
+        try {
+          const lsRes = await fetch(
+            `https://api.lemonsqueezy.com/v1/orders?filter[user_email]=${encodeURIComponent(email)}&sort=-created_at&page[size]=5`,
+            {
+              headers: {
+                Accept: "application/vnd.api+json",
+                Authorization: `Bearer ${lsKey}`,
+              },
+            }
+          );
+          const lsJson = await lsRes.json();
+          const orders = Array.isArray(lsJson?.data) ? lsJson.data : [];
+          const since = Date.now() - 24 * 60 * 60 * 1000;
+          const paid = orders.find((o: any) => {
+            const a = o?.attributes || {};
+            const created = a.created_at ? new Date(a.created_at).getTime() : 0;
+            return (a.status === "paid") && created >= since;
+          });
+          if (paid) {
+            const a = paid.attributes || {};
+            const variantId = a.first_order_item?.variant_id;
+            const matchedPlan = variantId ? VARIANT_TO_PLAN[variantId] : null;
+
+            if (matchedPlan === "podcast_addon") {
+              const { data: stats } = await adminClient
+                .from("user_stats")
+                .select("bonus_podcasts")
+                .eq("user_id", user.id)
+                .single();
+              const currentBonus = (stats as any)?.bonus_podcasts ?? 0;
+              await adminClient
+                .from("user_stats")
+                .update({ bonus_podcasts: currentBonus + 5 })
+                .eq("user_id", user.id);
+              return new Response(
+                JSON.stringify({ success: true, plan: "podcast_addon", addon: true }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+
+            if (matchedPlan) {
+              const expiresAt = new Date();
+              expiresAt.setDate(expiresAt.getDate() + 30);
+              await adminClient.from("profiles").update({
+                subscription_plan: matchedPlan,
+                subscription_expires_at: expiresAt.toISOString(),
+              }).eq("user_id", user.id);
+              await adminClient.from("user_stats").update({
+                uploads_used: 0,
+                bonus_uploads: 0,
+                streak_bonus_uploads: 0,
+              }).eq("user_id", user.id);
+              await redeemPendingReferralOnUpgrade(adminClient, user.id, matchedPlan);
+              console.log(`verify-payment fallback: credited ${matchedPlan} to ${user.id} from LS order ${paid.id}`);
+              return new Response(
+                JSON.stringify({ success: true, plan: matchedPlan, expires_at: expiresAt.toISOString() }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          }
+        } catch (e) {
+          console.error("Lemon Squeezy API fallback failed:", e);
         }
       }
 
