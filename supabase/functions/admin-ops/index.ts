@@ -416,8 +416,93 @@ serve(async (req) => {
       });
     }
 
+    if (action === "reconcile-payments") {
+      const report = {
+        korapay: { scanned: 0, credited: 0, failed: 0, details: [] as any[] },
+        lemonsqueezy: { scanned: 0, credited: 0, failed: 0, details: [] as any[] },
+      };
+
+      // ===== Korapay reconciliation =====
+      const koraSecret = Deno.env.get("KORAPAY_SECRET_KEY");
+      if (koraSecret) {
+        const { data: txs } = await supabaseAdmin
+          .from("korapay_transactions")
+          .select("reference, user_id, plan, status, created_at")
+          .neq("status", "success")
+          .order("created_at", { ascending: false })
+          .limit(500);
+        for (const tx of txs ?? []) {
+          report.korapay.scanned += 1;
+          try {
+            const vRes = await fetch(
+              `https://api.korapay.com/merchant/api/v1/charges/${encodeURIComponent(tx.reference)}`,
+              { headers: { Authorization: `Bearer ${koraSecret}` } },
+            );
+            const vJson = await vRes.json();
+            if (vRes.ok && vJson?.data?.status === "success") {
+              await creditPlan(supabaseAdmin, tx.user_id, tx.plan);
+              await supabaseAdmin
+                .from("korapay_transactions")
+                .update({ status: "success" })
+                .eq("reference", tx.reference);
+              report.korapay.credited += 1;
+              report.korapay.details.push({ reference: tx.reference, user_id: tx.user_id, plan: tx.plan, action: "credited" });
+            }
+          } catch (e) {
+            report.korapay.failed += 1;
+            report.korapay.details.push({ reference: tx.reference, error: String(e) });
+          }
+        }
+      }
+
+      // ===== Lemon Squeezy reconciliation =====
+      const lsKey = Deno.env.get("LEMONSQUEEZY_API_KEY");
+      if (lsKey) {
+        // Scan ALL profiles currently on free plan with an email — they may
+        // have paid via Lemon Squeezy but never been credited.
+        const { data: freeUsers } = await supabaseAdmin
+          .from("profiles")
+          .select("user_id, email, subscription_plan, subscription_expires_at")
+          .or("subscription_plan.eq.free,subscription_expires_at.lt." + new Date().toISOString())
+          .not("email", "is", null)
+          .limit(1000);
+
+        const since = Date.now() - 90 * 24 * 60 * 60 * 1000;
+        for (const u of freeUsers ?? []) {
+          report.lemonsqueezy.scanned += 1;
+          try {
+            const lsRes = await fetch(
+              `https://api.lemonsqueezy.com/v1/orders?filter[user_email]=${encodeURIComponent(u.email)}&sort=-created_at&page[size]=5`,
+              { headers: { Accept: "application/vnd.api+json", Authorization: `Bearer ${lsKey}` } },
+            );
+            const lsJson = await lsRes.json();
+            const orders = Array.isArray(lsJson?.data) ? lsJson.data : [];
+            const paid = orders.find((o: any) => {
+              const a = o?.attributes || {};
+              const created = a.created_at ? new Date(a.created_at).getTime() : 0;
+              return a.status === "paid" && created >= since;
+            });
+            if (paid) {
+              const a = paid.attributes || {};
+              const variantId = a.first_order_item?.variant_id;
+              const plan = variantId ? LS_VARIANT_TO_PLAN[variantId] : null;
+              if (plan) {
+                await creditPlan(supabaseAdmin, u.user_id, plan);
+                report.lemonsqueezy.credited += 1;
+                report.lemonsqueezy.details.push({ user_id: u.user_id, email: u.email, plan, order_id: paid.id });
+              }
+            }
+          } catch (e) {
+            report.lemonsqueezy.failed += 1;
+            report.lemonsqueezy.details.push({ user_id: u.user_id, error: String(e) });
+          }
+        }
+      }
+
+      return json(report);
+    }
+
     return json({ error: "Unknown action" }, 400);
-    // unreachable
   } catch (error) {
     console.error("admin-ops error", error);
     return json({ error: "An internal error occurred" }, 500);
