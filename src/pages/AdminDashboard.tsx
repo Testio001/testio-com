@@ -390,100 +390,19 @@ const AdminDashboardContent = () => {
             <Gift className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Referrals</h2>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <MetricCard
-              title="Total referrals"
-              value={refLoading ? "—" : formatNumber(referrals?.totalReferrals ?? 0)}
-              description="All-time signups via referral link"
-              icon={Users}
-            />
-            <MetricCard
-              title="Paid referrals"
-              value={refLoading ? "—" : formatNumber(referrals?.paidReferrals ?? 0)}
-              description="Referred users currently on a paid plan"
-              icon={BarChart3}
-            />
-          </div>
-
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Top referrers</CardTitle>
-              <CardDescription>Sorted by paid conversions</CardDescription>
+              <CardTitle className="text-base">Referrals live on a dedicated page</CardTitle>
+              <CardDescription>
+                {refLoading
+                  ? "Loading totals…"
+                  : `${formatNumber(referrals?.totalReferrals ?? 0)} total · ${formatNumber(referrals?.paidReferrals ?? 0)} paid`}
+              </CardDescription>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="py-2 pr-3 font-medium">Referrer</th>
-                    <th className="py-2 pr-3 font-medium">Email</th>
-                    <th className="py-2 pr-3 font-medium text-right">Paid</th>
-                    <th className="py-2 pr-3 font-medium text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {refLoading && (
-                    <tr><td colSpan={4} className="py-3 text-muted-foreground">Loading…</td></tr>
-                  )}
-                  {!refLoading && (referrals?.topReferrers ?? []).length === 0 && (
-                    <tr><td colSpan={4} className="py-3 text-muted-foreground">No referrals yet.</td></tr>
-                  )}
-                  {(referrals?.topReferrers ?? []).slice(0, 25).map((r) => (
-                    <tr key={r.user_id} className="border-b border-border/50">
-                      <td className="py-2 pr-3">{r.name || "—"}</td>
-                      <td className="py-2 pr-3 text-muted-foreground">{r.email || "—"}</td>
-                      <td className="py-2 pr-3 text-right font-semibold text-primary">{r.paid}</td>
-                      <td className="py-2 pr-3 text-right">{r.total}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Recent referred users</CardTitle>
-              <CardDescription>Who referred each new signup (latest 200)</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="py-2 pr-3 font-medium">Date</th>
-                    <th className="py-2 pr-3 font-medium">Referred user</th>
-                    <th className="py-2 pr-3 font-medium">Plan</th>
-                    <th className="py-2 pr-3 font-medium">Referred by</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {refLoading && (
-                    <tr><td colSpan={4} className="py-3 text-muted-foreground">Loading…</td></tr>
-                  )}
-                  {!refLoading && (referrals?.rows ?? []).length === 0 && (
-                    <tr><td colSpan={4} className="py-3 text-muted-foreground">No referrals yet.</td></tr>
-                  )}
-                  {(referrals?.rows ?? []).map((r, i) => (
-                    <tr key={i} className="border-b border-border/50">
-                      <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">
-                        {new Date(r.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="py-2 pr-3">
-                        <div>{r.referred_name || "—"}</div>
-                        <div className="text-xs text-muted-foreground">{r.referred_email || "—"}</div>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <Badge variant={r.referred_is_paid ? "default" : "outline"} className="uppercase text-[10px]">
-                          {r.referred_plan}
-                        </Badge>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <div>{r.referrer_name || "—"}</div>
-                        <div className="text-xs text-muted-foreground">{r.referrer_email || "—"}</div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <CardContent>
+              <Button asChild>
+                <Link to="/admin-referrals">Open referrals dashboard</Link>
+              </Button>
             </CardContent>
           </Card>
         </section>
