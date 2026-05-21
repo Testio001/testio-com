@@ -6,6 +6,33 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const LS_VARIANT_TO_PLAN: Record<number, string> = {
+  1504464: "basic",
+  1504491: "pro",
+  1537626: "scholar",
+  1519137: "podcast_addon",
+};
+
+async function creditPlan(admin: any, userId: string, plan: string) {
+  if (plan === "podcast_addon") {
+    const { data: stats } = await admin
+      .from("user_stats").select("bonus_podcasts").eq("user_id", userId).maybeSingle();
+    const cur = stats?.bonus_podcasts ?? 0;
+    await admin.from("user_stats").update({ bonus_podcasts: cur + 5 }).eq("user_id", userId);
+    return;
+  }
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  await admin.from("profiles").update({
+    subscription_plan: plan,
+    subscription_expires_at: expiresAt,
+  }).eq("user_id", userId);
+  await admin.from("user_stats").update({
+    uploads_used: 0,
+    bonus_uploads: 0,
+    streak_bonus_uploads: 0,
+  }).eq("user_id", userId);
+}
+
 type DashboardCounts = {
   totalUsers: number;
   totalUploads: number;
