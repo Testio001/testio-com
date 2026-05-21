@@ -417,6 +417,7 @@ serve(async (req) => {
     }
 
     return json({ error: "Unknown action" }, 400);
+    // unreachable
   } catch (error) {
     console.error("admin-ops error", error);
     return json({ error: "An internal error occurred" }, 500);
