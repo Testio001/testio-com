@@ -109,10 +109,12 @@ Deno.serve(async (req) => {
         };
 
         if (tx.plan === "podcast_addon") {
-          await admin.from("korapay_transactions").update({ status: "success" }).eq("reference", reference);
           const { data: stats } = await admin.from("user_stats").select("bonus_podcasts").eq("user_id", tx.user_id).maybeSingle();
           const current = stats?.bonus_podcasts ?? 0;
           await admin.from("user_stats").update({ bonus_podcasts: current + 5 }).eq("user_id", tx.user_id);
+          // Mark success ONLY after credits were actually granted, so a mid-failure
+          // can be retried by the next webhook or by korapay-verify.
+          await admin.from("korapay_transactions").update({ status: "success" }).eq("reference", reference);
           await sendCongratsEmail({ isAddon: true });
           console.log("Webhook: granted 5 podcast credits to", tx.user_id);
           await admin.from("in_app_notifications").insert({
@@ -124,11 +126,21 @@ Deno.serve(async (req) => {
           });
         } else {
           const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-          await admin.from("korapay_transactions").update({ status: "success", expires_at: expiresAt }).eq("reference", reference);
-          await admin.from("profiles").update({
+          // Grant the plan FIRST. Only mark the tx success once we've actually
+          // updated the profile + stats — otherwise a partial failure would
+          // leave the user paid but never credited (and tx.status='success'
+          // would block all retries).
+          const { error: profileErr } = await admin.from("profiles").update({
             subscription_plan: tx.plan,
             subscription_expires_at: expiresAt,
           }).eq("user_id", tx.user_id);
+          if (profileErr) {
+            console.error("Webhook: profile update failed, NOT marking success", profileErr);
+            return new Response(JSON.stringify({ ok: false, error: "profile_update_failed" }), {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
           // Reset monthly usage counter and clear any prior bonus uploads so the user
           // gets exactly their plan's quota (e.g. Starter = 10, not 10 + leftover bonus).
           await admin.from("user_stats").update({
@@ -136,6 +148,7 @@ Deno.serve(async (req) => {
             bonus_uploads: 0,
             streak_bonus_uploads: 0,
           }).eq("user_id", tx.user_id);
+          await admin.from("korapay_transactions").update({ status: "success", expires_at: expiresAt }).eq("reference", reference);
           await sendCongratsEmail({ isAddon: false, expiresAt });
           console.log(`Webhook: activated ${tx.plan} for`, tx.user_id);
           await redeemPendingReferralOnUpgrade(admin, tx.user_id, tx.plan);
