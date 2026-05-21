@@ -95,10 +95,10 @@ Deno.serve(async (req) => {
       };
 
       if (tx.plan === "podcast_addon") {
-        await admin.from("korapay_transactions").update({ status: "success" }).eq("reference", reference);
         const { data: stats } = await admin.from("user_stats").select("bonus_podcasts").eq("user_id", user.id).maybeSingle();
         const current = stats?.bonus_podcasts ?? 0;
         await admin.from("user_stats").update({ bonus_podcasts: current + 5 }).eq("user_id", user.id);
+        await admin.from("korapay_transactions").update({ status: "success" }).eq("reference", reference);
         await sendCongratsEmail({ isAddon: true });
         return new Response(JSON.stringify({ success: true, plan: tx.plan, addon: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -106,13 +106,24 @@ Deno.serve(async (req) => {
       }
 
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      await admin.from("korapay_transactions").update({ status: "success", expires_at: expiresAt }).eq("reference", reference);
-      await admin.from("profiles").update({
+      const { error: profileErr } = await admin.from("profiles").update({
         subscription_plan: tx.plan,
         subscription_expires_at: expiresAt,
       }).eq("user_id", user.id);
-      // Reset monthly usage counter so the user starts the new plan with a fresh quota.
-      await admin.from("user_stats").update({ uploads_used: 0 }).eq("user_id", user.id);
+      if (profileErr) {
+        console.error("korapay-verify: profile update failed", profileErr);
+        return new Response(JSON.stringify({ success: false, error: "profile_update_failed" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Reset monthly usage counter and clear bonus uploads so the user starts the new plan with a fresh quota.
+      await admin.from("user_stats").update({
+        uploads_used: 0,
+        bonus_uploads: 0,
+        streak_bonus_uploads: 0,
+      }).eq("user_id", user.id);
+      await admin.from("korapay_transactions").update({ status: "success", expires_at: expiresAt }).eq("reference", reference);
       await sendCongratsEmail({ isAddon: false, expiresAt });
       await redeemPendingReferralOnUpgrade(admin, user.id, tx.plan);
 
