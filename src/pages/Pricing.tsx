@@ -172,7 +172,10 @@ const Pricing = () => {
       .select("subscription_plan, subscription_expires_at")
       .eq("user_id", user.id)
       .single();
-    if (!data) { setActivePlan("free"); return "free"; }
+    if (!data) {
+      setActivePlan("free");
+      return "free";
+    }
     const plan = data.subscription_plan || "free";
     if (plan !== "free" && data.subscription_expires_at) {
       if (new Date(data.subscription_expires_at) < new Date()) {
@@ -184,7 +187,9 @@ const Pricing = () => {
     return plan;
   };
 
-  useEffect(() => { if (user) fetchActivePlan(); }, [user]);
+  useEffect(() => {
+    if (user) fetchActivePlan();
+  }, [user]);
 
   useEffect(() => {
     if (searchParams.get("payment") === "success" && user) {
@@ -306,9 +311,13 @@ const Pricing = () => {
           });
           await fetchActivePlan();
         }
-      } catch { /* silent */ }
+      } catch {
+        /* silent */
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   if (isAndroidApp) {
@@ -324,7 +333,7 @@ const Pricing = () => {
     );
   }
 
-  const handleSubscribe = async (plan: typeof plans[0]) => {
+  const handleSubscribe = async (plan: (typeof plans)[0]) => {
     if (plan.id === "free") {
       navigate("/dashboard");
       return;
@@ -340,8 +349,13 @@ const Pricing = () => {
     setLoadingPlan(plan.id);
     try {
       const fnName = currency === "NGN" ? "korapay-initialize" : "initialize-payment";
+
+      // FIXED HERE: Passing the dynamic domain source context so it doesn't default back to lovable
       const { data, error } = await supabase.functions.invoke(fnName, {
-        body: { plan: plan.id },
+        body: {
+          plan: plan.id,
+          frontendOrigin: window.location.origin,
+        },
       });
       if (error) throw error;
       if (data?.checkout_url) window.location.href = data.checkout_url;
@@ -363,7 +377,9 @@ const Pricing = () => {
         </button>
         <div className="flex items-center gap-2">
           <img src={testioLogo} alt="Testio" className="w-7 h-7" />
-          <span className="text-foreground font-bold text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
+          <span className="text-foreground font-bold text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            testio
+          </span>
         </div>
       </header>
 
@@ -392,91 +408,104 @@ const Pricing = () => {
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {plans.filter((p) => !p.ngnOnly || (currency === "NGN" && isNigeria)).map((plan, i) => (
-            <motion.div
-              key={plan.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              className={`relative rounded-2xl p-6 border flex flex-col ${
-                plan.highlight
-                  ? "bg-primary/5 border-primary/40 shadow-lg shadow-primary/10"
-                  : plan.id === "starter"
-                  ? "bg-card border-amber-500/30"
-                  : "bg-card border-border"
-              }`}
-            >
-              {plan.badge && (
-                <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ${
-                  plan.highlight ? "bg-primary text-primary-foreground" : plan.id === "starter" ? "bg-amber-500 text-black" : "bg-foreground text-background"
-                }`}>
-                  {plan.badge}
-                </div>
-              )}
-
-              <div className="mb-4">
-                <div className="flex items-center gap-2 mb-1">
-                  {plan.id === "scholar" ? <GraduationCap className="w-5 h-5 text-primary" /> :
-                   plan.highlight ? <Zap className="w-5 h-5 text-primary" /> :
-                   <Crown className="w-5 h-5 text-primary/70" />}
-                  <h3 className="text-foreground font-bold text-lg">{plan.name}</h3>
-                </div>
-                <p className="text-muted-foreground text-xs">{plan.tagline}</p>
-              </div>
-
-              <div className="mb-1 flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-foreground">
-                  {currency === "NGN" && plan.id !== "free"
-                    ? formatNgn(NGN_PRICES[plan.id as Exclude<PlanId, "free">])
-                    : plan.price}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {plan.id === "free" ? plan.period : currency === "NGN" ? "/30 days" : plan.period}
-                </span>
-              </div>
-              <p className="text-muted-foreground text-[11px] italic mb-5">
-                {currency === "NGN" && plan.id !== "free" ? "One-off payment · renew when it expires" : plan.blurb}
-              </p>
-
-              <ul className="space-y-2.5 mb-6 flex-1">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-xs text-foreground leading-snug">
-                    <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {(() => {
-                const isCurrent = activePlan === plan.id || (plan.id === "free" && (!activePlan || activePlan === "free"));
-                return (
-                  <button
-                    onClick={() => handleSubscribe(plan)}
-                    disabled={loadingPlan !== null || plan.id === "free" || isCurrent}
-                    className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
-                      isCurrent
-                        ? "bg-primary/15 text-primary border border-primary/40 cursor-default"
-                        : plan.highlight
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
-                        : plan.id === "free"
-                        ? "bg-secondary text-muted-foreground border border-border cursor-not-allowed"
-                        : "bg-secondary text-foreground hover:bg-secondary/80 border border-border"
-                    } disabled:opacity-100`}
+          {plans
+            .filter((p) => !p.ngnOnly || (currency === "NGN" && isNigeria))
+            .map((plan, i) => (
+              <motion.div
+                key={plan.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08 }}
+                className={`relative rounded-2xl p-6 border flex flex-col ${
+                  plan.highlight
+                    ? "bg-primary/5 border-primary/40 shadow-lg shadow-primary/10"
+                    : plan.id === "starter"
+                      ? "bg-card border-amber-500/30"
+                      : "bg-card border-border"
+                }`}
+              >
+                {plan.badge && (
+                  <div
+                    className={`absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ${
+                      plan.highlight
+                        ? "bg-primary text-primary-foreground"
+                        : plan.id === "starter"
+                          ? "bg-amber-500 text-black"
+                          : "bg-foreground text-background"
+                    }`}
                   >
-                    {loadingPlan === plan.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : isCurrent ? (
-                      <>
-                        <BadgeCheck className="w-4 h-4" /> Subscribed · Current Plan
-                      </>
+                    {plan.badge}
+                  </div>
+                )}
+
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    {plan.id === "scholar" ? (
+                      <GraduationCap className="w-5 h-5 text-primary" />
+                    ) : plan.highlight ? (
+                      <Zap className="w-5 h-5 text-primary" />
                     ) : (
-                      plan.cta
+                      <Crown className="w-5 h-5 text-primary/70" />
                     )}
-                  </button>
-                );
-              })()}
-            </motion.div>
-          ))}
+                    <h3 className="text-foreground font-bold text-lg">{plan.name}</h3>
+                  </div>
+                  <p className="text-muted-foreground text-xs">{plan.tagline}</p>
+                </div>
+
+                <div className="mb-1 flex items-baseline gap-1">
+                  <span className="text-3xl font-bold text-foreground">
+                    {currency === "NGN" && plan.id !== "free"
+                      ? formatNgn(NGN_PRICES[plan.id as Exclude<PlanId, "free">])
+                      : plan.price}
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    {plan.id === "free" ? plan.period : currency === "NGN" ? "/30 days" : plan.period}
+                  </span>
+                </div>
+                <p className="text-muted-foreground text-[11px] italic mb-5">
+                  {currency === "NGN" && plan.id !== "free" ? "One-off payment · renew when it expires" : plan.blurb}
+                </p>
+
+                <ul className="space-y-2.5 mb-6 flex-1">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-xs text-foreground leading-snug">
+                      <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {(() => {
+                  const isCurrent =
+                    activePlan === plan.id || (plan.id === "free" && (!activePlan || activePlan === "free"));
+                  return (
+                    <button
+                      onClick={() => handleSubscribe(plan)}
+                      disabled={loadingPlan !== null || plan.id === "free" || isCurrent}
+                      className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+                        isCurrent
+                          ? "bg-primary/15 text-primary border border-primary/40 cursor-default"
+                          : plan.highlight
+                            ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
+                            : plan.id === "free"
+                              ? "bg-secondary text-muted-foreground border border-border cursor-not-allowed"
+                              : "bg-secondary text-foreground hover:bg-secondary/80 border border-border"
+                      } disabled:opacity-100`}
+                    >
+                      {loadingPlan === plan.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : isCurrent ? (
+                        <>
+                          <BadgeCheck className="w-4 h-4" /> Subscribed · Current Plan
+                        </>
+                      ) : (
+                        plan.cta
+                      )}
+                    </button>
+                  );
+                })()}
+              </motion.div>
+            ))}
         </div>
 
         <div className="text-center mt-8 space-y-1">
@@ -486,7 +515,9 @@ const Pricing = () => {
               ? "Secure payment powered by Korapay (Nigeria). One-off — no auto-renew."
               : "Secure payment powered by Lemon Squeezy. Cancel anytime."}
           </p>
-          <p className="text-muted-foreground text-[10px]">Created by <span className="font-semibold">TechWorld</span></p>
+          <p className="text-muted-foreground text-[10px]">
+            Created by <span className="font-semibold">TechWorld</span>
+          </p>
         </div>
 
         <ComparisonReceipt />
