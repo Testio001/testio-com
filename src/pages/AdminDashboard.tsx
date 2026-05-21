@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, BarChart3, Brain, Crown, Eye, Gift, Headphones, RefreshCw, TrendingUp, Upload, Users } from "lucide-react";
+import { Activity, BarChart3, Brain, Crown, Gift, Headphones, RefreshCw, ShieldCheck, TrendingUp, Upload, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import AdminCodeGate from "@/components/app/AdminCodeGate";
