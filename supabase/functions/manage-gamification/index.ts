@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const FREE_UPLOAD_LIMIT = 2;
+const FREE_UPLOAD_LIMIT = 1;
 const STARTER_UPLOAD_LIMIT = 10; // NGN-only entry plan
 const BASIC_UPLOAD_LIMIT = 15;
 const PRO_UPLOAD_LIMIT = 40;
