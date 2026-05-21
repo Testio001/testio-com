@@ -29,14 +29,21 @@ Deno.serve(async (req) => {
     });
     const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     }
 
-    const { plan } = await req.json();
+    // 1. DYNAMIC ORIGIN FIX: Read plan and frontendOrigin sent from the client-side app
+    const { plan, frontendOrigin } = await req.json();
     if (!plan || !PLAN_NGN[plan]) {
-      return new Response(JSON.stringify({ error: "Invalid plan. Must be 'starter', 'basic', 'pro', 'scholar', or 'podcast_addon'." }), { status: 400, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: "Invalid plan. Must be 'starter', 'basic', 'pro', 'scholar', or 'podcast_addon'." }),
+        { status: 400, headers: corsHeaders },
+      );
     }
 
     const koraSecret = Deno.env.get("KORAPAY_SECRET_KEY");
@@ -46,9 +53,13 @@ Deno.serve(async (req) => {
 
     const amountNgn = PLAN_NGN[plan];
     const reference = `kp_${user.id.slice(0, 8)}_${Date.now()}`;
-    const redirectUrl = plan === "podcast_addon"
-      ? `https://testio-com.lovable.app/dashboard?korapay=success&reference=${reference}`
-      : `https://testio-com.lovable.app/pricing?korapay=success&reference=${reference}`;
+
+    // 2. DYNAMIC REDIRECT URL LOGIC: Use the frontend domain or fallback to your production site
+    const baseDomain = frontendOrigin || "https://www.testio.online";
+    const redirectUrl =
+      plan === "podcast_addon"
+        ? `${baseDomain}/dashboard?korapay=success&reference=${reference}`
+        : `${baseDomain}/pricing?korapay=success&reference=${reference}`;
 
     // Insert pending transaction
     const { error: insertErr } = await admin.from("korapay_transactions").insert({
@@ -60,7 +71,10 @@ Deno.serve(async (req) => {
     });
     if (insertErr) {
       console.error("Insert tx error:", insertErr);
-      return new Response(JSON.stringify({ error: "Could not create transaction" }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Could not create transaction" }), {
+        status: 500,
+        headers: corsHeaders,
+      });
     }
 
     // Initialize Korapay charge
@@ -74,9 +88,7 @@ Deno.serve(async (req) => {
         amount: amountNgn,
         currency: "NGN",
         reference,
-        narration: plan === "podcast_addon"
-          ? "Testio podcast top-up (5 credits)"
-          : `Testio ${plan} plan (30 days)`,
+        narration: plan === "podcast_addon" ? "Testio podcast top-up (5 credits)" : `Testio ${plan} plan (30 days)`,
         notification_url: `${supabaseUrl}/functions/v1/korapay-webhook`,
         redirect_url: redirectUrl,
         customer: {
@@ -93,13 +105,15 @@ Deno.serve(async (req) => {
     const koraData = await koraRes.json();
     if (!koraRes.ok || !koraData?.status) {
       console.error("Korapay error:", JSON.stringify(koraData));
-      return new Response(JSON.stringify({ error: koraData?.message || "Checkout creation failed" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: koraData?.message || "Checkout creation failed" }), {
+        status: 400,
+        headers: corsHeaders,
+      });
     }
 
-    return new Response(
-      JSON.stringify({ checkout_url: koraData.data?.checkout_url, reference }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ checkout_url: koraData.data?.checkout_url, reference }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err: any) {
     console.error("korapay-initialize error:", err);
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
