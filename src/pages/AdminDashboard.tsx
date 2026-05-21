@@ -145,6 +145,7 @@ const AdminDashboardContent = () => {
   const [payingLoading, setPayingLoading] = useState(true);
   const [activeUsers, setActiveUsers] = useState<ActiveUser[] | null>(null);
   const [activeLoading, setActiveLoading] = useState(true);
+  const [reconciling, setReconciling] = useState(false);
 
   const fetchMetrics = useCallback(async () => {
     setLoading(true);
@@ -212,6 +213,25 @@ const AdminDashboardContent = () => {
     void fetchActiveUsers();
   }, [fetchMetrics, fetchReferrals, fetchPayingUsers, fetchActiveUsers]);
 
+  const handleReconcile = useCallback(async () => {
+    setReconciling(true);
+    const { data, error } = await supabase.functions.invoke("admin-ops", {
+      body: { action: "reconcile-payments" },
+    });
+    setReconciling(false);
+    if (error || data?.error) {
+      toast.error(error?.message || data?.error || "Reconciliation failed");
+      return;
+    }
+    const k = data?.korapay ?? { scanned: 0, credited: 0 };
+    const l = data?.lemonsqueezy ?? { scanned: 0, credited: 0 };
+    toast.success(
+      `Recovered ${k.credited + l.credited} users (Korapay: ${k.credited}/${k.scanned}, Lemon Squeezy: ${l.credited}/${l.scanned})`,
+    );
+    void fetchMetrics();
+    void fetchPayingUsers();
+  }, [fetchMetrics, fetchPayingUsers]);
+
   return (
     <div className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6">
       <div className="mx-auto max-w-6xl space-y-6">
@@ -220,19 +240,30 @@ const AdminDashboardContent = () => {
             <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
             <p className="text-sm text-muted-foreground">Aggregate overview only.</p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => {
-              void fetchMetrics();
-              void fetchReferrals();
-              void fetchPayingUsers();
-              void fetchActiveUsers();
-            }}
-            disabled={loading || refLoading || payingLoading || activeLoading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading || refLoading || payingLoading || activeLoading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="default"
+              onClick={() => void handleReconcile()}
+              disabled={reconciling}
+              title="Scan all past Korapay & Lemon Squeezy payments and credit any user who paid but was never rewarded."
+            >
+              <ShieldCheck className={`h-4 w-4 ${reconciling ? "animate-pulse" : ""}`} />
+              {reconciling ? "Recovering…" : "Recover unpaid users"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void fetchMetrics();
+                void fetchReferrals();
+                void fetchPayingUsers();
+                void fetchActiveUsers();
+              }}
+              disabled={loading || refLoading || payingLoading || activeLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading || refLoading || payingLoading || activeLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
