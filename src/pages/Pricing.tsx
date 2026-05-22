@@ -239,58 +239,72 @@ const Pricing = () => {
   }, [searchParams, user]);
 
   // ---- Korapay (NGN) success handler ----
-  // Only the `reference` param is required — Korapay sometimes drops the
-  // custom `korapay=success` flag. Poll korapay-verify up to 3x every 3s.
-  useEffect(() => {
-    if (!user) return;
-    const reference = searchParams.get("reference");
-    if (!reference) return;
-    let cancelled = false;
+useEffect(() => {
+  if (!user) return;
 
-    const run = async () => {
-      const tryVerify = async () => {
-        try {
-          const { data, error } = await supabase.functions.invoke("korapay-verify", {
-            body: { reference },
-          });
-          if (error) return false;
-          return !!data?.success ? data : false;
-        } catch {
+  const reference = searchParams.get("reference");
+  if (!reference) return;
+
+  let cancelled = false;
+
+  const run = async () => {
+    const tryVerify = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("korapay-verify", {
+          body: { reference },
+        });
+
+        if (error) {
+          console.error("Korapay verify error:", error);
           return false;
         }
-      };
 
-      let result: any = await tryVerify();
-      let attempts = 0;
-      while (!result && attempts < 3 && !cancelled) {
-        await new Promise((r) => setTimeout(r, 3000));
-        if (cancelled) return;
-        result = await tryVerify();
-        attempts++;
+        return !!data?.success ? data : false;
+      } catch (err) {
+        console.error("Korapay verify failed:", err);
+        return false;
       }
+    };
+
+    let result: any = await tryVerify();
+    let attempts = 0;
+
+    while (!result && attempts < 3 && !cancelled) {
+      await new Promise((r) => setTimeout(r, 3000));
+
       if (cancelled) return;
-      if (result) {
-        toast({
-          title: "🎉 Congratulations! Payment confirmed",
-          description: result.addon
-            ? "5 podcast credits have been added to your account. A confirmation email is on the way."
-            : `Your ${result.plan} plan is active for 30 days. A confirmation email is on the way.`,
-        });
-        await fetchActivePlan();
-        navigate("/dashboard", { replace: true });
-      } else {
-        toast({
-          title: "Payment pending",
-          description: "We're still confirming your payment. This may take a moment.",
-        });
-      }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [searchParams, user]);
 
+      result = await tryVerify();
+      attempts++;
+    }
+
+    if (cancelled) return;
+
+    if (result) {
+      toast({
+        title: "🎉 Payment successful",
+        description: "Your subscription is now active and valid for 30 days.",
+      });
+
+      // Refresh active plan immediately
+      await fetchActivePlan();
+
+      // Remove payment params from URL WITHOUT redirecting
+      window.history.replaceState({}, "", "/pricing");
+    } else {
+      toast({
+        title: "Payment pending",
+        description: "We're still confirming your payment. Please wait a moment.",
+      });
+    }
+  };
+
+  run();
+
+  return () => {
+    cancelled = true;
+  };
+}, [searchParams, user]);
   // ---- Bulletproof fallback auto-sync ----
   // On mount (and whenever the user changes), scan for any pending Korapay
   // transactions started in the last 60 minutes and force-verify each one.
