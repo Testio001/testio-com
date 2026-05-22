@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
-import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Gift, Loader2 } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Gift, Loader2, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import testioLogo from "@/assets/testio-logo.png";
@@ -16,8 +16,8 @@ const Auth = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Screen/View States — CHANGED TO DEFAULT TO SIGN UP (false) FIRST
-  const [isLogin, setIsLogin] = useState(false);
+  // Screen/View States
+  const [isLogin, setIsLogin] = useState(false); // Defaults to Signup view first
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showSignupVerification, setShowSignupVerification] = useState(false);
 
@@ -27,16 +27,18 @@ const Auth = () => {
   const [displayName, setDisplayName] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
 
-  // Forgot Password Fields
+  // Forgot Password States & Fields
   const [forgotEmail, setForgotEmail] = useState("");
-  const [resetStep, setResetStep] = useState<"request" | "verify">("request");
-  const [resetCode, setResetCode] = useState("");
+  const [resetStep, setResetStep] = useState<"request" | "verify_and_change">("request");
+  const [forgotCode, setForgotCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
   // UI States
   const [loading, setLoading] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -119,12 +121,10 @@ const Auth = () => {
 
         if (error) throw error;
 
-        // If session is active immediately, email verification is bypassed
         if (data?.session) {
           toast({ title: "Account created!", description: "Welcome to Testio." });
           navigate("/dashboard");
         } else {
-          // Send user to verification step for the 8-digit code
           toast({
             title: "Verification Email Sent ✉️",
             description: "Check your inbox for your 8-character confirmation code.",
@@ -134,13 +134,12 @@ const Auth = () => {
       }
     } catch (err: any) {
       const errMsg = err.message || "";
-      // AUTO-REDIRECT USER TO SIGN IN IF ACCOUNT ALREADY EXISTS
       if (errMsg.toLowerCase().includes("user already registered") || err.code === "user_already_exists") {
         toast({
           title: "Account already exists",
           description: "This email is registered. Redirecting you to the Sign In window.",
         });
-        setIsLogin(true); // Switch view to login input fields
+        setIsLogin(true); 
       } else {
         toast({
           title: "Authentication Failed",
@@ -153,21 +152,21 @@ const Auth = () => {
     }
   };
 
-  // ---- VERIFY SIGNUP OTP CODE (8-DIGIT COMPATIBLE) ----
+  // ---- VERIFY SIGNUP OTP CODE (8-DIGIT) ----
   const handleVerifySignupCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!verificationCode) return;
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      const { error } = await supabase.auth.verifyOtp({
         email,
         token: verificationCode.trim(),
         type: "email", 
       });
 
       if (error) {
-        const { data: retryData, error: retryError } = await supabase.auth.verifyOtp({
+        const { error: retryError } = await supabase.auth.verifyOtp({
           email,
           token: verificationCode.trim(),
           type: "signup",
@@ -188,22 +187,74 @@ const Auth = () => {
     }
   };
 
-  // ---- PASSWORD RESET REQUESTS ----
+  // ---- PASSWORD RESET REQUEST (STEP 1: SEND CODE) ----
   const handleForgotPasswordRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!forgotEmail) return;
+    if (!forgotEmail) {
+      toast({ title: "Email required", description: "Please type in your email address.", variant: "destructive" });
+      return;
+    }
 
     setForgotLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
-      });
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail);
       if (error) throw error;
 
-      toast({ title: "Reset Link Sent", description: "Check your email inbox for password reset steps." });
-      setResetStep("verify");
+      toast({ title: "Code Sent ✉️", description: "Check your inbox for an 8-character password recovery token." });
+      setResetStep("verify_and_change");
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Request Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  // ---- VERIFY RESET CODE & SET NEW PASSWORD (STEP 2: UPDATE LIVE) ----
+  const handleVerifyAndResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotCode || !newPassword || !confirmNewPassword) {
+      toast({ title: "Incomplete fields", description: "Please provide the token code and both password entries.", variant: "destructive" });
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      toast({ title: "Passwords match error", description: "Your passwords do not match. Please re-enter.", variant: "destructive" });
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      // 1. Verify token code to gain immediate session recovery rights
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: forgotEmail,
+        token: forgotCode.trim(),
+        type: "recovery",
+      });
+
+      if (verifyError) throw verifyError;
+
+      // 2. Token accepted! Apply password update onto authorized session instantly
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) throw updateError;
+
+      toast({ title: "Password Updated! 🔐", description: "Your security credentials were reset successfully. Logging you in..." });
+      
+      // Clear fields and kick into active workspace
+      setShowForgotPassword(false);
+      setResetStep("request");
+      setForgotCode("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      navigate("/dashboard");
+    } catch (err: any) {
+      toast({
+        title: "Reset Failed",
+        description: err.message || "Could not complete update. Check your verification code and try again.",
+        variant: "destructive",
+      });
     } finally {
       setForgotLoading(false);
     }
@@ -225,7 +276,7 @@ const Auth = () => {
           </h1>
           <p className="text-sm text-muted-foreground max-w-[280px]">
             {showForgotPassword
-              ? "Enter your email to receive a password recovery method."
+              ? resetStep === "request" ? "Enter your account email to receive a secure recovery code." : `Enter the 8-character token sent to ${forgotEmail}`
               : showSignupVerification
               ? `We sent a code to ${email}`
               : isLogin
@@ -275,37 +326,101 @@ const Auth = () => {
             </button>
           </form>
         ) : showForgotPassword ? (
-          /* VIEW 2: FORGOT PASSWORD REQUESTS */
-          <form onSubmit={handleForgotPasswordRequest} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-                <input
-                  type="email"
-                  placeholder="name@university.edu"
-                  value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
-                  className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none transition-all"
-                />
+          /* VIEW 2: FORGOT PASSWORD INTEGRATED CODE FLOW */
+          resetStep === "request" ? (
+            <form onSubmit={handleForgotPasswordRequest} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
+                  <input
+                    type="email"
+                    placeholder="name@university.edu"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none transition-all"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowForgotPassword(false)}
-                className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-border font-medium hover:bg-secondary transition-colors"
-              >
-                Cancel
-              </button>
-              <button type="submit" disabled={forgotLoading} className="flex-1 btn-testio-primary !py-2.5 text-sm flex items-center justify-center gap-2">
-                {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Instructions"}
-              </button>
-            </div>
-          </form>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(false)}
+                  className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-border font-medium hover:bg-secondary transition-colors"
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={forgotLoading} className="flex-1 btn-testio-primary !py-2.5 text-sm flex items-center justify-center gap-2">
+                  {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Code"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            /* SUB-VIEW: CODE RECEIVED -> COLLECT CODE + PASSWORD TOGETHER */
+            <form onSubmit={handleVerifyAndResetPassword} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">8-Character Reset Token</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
+                  <input
+                    type="text"
+                    maxLength={8}
+                    placeholder="XXXXXXXX"
+                    value={forgotCode}
+                    onChange={(e) => setForgotCode(e.target.value)}
+                    className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none transition-all tracking-widest font-mono text-center uppercase"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">New Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-10 py-2.5 text-sm text-foreground focus:outline-none transition-all"
+                  />
+                  <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confirm Password</label>
+                <div className="relative">
+                  <CheckCircle2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setResetStep("request")}
+                  className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-border font-medium hover:bg-secondary transition-colors"
+                >
+                  Back
+                </button>
+                <button type="submit" disabled={forgotLoading} className="flex-1 btn-testio-primary !py-2.5 text-sm flex items-center justify-center gap-2">
+                  {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reset Password"}
+                </button>
+              </div>
+            </form>
+          )
         ) : (
-          /* VIEW 3: MAIN SIGN IN / SIGN UP FORM */
+          /* VIEW 3: MAIN SIGN UP / SIGN IN FORM */
           <div className="space-y-4">
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
