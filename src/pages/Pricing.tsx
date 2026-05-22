@@ -229,9 +229,10 @@ const Pricing = () => {
 
   await fetchActivePlan();
 
-  // Clean URL without redirect
+  setLoadingPlan(null);
+
   window.history.replaceState({}, "", "/pricing");
-      }
+}
     };
     run();
     return () => {
@@ -282,17 +283,18 @@ useEffect(() => {
     if (cancelled) return;
 
     if (result) {
-      toast({
-        title: "🎉 Payment successful",
-        description: "Your subscription is now active and valid for 30 days.",
-      });
+  toast({
+    title: "🎉 Payment successful",
+    description: "Your subscription is now active and valid for 30 days.",
+  });
 
-      // Refresh active plan immediately
-      await fetchActivePlan();
+  await fetchActivePlan();
 
-      // Remove payment params from URL WITHOUT redirecting
-      window.history.replaceState({}, "", "/pricing");
-    } else {
+  setLoadingPlan(null);
+
+  window.history.replaceState({}, "", "/pricing");
+}
+    else {
       toast({
         title: "Payment pending",
         description: "We're still confirming your payment. Please wait a moment.",
