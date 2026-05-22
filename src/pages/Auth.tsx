@@ -16,8 +16,8 @@ const Auth = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Screen/View States
-  const [isLogin, setIsLogin] = useState(true);
+  // Screen/View States — CHANGED TO DEFAULT TO SIGN UP (false) FIRST
+  const [isLogin, setIsLogin] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showSignupVerification, setShowSignupVerification] = useState(false);
 
@@ -133,24 +133,33 @@ const Auth = () => {
         }
       }
     } catch (err: any) {
-      toast({
-        title: "Authentication Failed",
-        description: err.message || "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
+      const errMsg = err.message || "";
+      // AUTO-REDIRECT USER TO SIGN IN IF ACCOUNT ALREADY EXISTS
+      if (errMsg.toLowerCase().includes("user already registered") || err.code === "user_already_exists") {
+        toast({
+          title: "Account already exists",
+          description: "This email is registered. Redirecting you to the Sign In window.",
+        });
+        setIsLogin(true); // Switch view to login input fields
+      } else {
+        toast({
+          title: "Authentication Failed",
+          description: errMsg || "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // ---- VERIFY SIGNUP OTP CODE (FIXED FOR 8-DIGIT HASH TOKENS) ----
+  // ---- VERIFY SIGNUP OTP CODE (8-DIGIT COMPATIBLE) ----
   const handleVerifySignupCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!verificationCode) return;
 
     setLoading(true);
     try {
-      // Using type: "email" works as the catch-all verification token format for PKCE custom emails
       const { data, error } = await supabase.auth.verifyOtp({
         email,
         token: verificationCode.trim(),
@@ -158,7 +167,6 @@ const Auth = () => {
       });
 
       if (error) {
-        // Fallback option if your instance requires "signup" type naming explicitly
         const { data: retryData, error: retryError } = await supabase.auth.verifyOtp({
           email,
           token: verificationCode.trim(),
