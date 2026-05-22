@@ -62,7 +62,6 @@ const Auth = () => {
         description: err.message || "Failed to initialize Google Sign-in.",
         variant: "destructive",
       });
-      setLoading(null);
     } finally {
       setLoading(false);
     }
@@ -120,15 +119,15 @@ const Auth = () => {
 
         if (error) throw error;
 
-        // If user session is returned immediately, email confirmation is off
+        // If session is active immediately, email verification is bypassed
         if (data?.session) {
           toast({ title: "Account created!", description: "Welcome to Testio." });
           navigate("/dashboard");
         } else {
-          // Email confirmation is active, transition to verification code view
+          // Send user to verification step for the 8-digit code
           toast({
             title: "Verification Email Sent ✉️",
-            description: "Check your inbox for a 6-digit confirmation code or verification link.",
+            description: "Check your inbox for your 8-character confirmation code.",
           });
           setShowSignupVerification(true);
         }
@@ -136,7 +135,7 @@ const Auth = () => {
     } catch (err: any) {
       toast({
         title: "Authentication Failed",
-        description: err.message || "Something went wrong. Please check your network and try again.",
+        description: err.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -144,20 +143,29 @@ const Auth = () => {
     }
   };
 
-  // ---- VERIFY SIGNUP OTP CODE ----
+  // ---- VERIFY SIGNUP OTP CODE (FIXED FOR 8-DIGIT HASH TOKENS) ----
   const handleVerifySignupCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!verificationCode) return;
 
     setLoading(true);
     try {
+      // Using type: "email" works as the catch-all verification token format for PKCE custom emails
       const { data, error } = await supabase.auth.verifyOtp({
         email,
-        token: verificationCode,
-        type: "signup",
+        token: verificationCode.trim(),
+        type: "email", 
       });
 
-      if (error) throw error;
+      if (error) {
+        // Fallback option if your instance requires "signup" type naming explicitly
+        const { data: retryData, error: retryError } = await supabase.auth.verifyOtp({
+          email,
+          token: verificationCode.trim(),
+          type: "signup",
+        });
+        if (retryError) throw retryError;
+      }
 
       toast({ title: "Account Verified! 🎉", description: "Your email has been confirmed. Welcome aboard." });
       navigate("/dashboard");
@@ -229,16 +237,16 @@ const Auth = () => {
         {showSignupVerification ? (
           <form onSubmit={handleVerifySignupCode} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">6-Digit Verification Code</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">8-Character Verification Code</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
                 <input
                   type="text"
-                  maxLength={6}
-                  placeholder="123456"
+                  maxLength={8}
+                  placeholder="XXXXXXXX"
                   value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ""))}
-                  className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none transition-all tracking-widest font-mono text-center text-lg"
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none transition-all tracking-widest font-mono text-center text-lg uppercase"
                 />
               </div>
             </div>
@@ -357,7 +365,7 @@ const Auth = () => {
               <span className="relative bg-card px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">or continue with</span>
             </div>
 
-            {/* FIXED GOOGLE OAUTH BUTTON */}
+            {/* GMAIL OAUTH BUTTON */}
             <button
               type="button"
               onClick={handleGoogleSignIn}
