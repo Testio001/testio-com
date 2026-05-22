@@ -222,14 +222,15 @@ const Pricing = () => {
       }
       if (cancelled) return;
       if (result) {
-        toast({
-          title: "🎉 Payment Successful!",
-          description: result.plan
-            ? `Welcome to Testio ${result.plan}! Enjoy your premium features.`
-            : "Your subscription is now active!",
-        });
-        await fetchActivePlan();
-        navigate("/dashboard", { replace: true });
+  toast({
+    title: "🎉 Payment successful",
+    description: "Your subscription is now active and valid for 30 days.",
+  });
+
+  await fetchActivePlan();
+
+  // Clean URL without redirect
+  window.history.replaceState({}, "", "/pricing");
       }
     };
     run();
