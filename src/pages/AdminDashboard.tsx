@@ -1,454 +1,493 @@
-import { useCallback, useEffect, useState } from "react";
-import { Activity, BarChart3, Brain, Crown, Eye, Gift, Headphones, RefreshCw, ShieldCheck, TrendingUp, Upload, Users } from "lucide-react";
-import { Link } from "react-router-dom";
-import { toast } from "sonner";
-
-import AdminCodeGate from "@/components/app/AdminCodeGate";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  Users,
+  Crown,
+  DollarSign,
+  Clock,
+  CreditCard,
+  AlertCircle,
+  CheckCircle,
+  TrendingUp,
+  Gift,
+} from "lucide-react";
 
-type UsageMetric = {
-  total: number;
-  today: number;
+const ADMIN_EMAIL = "Thetechworld105@gmail.com";
+
+const PLAN_LIMITS: Record<string, number> = {
+  free: 1,
+  starter: 10,
+  basic: 15,
+  pro: 40,
+  scholar: 80,
 };
 
-type DashboardMetrics = {
-  totalUsers: number;
-  totalUploads: number;
-  dailyActiveUsers: number;
-  featureUsage: {
-    quizzes: UsageMetric;
-    flashcards: UsageMetric;
-    podcasts: UsageMetric;
-  };
-  conversions: {
-    paidUsers: number;
-    rate: number;
-  };
-};
+const AdminDashboard = () => {
+  const { user } = useAuth();
 
-type ReferralRow = {
-  created_at: string;
-  referrer_email: string | null;
-  referrer_name: string | null;
-  referred_email: string | null;
-  referred_name: string | null;
-  referred_plan: string;
-  referred_is_paid: boolean;
-};
-
-type ReferralAgg = {
-  user_id: string;
-  email: string | null;
-  name: string | null;
-  total: number;
-  paid: number;
-};
-
-type ReferralData = {
-  totalReferrals: number;
-  paidReferrals: number;
-  topReferrers: ReferralAgg[];
-  rows: ReferralRow[];
-};
-
-type PayingUser = {
-  user_id: string;
-  email: string | null;
-  display_name: string | null;
-  subscription_plan: string;
-  subscription_expires_at: string | null;
-  created_at: string;
-  is_active: boolean;
-};
-
-type PayingUsersData = {
-  users: PayingUser[];
-  total: number;
-  active: number;
-};
-
-type ActiveUser = {
-  user_id: string;
-  email: string | null;
-  display_name: string | null;
-  subscription_plan: string;
-  uploads_used: number;
-  uploads_limit: number;
-  uploads_remaining: number;
-  visit_count: number;
-  last_visit_at: string | null;
-};
-
-const formatNumber = (value: number) => value.toLocaleString();
-
-const MetricCard = ({
-  title,
-  value,
-  description,
-  icon: Icon,
-}: {
-  title: string;
-  value: string;
-  description: string;
-  icon: typeof Users;
-}) => (
-  <Card>
-    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-      <div className="space-y-1">
-        <CardDescription>{title}</CardDescription>
-        <CardTitle className="text-3xl">{value}</CardTitle>
-      </div>
-      <div className="rounded-md border border-border bg-secondary/60 p-2 text-primary">
-        <Icon className="h-4 w-4" />
-      </div>
-    </CardHeader>
-    <CardContent>
-      <p className="text-sm text-muted-foreground">{description}</p>
-    </CardContent>
-  </Card>
-);
-
-const FeatureUsageCard = ({
-  title,
-  metric,
-  icon: Icon,
-}: {
-  title: string;
-  metric: UsageMetric;
-  icon: typeof Brain;
-}) => (
-  <Card>
-    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-      <div className="space-y-1">
-        <CardDescription>{title}</CardDescription>
-        <CardTitle className="text-2xl">{formatNumber(metric.total)}</CardTitle>
-      </div>
-      <div className="rounded-md border border-border bg-secondary/60 p-2 text-primary">
-        <Icon className="h-4 w-4" />
-      </div>
-    </CardHeader>
-    <CardContent>
-      <p className="text-sm text-muted-foreground">{formatNumber(metric.today)} created today</p>
-    </CardContent>
-  </Card>
-);
-
-const AdminDashboardContent = () => {
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [referrals, setReferrals] = useState<ReferralData | null>(null);
-  const [refLoading, setRefLoading] = useState(true);
-  const [payingUsers, setPayingUsers] = useState<PayingUsersData | null>(null);
-  const [payingLoading, setPayingLoading] = useState(true);
-  const [activeUsers, setActiveUsers] = useState<ActiveUser[] | null>(null);
-  const [activeLoading, setActiveLoading] = useState(true);
-  const [reconciling, setReconciling] = useState(false);
 
-  const fetchMetrics = useCallback(async () => {
-    setLoading(true);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    payingUsers: 0,
+    totalRevenue: 0,
+    totalReferrals: 0,
+    pendingPayments: 0,
+    failedPayments: 0,
+  });
 
-    const { data, error } = await supabase.functions.invoke("admin-ops", {
-      body: { action: "dashboard" },
-    });
-
-    if (error || data?.error) {
-      toast.error(error?.message || data?.error || "Unable to load dashboard");
-      setLoading(false);
-      return;
-    }
-
-    setMetrics(data as DashboardMetrics);
-    setLoading(false);
-  }, []);
-
-  const fetchReferrals = useCallback(async () => {
-    setRefLoading(true);
-    const { data, error } = await supabase.functions.invoke("admin-ops", {
-      body: { action: "referrals" },
-    });
-    if (error || data?.error) {
-      toast.error(error?.message || data?.error || "Unable to load referrals");
-      setRefLoading(false);
-      return;
-    }
-    setReferrals(data as ReferralData);
-    setRefLoading(false);
-  }, []);
-
-  const fetchPayingUsers = useCallback(async () => {
-    setPayingLoading(true);
-    const { data, error } = await supabase.functions.invoke("admin-ops", {
-      body: { action: "paying-users" },
-    });
-    if (error || data?.error) {
-      toast.error(error?.message || data?.error || "Unable to load paying users");
-      setPayingLoading(false);
-      return;
-    }
-    setPayingUsers(data as PayingUsersData);
-    setPayingLoading(false);
-  }, []);
-
-  const fetchActiveUsers = useCallback(async () => {
-    setActiveLoading(true);
-    const { data, error } = await supabase.functions.invoke("admin-ops", {
-      body: { action: "active-users" },
-    });
-    if (error || data?.error) {
-      toast.error(error?.message || data?.error || "Unable to load active users");
-      setActiveLoading(false);
-      return;
-    }
-    setActiveUsers((data?.users ?? []) as ActiveUser[]);
-    setActiveLoading(false);
-  }, []);
+  const [plans, setPlans] = useState<any[]>([]);
+  const [expiring, setExpiring] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
+  const [topReferrers, setTopReferrers] = useState<any[]>([]);
 
   useEffect(() => {
-    void fetchMetrics();
-    void fetchReferrals();
-    void fetchPayingUsers();
-    void fetchActiveUsers();
-  }, [fetchMetrics, fetchReferrals, fetchPayingUsers, fetchActiveUsers]);
+    if (user?.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) return;
 
-  const handleReconcile = useCallback(async () => {
-    setReconciling(true);
-    const { data, error } = await supabase.functions.invoke("admin-ops", {
-      body: { action: "reconcile-payments" },
-    });
-    setReconciling(false);
-    if (error || data?.error) {
-      toast.error(error?.message || data?.error || "Reconciliation failed");
-      return;
+    fetchAnalytics();
+  }, [user]);
+
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+
+      // TOTAL USERS
+      const { count: totalUsers } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true });
+
+      // PAYING USERS
+      const { count: payingUsers } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .neq("subscription_plan", "free");
+
+      // PLAN BREAKDOWN
+      const { data: planData } = await supabase
+        .from("profiles")
+        .select("subscription_plan");
+
+      const groupedPlans: any = {};
+
+      planData?.forEach((p: any) => {
+        const plan = p.subscription_plan || "free";
+        groupedPlans[plan] = (groupedPlans[plan] || 0) + 1;
+      });
+
+      const plansArray = Object.entries(groupedPlans).map(([name, total]) => ({
+        name,
+        total,
+      }));
+
+      setPlans(plansArray);
+
+      // EXPIRING SOON
+      const sevenDaysLater = new Date();
+      sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+
+      const { data: expiringData } = await supabase
+        .from("profiles")
+        .select("email, subscription_plan, subscription_expires_at")
+        .neq("subscription_plan", "free")
+        .lte(
+          "subscription_expires_at",
+          sevenDaysLater.toISOString()
+        )
+        .order("subscription_expires_at", { ascending: true });
+
+      setExpiring(expiringData || []);
+
+      // USER UPLOADS
+      const { data: uploadsData } = await supabase
+        .from("profiles")
+        .select(`
+          email,
+          subscription_plan,
+          user_stats (
+            uploads_used,
+            bonus_uploads,
+            streak_bonus_uploads
+          )
+        `);
+
+      const mappedUsers =
+        uploadsData?.map((u: any) => {
+          const stats = u.user_stats?.[0];
+
+          const limit =
+            PLAN_LIMITS[u.subscription_plan || "free"] || 1;
+
+          const uploadsUsed = stats?.uploads_used || 0;
+          const bonus = stats?.bonus_uploads || 0;
+          const streak = stats?.streak_bonus_uploads || 0;
+
+          const uploadsLeft =
+            limit - uploadsUsed + bonus + streak;
+
+          return {
+            email: u.email,
+            plan: u.subscription_plan,
+            uploadsLeft,
+          };
+        }) || [];
+
+      setUsers(mappedUsers);
+
+      // TOTAL REFERRALS
+      const { count: totalReferrals } = await supabase
+        .from("referrals")
+        .select("*", { count: "exact", head: true });
+
+      // TOP REFERRERS
+      const { data: refData } = await supabase
+        .from("referrals")
+        .select("referrer_user_id");
+
+      const groupedRef: any = {};
+
+      refData?.forEach((r: any) => {
+        groupedRef[r.referrer_user_id] =
+          (groupedRef[r.referrer_user_id] || 0) + 1;
+      });
+
+      const topRefs = Object.entries(groupedRef)
+        .map(([user, total]) => ({
+          user,
+          total,
+        }))
+        .sort((a: any, b: any) => b.total - a.total)
+        .slice(0, 10);
+
+      setTopReferrers(topRefs);
+
+      // PAYMENTS
+      const { data: paymentData } = await supabase
+        .from("korapay_transactions")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      const successful =
+        paymentData?.filter((p: any) => p.status === "success") || [];
+
+      const pending =
+        paymentData?.filter((p: any) => p.status === "pending") || [];
+
+      const failed =
+        paymentData?.filter((p: any) => p.status === "failed") || [];
+
+      const totalRevenue = successful.reduce(
+        (acc: number, curr: any) => acc + (curr.amount_ngn || 0),
+        0
+      );
+
+      setRecentPayments(paymentData?.slice(0, 20) || []);
+
+      setStats({
+        totalUsers: totalUsers || 0,
+        payingUsers: payingUsers || 0,
+        totalRevenue,
+        totalReferrals: totalReferrals || 0,
+        pendingPayments: pending.length,
+        failedPayments: failed.length,
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    const k = data?.korapay ?? { scanned: 0, credited: 0 };
-    const l = data?.lemonsqueezy ?? { scanned: 0, credited: 0 };
-    toast.success(
-      `Recovered ${k.credited + l.credited} users (Korapay: ${k.credited}/${k.scanned}, Lemon Squeezy: ${l.credited}/${l.scanned})`,
-    );
-    void fetchMetrics();
-    void fetchPayingUsers();
-  }, [fetchMetrics, fetchPayingUsers]);
+  };
+
+  if (!user) return null;
+
+  if (user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    return <Navigate to="/dashboard" />;
+  }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Aggregate overview only.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="default"
-              onClick={() => void handleReconcile()}
-              disabled={reconciling}
-              title="Scan all past Korapay & Lemon Squeezy payments and credit any user who paid but was never rewarded."
-            >
-              <ShieldCheck className={`h-4 w-4 ${reconciling ? "animate-pulse" : ""}`} />
-              {reconciling ? "Recovering…" : "Recover unpaid users"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                void fetchMetrics();
-                void fetchReferrals();
-                void fetchPayingUsers();
-                void fetchActiveUsers();
-              }}
-              disabled={loading || refLoading || payingLoading || activeLoading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading || refLoading || payingLoading || activeLoading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-          </div>
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-7xl mx-auto">
+
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground">
+            Testio Admin Dashboard
+          </h1>
+
+          <p className="text-muted-foreground mt-2">
+            Private analytics dashboard
+          </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            title="Total users"
-            value={loading ? "—" : formatNumber(metrics?.totalUsers ?? 0)}
-            description="All registered accounts"
-            icon={Users}
-          />
-          <MetricCard
-            title="Total uploads"
-            value={loading ? "—" : formatNumber(metrics?.totalUploads ?? 0)}
-            description="Documents created so far"
-            icon={Upload}
-          />
-          <MetricCard
-            title="Daily active users"
-            value={loading ? "—" : formatNumber(metrics?.dailyActiveUsers ?? 0)}
-            description="Unique users active today"
-            icon={Activity}
-          />
-          <MetricCard
-            title="Conversions"
-            value={loading ? "—" : formatNumber(metrics?.conversions.paidUsers ?? 0)}
-            description={loading ? "Paid users and conversion rate" : `${metrics?.conversions.rate.toFixed(1)}% active paid conversion rate`}
-            icon={BarChart3}
-          />
-        </div>
+        {loading ? (
+          <div className="text-center py-20 text-muted-foreground">
+            Loading analytics...
+          </div>
+        ) : (
+          <>
+            {/* TOP STATS */}
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
 
-        <section className="space-y-3">
-          <div>
-            <h2 className="text-lg font-semibold">Feature usage</h2>
-            <p className="text-sm text-muted-foreground">Lifetime totals with today&apos;s activity.</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            <FeatureUsageCard title="Quiz" metric={metrics?.featureUsage.quizzes ?? { total: 0, today: 0 }} icon={Brain} />
-            <FeatureUsageCard title="Flashcards" metric={metrics?.featureUsage.flashcards ?? { total: 0, today: 0 }} icon={BarChart3} />
-            <FeatureUsageCard title="Podcast" metric={metrics?.featureUsage.podcasts ?? { total: 0, today: 0 }} icon={Headphones} />
-          </div>
-        </section>
+              <Card
+                title="Total Users"
+                value={stats.totalUsers}
+                icon={<Users className="w-5 h-5" />}
+              />
 
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Crown className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Paying users</h2>
-            {!payingLoading && payingUsers && (
-              <span className="text-sm text-muted-foreground">
-                ({payingUsers.active} active / {payingUsers.total} total)
-              </span>
-            )}
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">All paid subscribers</CardTitle>
-              <CardDescription>Every user on a Starter, Basic, Pro, Scholar, or Elite plan</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="py-2 pr-3 font-medium">User</th>
-                    <th className="py-2 pr-3 font-medium">Email</th>
-                    <th className="py-2 pr-3 font-medium">Plan</th>
-                    <th className="py-2 pr-3 font-medium">Status</th>
-                    <th className="py-2 pr-3 font-medium">Expires</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payingLoading && (
-                    <tr><td colSpan={5} className="py-3 text-muted-foreground">Loading…</td></tr>
-                  )}
-                  {!payingLoading && (payingUsers?.users ?? []).length === 0 && (
-                    <tr><td colSpan={5} className="py-3 text-muted-foreground">No paying users yet.</td></tr>
-                  )}
-                  {(payingUsers?.users ?? []).map((u) => (
-                    <tr key={u.user_id} className="border-b border-border/50">
-                      <td className="py-2 pr-3">{u.display_name || "—"}</td>
-                      <td className="py-2 pr-3 text-muted-foreground">{u.email || "—"}</td>
-                      <td className="py-2 pr-3">
-                        <Badge variant="default" className="uppercase text-[10px]">{u.subscription_plan}</Badge>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <Badge variant={u.is_active ? "default" : "outline"} className="text-[10px]">
-                          {u.is_active ? "Active" : "Expired"}
-                        </Badge>
-                      </td>
-                      <td className="py-2 pr-3 text-muted-foreground whitespace-nowrap">
-                        {u.subscription_expires_at ? new Date(u.subscription_expires_at).toLocaleDateString() : "—"}
-                      </td>
+              <Card
+                title="Paying Users"
+                value={stats.payingUsers}
+                icon={<Crown className="w-5 h-5" />}
+              />
+
+              <Card
+                title="Revenue"
+                value={`₦${stats.totalRevenue.toLocaleString()}`}
+                icon={<DollarSign className="w-5 h-5" />}
+              />
+
+              <Card
+                title="Referrals"
+                value={stats.totalReferrals}
+                icon={<Gift className="w-5 h-5" />}
+              />
+
+              <Card
+                title="Pending"
+                value={stats.pendingPayments}
+                icon={<Clock className="w-5 h-5" />}
+              />
+
+              <Card
+                title="Failed"
+                value={stats.failedPayments}
+                icon={<AlertCircle className="w-5 h-5" />}
+              />
+            </div>
+
+            {/* PLAN BREAKDOWN */}
+            <Section title="Plans Breakdown">
+
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+
+                {plans.map((plan) => (
+                  <div
+                    key={plan.name}
+                    className="bg-card border border-border rounded-xl p-5"
+                  >
+                    <h3 className="text-muted-foreground text-sm capitalize">
+                      {plan.name}
+                    </h3>
+
+                    <p className="text-2xl font-bold mt-2">
+                      {plan.total}
+                    </p>
+                  </div>
+                ))}
+
+              </div>
+
+            </Section>
+
+            {/* EXPIRING */}
+            <Section title="Expiring Within 7 Days">
+
+              <div className="space-y-3">
+
+                {expiring.length === 0 && (
+                  <p className="text-muted-foreground">
+                    No subscriptions expiring soon.
+                  </p>
+                )}
+
+                {expiring.map((u, i) => (
+                  <div
+                    key={i}
+                    className="bg-card border border-border rounded-xl p-4 flex justify-between"
+                  >
+                    <div>
+                      <p className="font-medium">{u.email}</p>
+
+                      <p className="text-sm text-muted-foreground capitalize">
+                        {u.subscription_plan}
+                      </p>
+                    </div>
+
+                    <div className="text-sm">
+                      {new Date(
+                        u.subscription_expires_at
+                      ).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+
+              </div>
+
+            </Section>
+
+            {/* USERS */}
+            <Section title="Users Uploads Left">
+
+              <div className="overflow-auto">
+
+                <table className="w-full text-sm">
+
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3">Email</th>
+                      <th className="text-left py-3">Plan</th>
+                      <th className="text-left py-3">Uploads Left</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        </section>
+                  </thead>
 
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Top 30 most active users</h2>
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Ranked by uploads used</CardTitle>
-              <CardDescription>Uploads consumed, remaining quota, and lifetime site visits</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="py-2 pr-3 font-medium">#</th>
-                    <th className="py-2 pr-3 font-medium">User</th>
-                    <th className="py-2 pr-3 font-medium">Plan</th>
-                    <th className="py-2 pr-3 font-medium text-right">Uploads used</th>
-                    <th className="py-2 pr-3 font-medium text-right">Remaining</th>
-                    <th className="py-2 pr-3 font-medium text-right">Visits</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeLoading && (
-                    <tr><td colSpan={6} className="py-3 text-muted-foreground">Loading…</td></tr>
-                  )}
-                  {!activeLoading && (activeUsers ?? []).length === 0 && (
-                    <tr><td colSpan={6} className="py-3 text-muted-foreground">No activity yet.</td></tr>
-                  )}
-                  {(activeUsers ?? []).map((u, i) => (
-                    <tr key={u.user_id} className="border-b border-border/50">
-                      <td className="py-2 pr-3 text-muted-foreground">{i + 1}</td>
-                      <td className="py-2 pr-3">
-                        <div>{u.display_name || "—"}</div>
-                        <div className="text-xs text-muted-foreground">{u.email || "—"}</div>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <Badge variant="outline" className="uppercase text-[10px]">{u.subscription_plan}</Badge>
-                      </td>
-                      <td className="py-2 pr-3 text-right font-semibold">{u.uploads_used} / {u.uploads_limit}</td>
-                      <td className="py-2 pr-3 text-right">{u.uploads_remaining}</td>
-                      <td className="py-2 pr-3 text-right">
-                        <span className="inline-flex items-center gap-1">
-                          <Eye className="h-3 w-3 text-muted-foreground" />
-                          {u.visit_count}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        </section>
+                  <tbody>
 
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Gift className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Referrals</h2>
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Referrals live on a dedicated page</CardTitle>
-              <CardDescription>
-                {refLoading
-                  ? "Loading totals…"
-                  : `${formatNumber(referrals?.totalReferrals ?? 0)} total · ${formatNumber(referrals?.paidReferrals ?? 0)} paid`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild>
-                <Link to="/admin-referrals">Open referrals dashboard</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </section>
+                    {users.map((u, i) => (
+                      <tr
+                        key={i}
+                        className="border-b border-border/50"
+                      >
+                        <td className="py-3">{u.email}</td>
+
+                        <td className="py-3 capitalize">
+                          {u.plan}
+                        </td>
+
+                        <td className="py-3">
+                          {u.uploadsLeft}
+                        </td>
+                      </tr>
+                    ))}
+
+                  </tbody>
+
+                </table>
+
+              </div>
+
+            </Section>
+
+            {/* TOP REFERRERS */}
+            <Section title="Top Referrers">
+
+              <div className="space-y-3">
+
+                {topReferrers.map((r, i) => (
+                  <div
+                    key={i}
+                    className="bg-card border border-border rounded-xl p-4 flex justify-between"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {r.user}
+                      </p>
+                    </div>
+
+                    <div className="font-bold">
+                      {r.total} referrals
+                    </div>
+                  </div>
+                ))}
+
+              </div>
+
+            </Section>
+
+            {/* RECENT PAYMENTS */}
+            <Section title="Recent Payments">
+
+              <div className="space-y-3">
+
+                {recentPayments.map((p, i) => (
+                  <div
+                    key={i}
+                    className="bg-card border border-border rounded-xl p-4 flex justify-between"
+                  >
+                    <div>
+                      <p className="font-medium capitalize">
+                        {p.plan}
+                      </p>
+
+                      <p className="text-sm text-muted-foreground">
+                        {p.reference}
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+
+                      <p className="font-bold">
+                        ₦{p.amount_ngn?.toLocaleString()}
+                      </p>
+
+                      <div
+                        className={`text-xs mt-1 ${
+                          p.status === "success"
+                            ? "text-green-500"
+                            : p.status === "pending"
+                            ? "text-yellow-500"
+                            : "text-red-500"
+                        }`}
+                      >
+                        {p.status}
+                      </div>
+
+                    </div>
+                  </div>
+                ))}
+
+              </div>
+
+            </Section>
+          </>
+        )}
       </div>
     </div>
   );
 };
 
-const AdminDashboard = () => (
-  <AdminCodeGate
-    title="Admin Dashboard"
-    description="Sign in with an admin account to view the dashboard."
-  >
-    {() => <AdminDashboardContent />}
-  </AdminCodeGate>
+const Card = ({
+  title,
+  value,
+  icon,
+}: {
+  title: string;
+  value: any;
+  icon: React.ReactNode;
+}) => (
+  <div className="bg-card border border-border rounded-2xl p-5">
+    <div className="flex items-center justify-between mb-3">
+      <div className="text-muted-foreground text-sm">
+        {title}
+      </div>
+
+      {icon}
+    </div>
+
+    <div className="text-2xl font-bold">
+      {value}
+    </div>
+  </div>
+);
+
+const Section = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
+  <div className="mb-10">
+    <div className="flex items-center gap-2 mb-4">
+      <TrendingUp className="w-5 h-5" />
+
+      <h2 className="text-xl font-bold">
+        {title}
+      </h2>
+    </div>
+
+    {children}
+  </div>
 );
 
 export default AdminDashboard;
