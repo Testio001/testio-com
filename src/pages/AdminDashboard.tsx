@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 type DashboardData = {
   totalUsers: number;
@@ -32,23 +33,31 @@ type ReferralData = {
 };
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [payingUsers, setPayingUsers] = useState<PayingUser[]>([]);
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
   const [referrals, setReferrals] = useState<ReferralData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const loadData = async () => {
     try {
       setLoading(true);
 
       // DASHBOARD
-      const { data: dashboardData } = await supabase.functions.invoke(
+      const { data: dashboardData, error: dashError } = await supabase.functions.invoke(
         "admin-ops",
         {
           body: { action: "dashboard" },
         }
       );
+
+      // If the backend returns an error or blocks the request, trigger Access Denied
+      if (dashError || dashboardData?.error) {
+        setAccessDenied(true);
+        return;
+      }
 
       // PAYING USERS
       const { data: payingData } = await supabase.functions.invoke(
@@ -80,6 +89,7 @@ export default function AdminDashboard() {
       setReferrals(referralData);
     } catch (err) {
       console.error(err);
+      setAccessDenied(true);
     } finally {
       setLoading(false);
     }
@@ -93,6 +103,22 @@ export default function AdminDashboard() {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         Loading admin dashboard...
+      </div>
+    );
+  }
+
+  // SHOW THIS TO NON-ADMINS
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center space-y-4">
+        <h1 className="text-3xl font-bold text-red-500">Access Denied</h1>
+        <p className="text-zinc-400">You do not have permission to view this page.</p>
+        <button 
+          onClick={() => navigate("/dashboard")}
+          className="mt-4 px-6 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors"
+        >
+          Return to App
+        </button>
       </div>
     );
   }
