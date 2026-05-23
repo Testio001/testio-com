@@ -60,7 +60,7 @@ const Leaderboard = () => {
     }
 
     // Use the security-definer function to get leaderboard data
-    const { data: statsData } = await supabase.rpc("get_leaderboard", { limit_count: 5 });
+    const { data: statsData } = await supabase.rpc("get_leaderboard", { limit_count: 4 });
 
     if (statsData && statsData.length > 0) {
       // Fetch display names via security-definer RPC (no email leak)
