@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { Users, ShieldCheck, Globe } from "lucide-react";
 
 const ElitePricingBanner = () => {
   return (
@@ -6,23 +6,25 @@ const ElitePricingBanner = () => {
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 shrink-0 rounded-xl bg-primary/20 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-primary" />
+            <Users className="w-5 h-5 text-primary" />
           </div>
           <div>
             <p className="text-foreground font-bold text-sm">
-              🔥 Elite Member Pricing — Locked for the first 1,000 members
+              Trusted by thousands of students across the globe
             </p>
             <p className="text-muted-foreground text-xs mt-0.5">
-              Once full, Basic, Pro & Scholar all move to normal price. Lock yours in now.
+              Cancel anytime — no hidden fees. Secure payments and instant access to every plan.
             </p>
           </div>
         </div>
         <div className="flex-1 sm:flex sm:justify-end">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/20 border border-primary/30">
-            <span className="text-xs font-bold text-primary">997 / 1000 slots taken</span>
-            <div className="w-20 h-1.5 bg-primary/20 rounded-full overflow-hidden">
-              <div className="h-full bg-primary" style={{ width: "99.7%" }} />
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/20 border border-primary/30 text-xs font-bold text-primary">
+              <ShieldCheck className="w-3.5 h-3.5" /> Secure checkout
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/20 border border-primary/30 text-xs font-bold text-primary">
+              <Globe className="w-3.5 h-3.5" /> Students worldwide
+            </span>
           </div>
         </div>
       </div>
