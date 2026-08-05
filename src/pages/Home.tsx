@@ -461,11 +461,11 @@ const Home = () => {
               <a href="/terms" className="hover:text-indigo-500 transition-colors">Terms of Service</a>
               <a href="/terms" className="hover:text-indigo-500 transition-colors">Privacy Policy</a>
               <a href="/terms" className="hover:text-indigo-500 transition-colors">Refund Policy</a>
-              <a href="mailto:support@testio.online" className="hover:text-indigo-500 transition-colors">Contact Us</a>
+              <a href="mailto:testio4171@gmail.com" className="hover:text-indigo-500 transition-colors">Contact Us</a>
             </div>
           </div>
           <div className="mt-8 flex flex-col items-center gap-1">
-            <p className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>© 2025 Testio. All rights reserved.</p>
+            <p className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>© 2026 Testio. All rights reserved.</p>
             <p className={`text-[10px] ${isDark ? "text-gray-600" : "text-gray-400"}`}>Created by <span className={`font-semibold ${isDark ? "text-gray-400" : "text-gray-500"}`}>TechWorld</span></p>
           </div>
         </div>
