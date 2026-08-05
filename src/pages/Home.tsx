@@ -462,6 +462,7 @@ const Home = () => {
               <a href="/terms" className="hover:text-indigo-500 transition-colors">Privacy Policy</a>
               <a href="/terms" className="hover:text-indigo-500 transition-colors">Refund Policy</a>
               <a href="mailto:testio4171@gmail.com" className="hover:text-indigo-500 transition-colors">Contact Us</a>
+              <a href="tel:7062191818" className="hover:text-indigo-500 transition-colors">Call Us</a>
             </div>
           </div>
           <div className="mt-8 flex flex-col items-center gap-1">
