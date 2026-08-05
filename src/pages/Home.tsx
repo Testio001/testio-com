@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users, Star, Zap, Clock, ShieldCheck } from "lucide-react";
+import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users, Star, Clock, ShieldCheck } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { Moon, Sun } from "lucide-react";
 import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
@@ -185,10 +185,10 @@ const Home = () => {
       {/* Hero Section */}
       <section className="pt-14 pb-16 sm:pt-20 sm:pb-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Urgency pill */}
+          {/* Trust pill */}
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold mb-6 border border-indigo-100">
-            <Zap className="w-3.5 h-3.5" />
-            New users get 50% OFF first month — first 24h only
+            <Users className="w-3.5 h-3.5" />
+            Trusted by thousands of students across the globe
           </div>
 
           <h1 className={`text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight mb-5 leading-[1.05] ${isDark ? "text-white" : "text-gray-900"}`}>
