@@ -5,31 +5,31 @@ import { Quote } from "lucide-react";
 const testimonials = [
   {
     quote:
-      "I was honestly failing my exams. I'd read for hours and remember nothing. I started turning every chapter into a Testio podcast and listening on my way to school — my last test I scored 82%. I almost cried.",
-    name: "Amaka O.",
+      "I usually had a hard time studying and memorizing anything I read, but after I started using Testio everything changed. I turn each chapter into a podcast and listen on my way to school — my last test I scored 82%.",
+    name: "Testimony A.",
     role: "300L Microbiology Student",
-    initials: "AO",
+    initials: "TA",
   },
   {
     quote:
       "Reading PDFs used to put me to sleep. Now I upload my lecture notes, get a podcast in 30 seconds, and revise while I cook. I've never felt this prepared for finals in my life.",
-    name: "Daniel K.",
+    name: "Bankole O.",
     role: "Final Year Law Student",
-    initials: "DK",
+    initials: "BO",
   },
   {
     quote:
-      "I have ADHD and sitting still to study is torture. The AI quizzes and podcasts make studying feel like a game. I went from a 2.4 GPA to a 3.7 in one semester. This app changed my life — no exaggeration.",
-    name: "Priya S.",
-    role: "Pre-Med, 2nd Year",
-    initials: "PS",
+      "I used to struggle so much with studying and memorizing, especially with the volume of material we cover. Since I started using Testio, everything changed — the notes and quizzes make it actually stick.",
+    name: "Damilola A.",
+    role: "Medicine & Surgery Student",
+    initials: "DA",
   },
   {
     quote:
-      "I'm a working mum trying to finish my MBA. I have zero free time. Testio turns my readings into podcasts I listen to while doing dishes. I passed my last two courses with distinction. Worth every naira.",
-    name: "Funmi A.",
-    role: "MBA Candidate",
-    initials: "FA",
+      "Studying and remembering what I read was always my biggest problem. After I started using Testio everything changed — I revise with podcasts and quizzes and I finally pass with confidence.",
+    name: "Gideon E.",
+    role: "400L Engineering Student",
+    initials: "GE",
   },
 ];
 
