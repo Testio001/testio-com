@@ -112,7 +112,7 @@ const ChatPanel = ({ documentId, subscriptionPlan = "free" }: { documentId: stri
   return (
     <div className="flex flex-col h-[600px] bg-turbo-card rounded-xl overflow-hidden">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-end space-y-4">
         {messages.length === 0 && (
           <div className="text-center py-16">
             <p className="text-muted-foreground text-sm">Ask anything about this document. The AI uses the document summary as context.</p>
