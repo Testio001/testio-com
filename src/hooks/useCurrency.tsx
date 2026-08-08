@@ -27,17 +27,8 @@ const detectCountry = (): Promise<CountryCode> => {
   if (countryDetectionPromise) return countryDetectionPromise;
 
   countryDetectionPromise = (async () => {
-    try {
-      const { data, error } = await withTimeout(supabase.functions.invoke("detect-country", { body: {} }));
-      if (!error) {
-        const country = normalizeCountry(data?.country);
-        if (country) return country;
-      }
-    } catch {
-      // Fall through to browser-side detection. This uses the visitor's IP
-      // directly and avoids mistaking the function server's location for theirs.
-    }
-
+    // Prefer browser-side detection because the request definitely originates
+    // from the visitor rather than an edge-function relay.
     const providers = [
       { url: "https://ipapi.co/json/", read: (data: any) => data?.country_code },
       { url: "https://ipwho.is/", read: (data: any) => data?.country_code },
@@ -52,6 +43,16 @@ const detectCountry = (): Promise<CountryCode> => {
       } catch {
         // Try the next independent provider.
       }
+    }
+
+    try {
+      const { data, error } = await withTimeout(supabase.functions.invoke("detect-country", { body: {} }));
+      if (!error) {
+        const country = normalizeCountry(data?.country);
+        if (country) return country;
+      }
+    } catch {
+      // The safe final fallback below keeps non-Nigerian pricing restricted.
     }
 
     // Never expose Naira checkout when Nigeria cannot be confirmed.
