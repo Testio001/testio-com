@@ -162,7 +162,7 @@ const Pricing = () => {
   const isAndroidApp = useIsAndroidApp();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
-  const { currency, setCurrency, isNigeria } = useCurrency();
+  const { currency, setCurrency, isNigeria, isCurrencyLoading } = useCurrency();
   const [activePlan, setActivePlan] = useState<string | null>(null);
 
   const fetchActivePlan = async () => {
@@ -435,23 +435,23 @@ const Pricing = () => {
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Pick the plan that fits you</h1>
           <p className="text-muted-foreground text-sm max-w-md mx-auto">
-            Start free. Upgrade any time. {currency === "NGN" ? "One-off payment, valid 30 days." : "Cancel any time."}
+            {isCurrencyLoading ? "Checking local pricing…" : <>Start free. Upgrade any time. {currency === "NGN" ? "One-off payment, valid 30 days." : "Cancel any time."}</>}
           </p>
 
           {/* NG-only: toggle auto-renewing USD subscription on/off */}
-          {isNigeria && (
+          {isNigeria && !isCurrencyLoading && (
             <div className="mt-5">
               <button
                 onClick={() => setCurrency(currency === "NGN" ? "USD" : "NGN")}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-secondary text-foreground border border-border hover:bg-secondary/80 transition-all"
               >
-                {currency === "NGN" ? "🔄 Activate auto-renewal (switches pricing to dollars $)" : "↩️ Deactivate auto-renewal (switches pricing back to naira ₦)"}
+                {currency === "NGN" ? "Pay in Dollars ($) with auto-renewal" : "Pay in Naira (₦) without auto-renewal"}
               </button>
             </div>
           )}
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className={`grid sm:grid-cols-2 lg:grid-cols-4 gap-5 transition-opacity ${isCurrencyLoading ? "opacity-0 pointer-events-none" : "opacity-100"}`} aria-busy={isCurrencyLoading}>
           {plans
             .filter((p) => !p.ngnOnly || (currency === "NGN" && isNigeria))
             .map((plan, i) => (

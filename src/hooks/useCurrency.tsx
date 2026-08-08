@@ -1,7 +1,66 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type Currency = "USD" | "NGN";
+
+type CountryCode = "NG" | "OTHER";
+
+const CURRENCY_KEY = "testio_currency";
+const COUNTRY_KEY = "testio_country";
+const CURRENCY_EVENT = "testio-currency-change";
+
+let countryDetectionPromise: Promise<CountryCode> | null = null;
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 4500): Promise<T> => {
+  return await Promise.race([
+    promise,
+    new Promise<T>((_, reject) => window.setTimeout(() => reject(new Error("Country detection timed out")), timeoutMs)),
+  ]);
+};
+
+const normalizeCountry = (value: unknown): CountryCode | null => {
+  if (typeof value !== "string" || !value.trim()) return null;
+  return value.trim().toUpperCase() === "NG" ? "NG" : "OTHER";
+};
+
+const detectCountry = (): Promise<CountryCode> => {
+  if (countryDetectionPromise) return countryDetectionPromise;
+
+  countryDetectionPromise = (async () => {
+    // Prefer browser-side detection because the request definitely originates
+    // from the visitor rather than an edge-function relay.
+    const providers = [
+      { url: "https://ipapi.co/json/", read: (data: any) => data?.country_code },
+      { url: "https://ipwho.is/", read: (data: any) => data?.country_code },
+    ];
+
+    for (const provider of providers) {
+      try {
+        const response = await withTimeout(fetch(provider.url, { headers: { Accept: "application/json" } }));
+        if (!response.ok) continue;
+        const country = normalizeCountry(provider.read(await response.json()));
+        if (country) return country;
+      } catch {
+        // Try the next independent provider.
+      }
+    }
+
+    try {
+      const { data, error } = await withTimeout(supabase.functions.invoke("detect-country", { body: {} }));
+      if (!error) {
+        const country = normalizeCountry(data?.country);
+        if (country) return country;
+      }
+    } catch {
+      // The safe final fallback below keeps non-Nigerian pricing restricted.
+    }
+
+    // Never expose Naira checkout when Nigeria cannot be confirmed.
+    return "OTHER";
+  })();
+
+  return countryDetectionPromise;
+};
 
 export const NGN_PRICES = {
   starter: 4490,
@@ -43,52 +102,59 @@ export function entryPlanFor(currency: Currency): "starter" | "basic" {
  * Returns the user's active display currency. Reads from localStorage,
  * else auto-detects via the detect-country edge function (NG => NGN).
  */
-export function useCurrency(): { currency: Currency; setCurrency: (c: Currency) => void; isNigeria: boolean } {
+export function useCurrency(): {
+  currency: Currency;
+  setCurrency: (c: Currency) => void;
+  isNigeria: boolean;
+  isCurrencyLoading: boolean;
+} {
+  const cachedCountry = typeof window !== "undefined" ? localStorage.getItem(COUNTRY_KEY) : null;
   const [currency, setCurrencyState] = useState<Currency>(() => {
     if (typeof window === "undefined") return "USD";
-    const stored = localStorage.getItem("testio_currency");
-    return stored === "NGN" || stored === "USD" ? (stored as Currency) : "USD";
+    if (cachedCountry !== "NG") return "USD";
+    const sessionChoice = sessionStorage.getItem(CURRENCY_KEY);
+    return sessionChoice === "USD" ? "USD" : "NGN";
   });
-  const [isNigeria, setIsNigeria] = useState<boolean>(false);
+  const [isNigeria, setIsNigeria] = useState(cachedCountry === "NG");
+  const [isCurrencyLoading, setIsCurrencyLoading] = useState(cachedCountry === null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const { data } = await supabase.functions.invoke("detect-country", { body: {} });
-        if (cancelled) return;
-        const ng = data?.country === "NG";
-        setIsNigeria(ng);
-        if (ng) {
-          // For Nigerian visitors, default to NGN unless they explicitly chose USD
-          const stored = localStorage.getItem("testio_currency");
-          if (stored !== "USD") {
-            localStorage.setItem("testio_currency", "NGN");
-            setCurrencyState("NGN");
-          }
-        } else {
-          // Non-Nigerian visitors must always see USD pricing
-          localStorage.setItem("testio_currency", "USD");
-          setCurrencyState("USD");
-        }
-      } catch {
-        // On failure, force USD for safety
-        if (!cancelled) {
-          setCurrencyState("USD");
-        }
-      }
+      const country = await detectCountry();
+      if (cancelled) return;
+
+      const ng = country === "NG";
+      localStorage.setItem(COUNTRY_KEY, country);
+      setIsNigeria(ng);
+
+      const sessionChoice = sessionStorage.getItem(CURRENCY_KEY);
+      const nextCurrency: Currency = ng && sessionChoice === "USD" ? "USD" : ng ? "NGN" : "USD";
+      if (!ng) sessionStorage.removeItem(CURRENCY_KEY);
+      setCurrencyState(nextCurrency);
+      setIsCurrencyLoading(false);
     })();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const setCurrency = (c: Currency) => {
+  useEffect(() => {
+    const syncCurrency = (event: Event) => {
+      const nextCurrency = (event as CustomEvent<Currency>).detail;
+      if (nextCurrency === "USD" || nextCurrency === "NGN") setCurrencyState(nextCurrency);
+    };
+    window.addEventListener(CURRENCY_EVENT, syncCurrency);
+    return () => window.removeEventListener(CURRENCY_EVENT, syncCurrency);
+  }, []);
+
+  const setCurrency = useCallback((c: Currency) => {
     // Block any attempt to use NGN if the visitor is not in Nigeria
     if (c === "NGN" && !isNigeria) return;
-    localStorage.setItem("testio_currency", c);
+    sessionStorage.setItem(CURRENCY_KEY, c);
     setCurrencyState(c);
-  };
+    window.dispatchEvent(new CustomEvent<Currency>(CURRENCY_EVENT, { detail: c }));
+  }, [isNigeria]);
 
-  return { currency, setCurrency, isNigeria };
+  return { currency, setCurrency, isNigeria, isCurrencyLoading };
 }

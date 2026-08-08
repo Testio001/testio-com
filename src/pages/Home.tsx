@@ -150,7 +150,7 @@ const Home = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const isDark = theme === "dark";
-  const { currency, setCurrency, isNigeria } = useCurrency();
+  const { currency, setCurrency, isNigeria, isCurrencyLoading } = useCurrency();
 
   return (
     <div className={`min-h-screen transition-colors ${isDark ? "bg-gray-950 text-gray-100" : "bg-white text-gray-900"}`}>
@@ -286,11 +286,11 @@ const Home = () => {
         <div className="max-w-6xl mx-auto">
           <h2 className={`text-3xl font-bold text-center mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>Simple, Transparent Pricing</h2>
           <p className={`text-center mb-14 max-w-md mx-auto ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-            Choose the plan that fits your study needs. {currency === "NGN" ? "One-off payment, valid 30 days." : "Cancel anytime."}
+            {isCurrencyLoading ? "Checking local pricing…" : <>Choose the plan that fits your study needs. {currency === "NGN" ? "One-off payment, valid 30 days." : "Cancel anytime."}</>}
           </p>
 
           {/* NG-only: toggle auto-renewing USD subscription on/off */}
-          {isNigeria && (
+          {isNigeria && !isCurrencyLoading && (
             <div className="flex justify-center mb-10">
               <button
                 onClick={() => setCurrency(currency === "NGN" ? "USD" : "NGN")}
@@ -300,12 +300,12 @@ const Home = () => {
                     : "bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                {currency === "NGN" ? "🔄 Activate auto-renewal (switches pricing to dollars $)" : "↩️ Deactivate auto-renewal (switches pricing back to naira ₦)"}
+                {currency === "NGN" ? "Pay in Dollars ($) with auto-renewal" : "Pay in Naira (₦) without auto-renewal"}
               </button>
             </div>
           )}
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className={`grid sm:grid-cols-2 lg:grid-cols-4 gap-5 transition-opacity ${isCurrencyLoading ? "opacity-0 pointer-events-none" : "opacity-100"}`} aria-busy={isCurrencyLoading}>
             {plans.filter((p) => !p.ngnOnly || (currency === "NGN" && isNigeria)).map((plan) => {
               const usd = USD_LABELS[plan.id];
               const isNgnPaid = currency === "NGN" && plan.id !== "free";
