@@ -16,7 +16,13 @@ interface Podcast {
   created_at: string;
 }
 
-const PodcastPlayer = ({ documentId }: { documentId: string }) => {
+const PodcastPlayer = ({
+  documentId,
+  subscriptionPlan = "free",
+}: {
+  documentId: string;
+  subscriptionPlan?: string;
+}) => {
   const [podcast, setPodcast] = useState<Podcast | null>(null);
   const [signedUrl, setSignedUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -28,6 +34,10 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   const [script, setScript] = useState<PodcastSegment[]>([]);
   const [audioError, setAudioError] = useState<string>("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const plan = (subscriptionPlan || "free").toLowerCase();
+  const showExpiryWarning = ["free", "starter", "basic"].includes(plan);
+  const expiryWindow = plan === "free" ? "30 days" : "2 months";
 
   useEffect(() => {
     fetchPodcast();
