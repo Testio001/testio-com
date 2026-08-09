@@ -552,6 +552,15 @@ const Pricing = () => {
         </div>
 
         <div className="text-center mt-8 space-y-1">
+          <div className="max-w-2xl mx-auto mb-4 text-left rounded-xl border border-border bg-card/60 p-4">
+            <p className="text-foreground text-xs font-semibold mb-1">📦 Content retention policy</p>
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              Free and expired-subscription accounts: documents, notes, flashcards, and quizzes are retained for
+              2 months. Podcasts are retained for 1 month on the Free plan, 2 months on Starter/Basic.
+              Pro and Scholar subscribers keep all content for as long as they're subscribed.
+              Download podcasts to keep them permanently.
+            </p>
+          </div>
           <p className="text-muted-foreground text-xs">*Scholar fair-usage cap: 80 uploads/month to prevent abuse.</p>
           <p className="text-muted-foreground text-xs">
             {currency === "NGN"

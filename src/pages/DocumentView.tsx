@@ -580,7 +580,7 @@ const DocumentView = () => {
             {activeTab === "notes" && <NoteViewer documentId={id!} notes={notes} onRefresh={fetchDocument} />}
             {activeTab === "flashcards" && <FlashcardViewer key={flashcardKey} documentId={id!} />}
             {activeTab === "quiz" && <QuizViewer key={quizKey} documentId={id!} />}
-            {activeTab === "podcast" && <PodcastPlayer key={podcastKey} documentId={id!} />}
+            {activeTab === "podcast" && <PodcastPlayer key={podcastKey} documentId={id!} subscriptionPlan={subscriptionPlan} />}
             {activeTab === "chat" && <ChatPanel documentId={id!} subscriptionPlan={subscriptionPlan} />}
           </motion.div>
         )}

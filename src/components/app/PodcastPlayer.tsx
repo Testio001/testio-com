@@ -16,7 +16,13 @@ interface Podcast {
   created_at: string;
 }
 
-const PodcastPlayer = ({ documentId }: { documentId: string }) => {
+const PodcastPlayer = ({
+  documentId,
+  subscriptionPlan = "free",
+}: {
+  documentId: string;
+  subscriptionPlan?: string;
+}) => {
   const [podcast, setPodcast] = useState<Podcast | null>(null);
   const [signedUrl, setSignedUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -28,6 +34,10 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
   const [script, setScript] = useState<PodcastSegment[]>([]);
   const [audioError, setAudioError] = useState<string>("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const plan = (subscriptionPlan || "free").toLowerCase();
+  const showExpiryWarning = ["free", "starter", "basic"].includes(plan);
+  const expiryWindow = plan === "free" ? "30 days" : "2 months";
 
   useEffect(() => {
     fetchPodcast();
@@ -271,6 +281,12 @@ const PodcastPlayer = ({ documentId }: { documentId: string }) => {
 
         {/* Download */}
         <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
+          {showExpiryWarning && (
+            <div className="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs leading-relaxed">
+              ⚠️ Your podcast will be automatically deleted after {expiryWindow} — tap{" "}
+              <span className="font-semibold">Download</span> to keep it permanently.
+            </div>
+          )}
           <button
             onClick={handleDownload}
             disabled={downloading || !signedUrl}
