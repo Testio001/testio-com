@@ -281,6 +281,12 @@ const PodcastPlayer = ({
 
         {/* Download */}
         <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
+          {showExpiryWarning && (
+            <div className="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs leading-relaxed">
+              ⚠️ Your podcast will be automatically deleted after {expiryWindow} — tap{" "}
+              <span className="font-semibold">Download</span> to keep it permanently.
+            </div>
+          )}
           <button
             onClick={handleDownload}
             disabled={downloading || !signedUrl}
