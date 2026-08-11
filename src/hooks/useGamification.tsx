@@ -62,7 +62,7 @@ export interface GamificationData {
 const FREE_UPLOAD_LIMIT = 2;
 const MAX_REFERRALS_PER_MONTH = 5;
 // Podcast exchange counts (each exchange ≈ 35-40s of audio)
-const FREE_PODCAST_MAX_EXCHANGES = 6; // ~4 min
+const FREE_PODCAST_MAX_EXCHANGES = 2; // ~1 min preview (free tier cap)
 const BASIC_PODCAST_MAX_EXCHANGES = 11; // ~7 min
 const PRO_PODCAST_MAX_EXCHANGES = 19; // ~12 min
 const SCHOLAR_PODCAST_MAX_EXCHANGES = 23; // ~15 min
