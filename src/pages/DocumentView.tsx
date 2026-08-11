@@ -612,6 +612,18 @@ const DocumentView = () => {
         onClose={() => setShowPodcastLimitModal(false)}
         subscriptionPlan={subscriptionPlan}
       />
+
+      <PodcastShareGateModal
+        isOpen={showShareGate}
+        onClose={() => setShowShareGate(false)}
+        referralLink={getReferralLink()}
+        documentId={id}
+        onUnlocked={() => {
+          setShareUnlock(true);
+          setShowShareGate(false);
+          generatePodcast();
+        }}
+      />
     </div>
   );
 };
