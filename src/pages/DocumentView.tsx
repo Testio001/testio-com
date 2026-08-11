@@ -36,7 +36,7 @@ const DocumentView = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { FREE_PODCAST_MAX_EXCHANGES, BASIC_PODCAST_MAX_EXCHANGES, PRO_PODCAST_MAX_EXCHANGES, SCHOLAR_PODCAST_MAX_EXCHANGES, FREE_QUIZ_MAX_QUESTIONS } = useGamification();
+  const { FREE_PODCAST_MAX_EXCHANGES, BASIC_PODCAST_MAX_EXCHANGES, PRO_PODCAST_MAX_EXCHANGES, SCHOLAR_PODCAST_MAX_EXCHANGES, FREE_QUIZ_MAX_QUESTIONS, getReferralLink } = useGamification();
   const [doc, setDoc] = useState<Document | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeTab, setActiveTab] = useState<"notes" | "flashcards" | "quiz" | "chat" | "podcast">("notes");
@@ -54,6 +54,7 @@ const DocumentView = () => {
   const [visitedTourTabs, setVisitedTourTabs] = useState<Set<string>>(new Set());
   const [bonusPodcasts, setBonusPodcasts] = useState(0);
   const [showPodcastLimitModal, setShowPodcastLimitModal] = useState(false);
+  const [showShareGate, setShowShareGate] = useState(false);
   const [showPodcastPrompt, setShowPodcastPrompt] = useState(false);
   useEffect(() => {
     if (id && user) fetchDocument();
