@@ -576,6 +576,11 @@ const DocumentView = () => {
                   }
                   {subscriptionPlan !== "pro" && " · Upgrade for more"}
                 </p>
+                {subscriptionPlan === "free" && (
+                  <p className="text-muted-foreground text-xs mt-2">
+                    Free plan: 1-minute preview podcast · share your referral link to unlock each generation
+                  </p>
+                )}
                 {generating === "podcast" && (
                   <p className="text-muted-foreground text-xs mt-3 flex items-center gap-2">
                     <Loader2 className="w-3 h-3 animate-spin" />
