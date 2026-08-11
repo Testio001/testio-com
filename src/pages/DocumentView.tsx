@@ -325,6 +325,18 @@ const DocumentView = () => {
     }
   };
 
+  // Free tier only: one share action unlocks one podcast generation.
+  const SHARE_UNLOCK_KEY = "testio_podcast_share_unlock";
+  const hasShareUnlock = () => {
+    try { return sessionStorage.getItem(SHARE_UNLOCK_KEY) === "1"; } catch { return false; }
+  };
+  const setShareUnlock = (v: boolean) => {
+    try {
+      if (v) sessionStorage.setItem(SHARE_UNLOCK_KEY, "1");
+      else sessionStorage.removeItem(SHARE_UNLOCK_KEY);
+    } catch {}
+  };
+
   const generatePodcast = async () => {
     if (!id) return;
 
@@ -345,6 +357,12 @@ const DocumentView = () => {
       return;
     }
 
+    // Free plan share-gate: must share the referral link before each generation
+    if (subscriptionPlan === "free" && !hasShareUnlock()) {
+      setShowShareGate(true);
+      return;
+    }
+
     setGenerating("podcast");
     try {
       const body: any = { documentId: id };
@@ -361,6 +379,7 @@ const DocumentView = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({ title: "Podcast generated!" });
+      if (subscriptionPlan === "free") setShareUnlock(false);
       setHasPodcast(true);
       setPodcastCount(prev => prev + 1);
       setPodcastKey(prev => prev + 1);
