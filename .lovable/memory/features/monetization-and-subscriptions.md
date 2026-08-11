@@ -33,3 +33,10 @@ type: feature
 - Tracking table: `korapay_transactions` (reference, plan, amount_ngn, status, expires_at).
 - On success → sets `profiles.subscription_plan` + `subscription_expires_at = now()+30 days`. NO auto-renew.
 - Webhook URL to register in Korapay dashboard: `https://kjdduozjlfhgznrcsoxr.supabase.co/functions/v1/korapay-webhook`
+
+## Free-tier podcast (Aug 2026)
+- Free podcasts are a 1-minute PREVIEW: server clamps to 2 exchanges + 1 spoken upgrade CTA line.
+- Spoken + on-screen outro: "That's a preview — upgrade to a paid plan to unlock your full podcast." (UI CTA → /pricing, shown when playback ends).
+- Free users must share their referral link before EACH podcast generation (share alone unlocks; friend signup not required). Unlock stored in sessionStorage `testio_podcast_share_unlock`, consumed per generation.
+- Analytics event `referral_share_clicked_for_podcast` logged to `analytics_events` (separate from referral conversions).
+- Starter: still no podcasts. Basic/Pro/Scholar: unchanged full-length, no share gate.
