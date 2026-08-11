@@ -13,6 +13,7 @@ import QuizViewer from "@/components/app/QuizViewer";
 import ChatPanel from "@/components/app/ChatPanel";
 import PodcastPlayer from "@/components/app/PodcastPlayer";
 import PodcastLimitModal from "@/components/app/PodcastLimitModal";
+import PodcastShareGateModal from "@/components/app/PodcastShareGateModal";
 import ProcessingOverlay from "@/components/app/ProcessingOverlay";
 import UpgradePrompt from "@/components/app/UpgradePrompt";
 import type { Tables } from "@/integrations/supabase/types";
