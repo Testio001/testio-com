@@ -111,6 +111,8 @@ serve(async (req) => {
       .maybeSingle();
     const planActive = prof?.subscription_expires_at && new Date(prof.subscription_expires_at) > new Date();
     const activePlan = planActive ? prof?.subscription_plan : "free";
+    // Free tier: hard-capped 1-minute preview podcast (2 exchanges + spoken upgrade CTA).
+    const isFreePlan = !activePlan || activePlan === "free";
     if (activePlan === "starter") {
       return new Response(JSON.stringify({
         error: "Podcasts are not included on the Starter plan. Upgrade to Basic, Pro, or Scholar to generate podcasts.",
@@ -127,8 +129,9 @@ serve(async (req) => {
 
     // Length-based target: ~600 chars of source per exchange, min 4, capped by plan
     const naturalTarget = Math.max(4, Math.floor(sourceContent.length / 600));
-    const exchangeLimit = Math.min(exchangeCap, naturalTarget);
-    console.log(`Podcast: source=${sourceContent.length} chars, naturalTarget=${naturalTarget}, cap=${exchangeCap}, using=${exchangeLimit}`);
+    const planCap = isFreePlan ? 2 : exchangeCap; // free = ~1 minute preview
+    const exchangeLimit = isFreePlan ? planCap : Math.min(planCap, naturalTarget);
+    console.log(`Podcast: source=${sourceContent.length} chars, naturalTarget=${naturalTarget}, cap=${planCap}, free=${isFreePlan}, using=${exchangeLimit}`);
 
     const needsUpgradeCTA = exchangeCap < 24; // Free + Basic only
     const conversation: Array<{ speaker: string; text: string }> = [];
@@ -137,13 +140,14 @@ serve(async (req) => {
 
     // We always reserve the LAST exchange for a proper sign-off ("pleasantries" close).
     // Total = (exchangeLimit - 1) substantive exchanges + 1 outro.
-    const substantiveCount = Math.max(2, exchangeLimit - 1);
+    // Free: 2 short substantive lines + 1 spoken upgrade CTA (no long recap outro).
+    const substantiveCount = isFreePlan ? 2 : Math.max(2, exchangeLimit - 1);
     // +1 outro (Alex recap), +1 final closing line (CTA on Free/Basic, pleasantry on Pro/Scholar)
-    const totalExchanges = substantiveCount + 2;
+    const totalExchanges = isFreePlan ? substantiveCount + 1 : substantiveCount + 2;
 
     for (let i = 0; i < totalExchanges; i++) {
       const isFinalClose = i === totalExchanges - 1;
-      const isOutro = i === totalExchanges - 2;
+      const isOutro = !isFreePlan && i === totalExchanges - 2;
       // Outro is always spoken by Alex (host). Final closing line is always Alex
       // delivering the Testio.online CTA.
       const speaker = isFinalClose ? "Alex" : (isOutro ? "Alex" : (i % 2 === 0 ? "Alex" : "Sam"));
@@ -157,15 +161,23 @@ serve(async (req) => {
 
       let instruction: string;
       if (isFirst) {
-        instruction = `You are Alex, the warm and energetic host of a friendly study podcast. This is the VERY FIRST line. Start with EXACTLY: "Welcome to Testio.online." Then, in 2–4 more sentences, greet your co-host Sam with genuine warmth, tease the topic from the study material, and invite Sam in with a natural handoff (e.g., "Sam, what jumped out at you?"). Sound excited and human.`;
+        instruction = isFreePlan
+          ? `You are Alex, the warm and energetic host of a friendly study podcast. This is the VERY FIRST line of a short preview episode. Start with EXACTLY: "Welcome to Testio.online." Then, in just 1–2 more sentences, greet your co-host Sam and tease the single most important idea from the study material, ending with a quick handoff to Sam. Keep it under 25 seconds of speech.`
+          : `You are Alex, the warm and energetic host of a friendly study podcast. This is the VERY FIRST line. Start with EXACTLY: "Welcome to Testio.online." Then, in 2–4 more sentences, greet your co-host Sam with genuine warmth, tease the topic from the study material, and invite Sam in with a natural handoff (e.g., "Sam, what jumped out at you?"). Sound excited and human.`;
+      } else if (isFinalClose && isFreePlan) {
+        instruction = `You are Alex closing a short preview episode. Say warmly and clearly, in exactly these words: "That's a preview — upgrade to a paid plan to unlock your full podcast. Head over to Testio.online to hear the whole thing." Say nothing else.`;
       } else if (isFinalClose) {
         instruction = `You are Alex. This is the VERY LAST line of the podcast. Say warmly: "If you want to create a podcast like this with your own notes, head over to Testio.online. Thanks so much for studying with us — we'll catch you next time!" Keep it to those two sentences, delivered with real warmth.`;
       } else if (isOutro) {
         instruction = `You are Alex, wrapping up the podcast. Do NOT introduce new ideas. In 3–5 sentences, warmly thank Sam, recap 2–3 of the most important takeaways from the study material that you actually discussed, and leave the listener feeling motivated. Do NOT mention Testio.online here — that's the next line.`;
       } else if (speaker === "Sam") {
-        instruction = `You are Sam, Alex's curious, expressive co-host. Alex JUST said: "${lastLine?.text || ''}". React naturally with real emotion (curiosity, an "oh wow", a soft laugh, a "wait, really?"), then dig into the study material — paraphrase a specific concept Alex raised, share a quick thought or analogy, and end by asking Alex ONE genuine follow-up question. Aim for 3–6 sentences. Stay 100% grounded in the study material below — do not invent facts.`;
+        instruction = isFreePlan
+          ? `You are Sam, Alex's curious, expressive co-host, in a short preview episode. Alex JUST said: "${lastLine?.text || ''}". React with real emotion and explain ONE specific concept from the study material in 2–3 sentences. Keep it under 25 seconds of speech. Stay 100% grounded in the study material below.`
+          : `You are Sam, Alex's curious, expressive co-host. Alex JUST said: "${lastLine?.text || ''}". React naturally with real emotion (curiosity, an "oh wow", a soft laugh, a "wait, really?"), then dig into the study material — paraphrase a specific concept Alex raised, share a quick thought or analogy, and end by asking Alex ONE genuine follow-up question. Aim for 3–6 sentences. Stay 100% grounded in the study material below — do not invent facts.`;
       } else {
-        instruction = `You are Alex, the host and friendly expert. Sam JUST said: "${lastLine?.text || ''}". Directly answer Sam using SPECIFIC facts, terms, or examples from the study material below. Be expressive and warm — show enthusiasm for the topic. Aim for 3–6 sentences. End naturally, either by checking in with Sam ("Does that click, Sam?") or smoothly pivoting to the next idea from the material.`;
+        instruction = isFreePlan
+          ? `You are Alex, the host and friendly expert, in a short preview episode. Sam JUST said: "${lastLine?.text || ''}". Answer Sam in 2–3 sentences using SPECIFIC facts from the study material below. Keep it under 25 seconds of speech.`
+          : `You are Alex, the host and friendly expert. Sam JUST said: "${lastLine?.text || ''}". Directly answer Sam using SPECIFIC facts, terms, or examples from the study material below. Be expressive and warm — show enthusiasm for the topic. Aim for 3–6 sentences. End naturally, either by checking in with Sam ("Does that click, Sam?") or smoothly pivoting to the next idea from the material.`;
       }
 
       const systemContent = `${instruction}\n\nCRITICAL RULES:\n- Ground EVERY response in the Study Material below. Use real terms, names, and concepts from it. Do NOT make up facts that aren't in the material.\n- Speak naturally with real emotion — warmth, curiosity, excitement, occasional light laughter — like two real friends teaching each other. Vary sentence length.\n- Always speak in complete sentences with proper punctuation. Never start mid-sentence, never trail off, never end mid-word. Finish your final sentence before stopping.\n- The previous speaker has COMPLETELY FINISHED. Do not interrupt, overlap, or echo their last words verbatim.\n- Hand off cleanly when you're done — ask a question or invite a reaction so the other speaker knows it's their turn.\n- Do NOT use stage directions like [pause] or *laughs* — express emotion through your actual delivery and word choice.\n- Speak ONLY your own lines — never voice the other person.\n\nStudy material (this is the ONLY source of truth for facts):\n${materialContext}${fullConvo ? `\n\nFull conversation so far (the other speaker has FINISHED their last line):\n${fullConvo}` : ""}`;
