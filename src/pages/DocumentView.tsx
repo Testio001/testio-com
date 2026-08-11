@@ -13,6 +13,7 @@ import QuizViewer from "@/components/app/QuizViewer";
 import ChatPanel from "@/components/app/ChatPanel";
 import PodcastPlayer from "@/components/app/PodcastPlayer";
 import PodcastLimitModal from "@/components/app/PodcastLimitModal";
+import PodcastShareGateModal from "@/components/app/PodcastShareGateModal";
 import ProcessingOverlay from "@/components/app/ProcessingOverlay";
 import UpgradePrompt from "@/components/app/UpgradePrompt";
 import type { Tables } from "@/integrations/supabase/types";
@@ -35,7 +36,7 @@ const DocumentView = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { FREE_PODCAST_MAX_EXCHANGES, BASIC_PODCAST_MAX_EXCHANGES, PRO_PODCAST_MAX_EXCHANGES, SCHOLAR_PODCAST_MAX_EXCHANGES, FREE_QUIZ_MAX_QUESTIONS } = useGamification();
+  const { FREE_PODCAST_MAX_EXCHANGES, BASIC_PODCAST_MAX_EXCHANGES, PRO_PODCAST_MAX_EXCHANGES, SCHOLAR_PODCAST_MAX_EXCHANGES, FREE_QUIZ_MAX_QUESTIONS, getReferralLink } = useGamification();
   const [doc, setDoc] = useState<Document | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeTab, setActiveTab] = useState<"notes" | "flashcards" | "quiz" | "chat" | "podcast">("notes");
@@ -53,6 +54,7 @@ const DocumentView = () => {
   const [visitedTourTabs, setVisitedTourTabs] = useState<Set<string>>(new Set());
   const [bonusPodcasts, setBonusPodcasts] = useState(0);
   const [showPodcastLimitModal, setShowPodcastLimitModal] = useState(false);
+  const [showShareGate, setShowShareGate] = useState(false);
   const [showPodcastPrompt, setShowPodcastPrompt] = useState(false);
   useEffect(() => {
     if (id && user) fetchDocument();
@@ -323,6 +325,18 @@ const DocumentView = () => {
     }
   };
 
+  // Free tier only: one share action unlocks one podcast generation.
+  const SHARE_UNLOCK_KEY = "testio_podcast_share_unlock";
+  const hasShareUnlock = () => {
+    try { return sessionStorage.getItem(SHARE_UNLOCK_KEY) === "1"; } catch { return false; }
+  };
+  const setShareUnlock = (v: boolean) => {
+    try {
+      if (v) sessionStorage.setItem(SHARE_UNLOCK_KEY, "1");
+      else sessionStorage.removeItem(SHARE_UNLOCK_KEY);
+    } catch {}
+  };
+
   const generatePodcast = async () => {
     if (!id) return;
 
@@ -343,6 +357,12 @@ const DocumentView = () => {
       return;
     }
 
+    // Free plan share-gate: must share the referral link before each generation
+    if (subscriptionPlan === "free" && !hasShareUnlock()) {
+      setShowShareGate(true);
+      return;
+    }
+
     setGenerating("podcast");
     try {
       const body: any = { documentId: id };
@@ -359,6 +379,7 @@ const DocumentView = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({ title: "Podcast generated!" });
+      if (subscriptionPlan === "free") setShareUnlock(false);
       setHasPodcast(true);
       setPodcastCount(prev => prev + 1);
       setPodcastKey(prev => prev + 1);
@@ -555,6 +576,11 @@ const DocumentView = () => {
                   }
                   {subscriptionPlan !== "pro" && " · Upgrade for more"}
                 </p>
+                {subscriptionPlan === "free" && (
+                  <p className="text-muted-foreground text-xs mt-2">
+                    Free plan: 1-minute preview podcast · share your referral link to unlock each generation
+                  </p>
+                )}
                 {generating === "podcast" && (
                   <p className="text-muted-foreground text-xs mt-3 flex items-center gap-2">
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -590,6 +616,18 @@ const DocumentView = () => {
         isOpen={showPodcastLimitModal}
         onClose={() => setShowPodcastLimitModal(false)}
         subscriptionPlan={subscriptionPlan}
+      />
+
+      <PodcastShareGateModal
+        isOpen={showShareGate}
+        onClose={() => setShowShareGate(false)}
+        referralLink={getReferralLink()}
+        documentId={id}
+        onUnlocked={() => {
+          setShareUnlock(true);
+          setShowShareGate(false);
+          generatePodcast();
+        }}
       />
     </div>
   );

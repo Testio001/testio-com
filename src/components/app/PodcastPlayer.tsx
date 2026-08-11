@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Mic, Download, Play, Pause, SkipBack, SkipForward } from "lucide-react";
+import { Loader2, Mic, Download, Play, Pause, SkipBack, SkipForward, Crown } from "lucide-react";
 
 interface PodcastSegment {
   speaker: string;
@@ -33,9 +34,12 @@ const PodcastPlayer = ({
   const [playbackRate, setPlaybackRate] = useState(1);
   const [script, setScript] = useState<PodcastSegment[]>([]);
   const [audioError, setAudioError] = useState<string>("");
+  const [showFreeOutro, setShowFreeOutro] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const navigate = useNavigate();
 
   const plan = (subscriptionPlan || "free").toLowerCase();
+  const isFree = plan === "free";
   const showExpiryWarning = ["free", "starter", "basic"].includes(plan);
   const expiryWindow = plan === "free" ? "30 days" : "2 months";
 
@@ -216,7 +220,10 @@ const PodcastPlayer = ({
         }}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
-        onEnded={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false);
+          if (isFree) setShowFreeOutro(true);
+        }}
         onError={(e) => {
           console.error("Audio element error:", e);
           setAudioError("Audio failed to load. Please try downloading instead.");
@@ -239,6 +246,22 @@ const PodcastPlayer = ({
         {audioError && (
           <div className="mb-4 px-4 py-2.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs text-center">
             {audioError}
+          </div>
+        )}
+
+        {/* Free-tier preview outro CTA (shown once playback ends) */}
+        {isFree && showFreeOutro && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-primary/10 border border-primary/30 text-center space-y-2">
+            <p className="text-foreground text-xs leading-relaxed">
+              That's a preview — upgrade to a paid plan to unlock your full podcast.
+            </p>
+            <button
+              onClick={() => navigate("/pricing")}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
+            >
+              <Crown className="w-3.5 h-3.5" />
+              Upgrade to unlock full podcasts
+            </button>
           </div>
         )}
 
