@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Save, Loader2, Crown, Calendar, ExternalLink, Music, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Crown, Calendar, ExternalLink, Music, Sparkles, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import testioLogo from "@/assets/testio-logo.png";
 import { PushNotificationSettings } from "@/components/PushNotificationSettings";
@@ -20,10 +20,54 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showStudyMusic, setShowStudyMusic] = useState(false);
+  const [subInfo, setSubInfo] = useState<any>(null);
+  const [subLoading, setSubLoading] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   useEffect(() => {
     if (user) fetchProfile();
   }, [user]);
+
+  useEffect(() => {
+    if (user && subscriptionPlan !== "free") loadSubscription();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, subscriptionPlan]);
+
+  const loadSubscription = async () => {
+    setSubLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-subscription", { body: { action: "status" } });
+      if (!error) setSubInfo(data);
+    } finally {
+      setSubLoading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!confirmCancel) {
+      setConfirmCancel(true);
+      return;
+    }
+    setCancelling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-subscription", { body: { action: "cancel" } });
+      const payload: any = data;
+      if (error || payload?.error) throw new Error(payload?.error || error?.message || "Failed to cancel");
+      toast({
+        title: "Subscription cancelled",
+        description: payload?.endsAt
+          ? `You keep access until ${new Date(payload.endsAt).toLocaleDateString()}. You won't be billed again.`
+          : "You won't be billed again.",
+      });
+      await loadSubscription();
+    } catch (err: any) {
+      toast({ title: "Couldn't cancel", description: err.message, variant: "destructive" });
+    } finally {
+      setCancelling(false);
+      setConfirmCancel(false);
+    }
+  };
 
   const fetchProfile = async () => {
     const { data } = await supabase.from("profiles").select("*").eq("user_id", user!.id).single();
@@ -135,12 +179,58 @@ const Profile = () => {
               <Crown className="w-4 h-4" /> Upgrade Plan
             </button>
           ) : (
-            <button
-              onClick={() => navigate("/pricing")}
-              className="text-sm text-primary hover:underline flex items-center gap-1"
-            >
-              <ExternalLink className="w-3.5 h-3.5" /> Manage Subscription
-            </button>
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-4">
+                <button
+                  onClick={() => navigate("/pricing")}
+                  className="text-sm text-primary hover:underline flex items-center gap-1"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Change Plan
+                </button>
+                {subInfo?.portalUrl && (
+                  <a
+                    href={subInfo.portalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline flex items-center gap-1"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> Billing Portal
+                  </a>
+                )}
+              </div>
+
+              {subLoading ? (
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking your billing status…
+                </p>
+              ) : subInfo?.hasSubscription && !subInfo?.cancelled ? (
+                <div className="pt-1">
+                  <button
+                    onClick={handleCancelSubscription}
+                    disabled={cancelling}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      confirmCancel
+                        ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        : "border border-destructive/60 text-destructive hover:bg-destructive/10"
+                    }`}
+                  >
+                    {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                    {confirmCancel ? "Click again to confirm cancellation" : "Cancel Subscription"}
+                  </button>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    You keep full access until the end of your current billing period. No further charges.
+                  </p>
+                </div>
+              ) : subInfo?.cancelled ? (
+                <p className="text-xs text-muted-foreground">
+                  Subscription cancelled{subInfo.endsAt ? ` — access ends ${new Date(subInfo.endsAt).toLocaleDateString()}` : ""}. You won't be billed again.
+                </p>
+              ) : subInfo ? (
+                <p className="text-xs text-muted-foreground">
+                  No recurring subscription found for your email — your access is a one-off purchase and will simply expire, so there's nothing to cancel.
+                </p>
+              ) : null}
+            </div>
           )}
         </div>
 
