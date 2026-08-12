@@ -8,6 +8,7 @@ import testioLogo from "@/assets/testio-logo.png";
 import { PushNotificationSettings } from "@/components/PushNotificationSettings";
 import StudyMusicModal from "@/components/app/StudyMusicModal";
 import { Badge } from "@/components/ui/badge";
+import CancelRetentionModal from "@/components/app/CancelRetentionModal";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -23,7 +24,7 @@ const Profile = () => {
   const [subInfo, setSubInfo] = useState<any>(null);
   const [subLoading, setSubLoading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [showCancelFlow, setShowCancelFlow] = useState(false);
 
   useEffect(() => {
     if (user) fetchProfile();
@@ -45,10 +46,6 @@ const Profile = () => {
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirmCancel) {
-      setConfirmCancel(true);
-      return;
-    }
     setCancelling(true);
     try {
       const { data, error } = await supabase.functions.invoke("manage-subscription", { body: { action: "cancel" } });
@@ -61,11 +58,11 @@ const Profile = () => {
           : "You won't be billed again.",
       });
       await loadSubscription();
+      setShowCancelFlow(false);
     } catch (err: any) {
       toast({ title: "Couldn't cancel", description: err.message, variant: "destructive" });
     } finally {
       setCancelling(false);
-      setConfirmCancel(false);
     }
   };
 
@@ -206,20 +203,24 @@ const Profile = () => {
               ) : subInfo?.hasSubscription && !subInfo?.cancelled ? (
                 <div className="pt-1">
                   <button
-                    onClick={handleCancelSubscription}
-                    disabled={cancelling}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      confirmCancel
-                        ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        : "border border-destructive/60 text-destructive hover:bg-destructive/10"
-                    }`}
+                    onClick={() => setShowCancelFlow(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-destructive/60 text-destructive hover:bg-destructive/10"
                   >
-                    {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-                    {confirmCancel ? "Click again to confirm cancellation" : "Cancel Subscription"}
+                    <XCircle className="w-4 h-4" />
+                    Cancel Subscription
                   </button>
                   <p className="text-xs text-muted-foreground mt-2">
                     You keep full access until the end of your current billing period. No further charges.
                   </p>
+                  <CancelRetentionModal
+                    open={showCancelFlow}
+                    onOpenChange={setShowCancelFlow}
+                    plan={subscriptionPlan}
+                    endsAt={subInfo?.endsAt ?? subscriptionExpires}
+                    cancelling={cancelling}
+                    onConfirm={handleCancelSubscription}
+                    onStay={() => toast({ title: "Great choice — your plan is still active", description: "Nothing changed. Keep the streak going!" })}
+                  />
                 </div>
               ) : subInfo?.cancelled ? (
                 <p className="text-xs text-muted-foreground">
