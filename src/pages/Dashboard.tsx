@@ -125,6 +125,8 @@ const Dashboard = () => {
   const [renameValue, setRenameValue] = useState("");
   const [userPlan, setUserPlan] = useState<string | null>(null);
   const [showPeriodicUpgrade, setShowPeriodicUpgrade] = useState(false);
+  const [showTrialPaywall, setShowTrialPaywall] = useState(false);
+  const { trialEndsAt, neverTrialed } = useTrialStatus();
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [celebration, setCelebration] = useState<{ title: string; seconds: number } | null>(null);
   const [uploadStartedAt, setUploadStartedAt] = useState<number | null>(null);
