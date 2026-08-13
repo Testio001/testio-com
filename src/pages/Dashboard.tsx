@@ -17,7 +17,6 @@ import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
 import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
-import FirstWeekDiscountBanner from "@/components/app/FirstWeekDiscountBanner";
 import SignupOfferPaywall from "@/components/app/SignupOfferPaywall";
 import TrialStatusBanner from "@/components/app/TrialStatusBanner";
 import ProTrialPaywall from "@/components/app/ProTrialPaywall";
