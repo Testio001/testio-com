@@ -18,7 +18,11 @@ import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
 import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
 import FirstWeekDiscountBanner from "@/components/app/FirstWeekDiscountBanner";
-import WelcomeDiscountModal from "@/components/app/WelcomeDiscountModal";
+import SignupOfferPaywall from "@/components/app/SignupOfferPaywall";
+import TrialStatusBanner from "@/components/app/TrialStatusBanner";
+import ProTrialPaywall from "@/components/app/ProTrialPaywall";
+import { useTrialStatus } from "@/hooks/useTrialStatus";
+import { TRIAL_DAYS } from "@/lib/trial";
 import EmptyStateDemo from "@/components/app/EmptyStateDemo";
 import InAppTestimonials from "@/components/app/InAppTestimonials";
 import NotificationBell from "@/components/app/NotificationBell";
@@ -505,8 +509,9 @@ const Dashboard = () => {
         title="Processing your document…"
         subtitle={uploading || "This may take a while. We'll open your summary automatically when it's ready."}
       />
-      <FirstWeekDiscountBanner signupAt={user?.created_at} userPlan={userPlan} />
-      <WelcomeDiscountModal signupAt={user?.created_at} userPlan={userPlan} />
+      <TrialStatusBanner trialEndsAt={trialEndsAt} />
+      <SignupOfferPaywall userPlan={userPlan} trialEndsAt={trialEndsAt} />
+      <ProTrialPaywall open={showTrialPaywall} onClose={() => setShowTrialPaywall(false)} mode={currency === "NGN" ? "ngn" : "trial"} />
       {/* Desktop/Tablet header */}
       <header className="border-b border-border/50 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
