@@ -126,6 +126,8 @@ const Dashboard = () => {
   const [showPeriodicUpgrade, setShowPeriodicUpgrade] = useState(false);
   const [showTrialPaywall, setShowTrialPaywall] = useState(false);
   const { trialEndsAt, neverTrialed } = useTrialStatus();
+  // Free trial is a USD/LemonSqueezy feature (also applies to NG users who toggle to $)
+  const trialEligible = currency === "USD" && neverTrialed && (!userPlan || userPlan === "free");
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [celebration, setCelebration] = useState<{ title: string; seconds: number } | null>(null);
   const [uploadStartedAt, setUploadStartedAt] = useState<number | null>(null);
