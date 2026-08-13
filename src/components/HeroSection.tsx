@@ -58,8 +58,11 @@ const HeroSection = () => {
             transition={{ delay: 0.55 }}
           >
             <button onClick={() => navigate("/auth")} className="btn-testio-primary text-lg px-8 py-4">
-              Get Started - It's Free
+              {isUsd ? "Start 3-Day Free Pro Trial" : "Get Started - It's Free"}
             </button>
+            <p className="text-xs text-muted-foreground mt-2">
+              {isUsd ? "$0.00 due today · cancel anytime" : "No card needed to start · upgrade anytime"}
+            </p>
           </motion.div>
         </div>
 
