@@ -43,7 +43,15 @@ Deno.serve(async (req) => {
         const payload = JSON.parse(rawBody);
         const eventName = payload.meta?.event_name;
 
-        if (eventName === "order_created" || eventName === "subscription_created") {
+        const subEvents = [
+          "subscription_created",
+          "subscription_updated",
+          "subscription_cancelled",
+          "subscription_resumed",
+          "subscription_expired",
+        ];
+
+        if (eventName === "order_created" || subEvents.includes(eventName)) {
           const customData = payload.meta?.custom_data || {};
           const userId = customData.user_id;
           const plan = customData.plan;
@@ -57,6 +65,63 @@ Deno.serve(async (req) => {
             Deno.env.get("SUPABASE_URL")!,
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
           );
+
+          const attrs = payload.data?.attributes || {};
+          const subStatus: string | undefined = attrs.status;
+
+          // ---- Subscription lifecycle (incl. native LemonSqueezy free trials) ----
+          if (subEvents.includes(eventName) && subStatus) {
+            const variantIdSub = attrs.variant_id || attrs.first_subscription_item?.variant_id;
+            const subPlan = plan || (variantIdSub ? VARIANT_TO_PLAN[variantIdSub] : null) || "pro";
+
+            if (subStatus === "on_trial") {
+              const trialEndsAt = attrs.trial_ends_at || attrs.renews_at || null;
+              await adminClient.from("profiles").update({
+                subscription_plan: subPlan,
+                subscription_expires_at: trialEndsAt,
+                trial_ends_at: trialEndsAt,
+              }).eq("user_id", userId);
+              await adminClient.from("user_stats").update({
+                uploads_used: 0,
+                bonus_uploads: 0,
+                streak_bonus_uploads: 0,
+              }).eq("user_id", userId);
+              console.log(`Trial started: ${subPlan} for ${userId} until ${trialEndsAt}`);
+              return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
+            }
+
+            if (subStatus === "active" || subStatus === "past_due" || subStatus === "paused") {
+              const renews = attrs.renews_at || null;
+              const expires = renews || new Date(Date.now() + 30 * 864e5).toISOString();
+              await adminClient.from("profiles").update({
+                subscription_plan: subPlan,
+                subscription_expires_at: expires,
+              }).eq("user_id", userId);
+              await redeemPendingReferralOnUpgrade(adminClient, userId, subPlan);
+              console.log(`Subscription ${subStatus}: ${subPlan} for ${userId}`);
+              return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
+            }
+
+            if (subStatus === "cancelled" || subStatus === "expired" || subStatus === "unpaid") {
+              const endsAt = attrs.ends_at || attrs.trial_ends_at || null;
+              const stillHasAccess = endsAt ? new Date(endsAt).getTime() > Date.now() : false;
+              if (subStatus === "expired" || subStatus === "unpaid" || !stillHasAccess) {
+                // Trial ended without converting, or paid period is over → back to Free
+                await adminClient.from("profiles").update({
+                  subscription_plan: "free",
+                  subscription_expires_at: endsAt,
+                }).eq("user_id", userId);
+                console.log(`Downgraded ${userId} to free (${subStatus})`);
+              } else {
+                // Cancelled but still inside trial/paid window → keep access until endsAt
+                await adminClient.from("profiles").update({
+                  subscription_expires_at: endsAt,
+                }).eq("user_id", userId);
+                console.log(`Cancelled ${userId}, access kept until ${endsAt}`);
+              }
+              return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
+            }
+          }
 
           // Handle podcast addon purchase
           if (plan === "podcast_addon") {
