@@ -2,9 +2,12 @@ import { motion } from "framer-motion";
 import { ArrowRight, Upload, FileText, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import testioLogo from "@/assets/testio-logo.png";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const HeroSection = () => {
   const navigate = useNavigate();
+  const { currency } = useCurrency();
+  const isUsd = currency === "USD";
   return (
     <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
       <div className="absolute inset-0 bg-testio-glow pointer-events-none" />
