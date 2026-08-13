@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Crown, X, Sparkles } from "lucide-react";
 import { useCurrency, priceFor, periodFor, entryPlanFor } from "@/hooks/useCurrency";
+import { useTrialStatus } from "@/hooks/useTrialStatus";
+import { TRIAL_DAYS } from "@/lib/trial";
+import ProTrialPaywall from "@/components/app/ProTrialPaywall";
 
 const buildTips = (entryName: string, entryPrice: string, period: string) => [
   "Did you know you can become a top student for less than the price of a weekly coffee?",
@@ -12,13 +15,24 @@ const buildTips = (entryName: string, entryPrice: string, period: string) => [
   "Did you know? Pro users finish revision 3x faster than free users.",
 ];
 
+const trialTips = [
+  `You can try Pro free for ${TRIAL_DAYS} days — $0.00 today, cancel anytime.`,
+  `Start your ${TRIAL_DAYS}-day free Pro trial and unlock full-length podcasts today.`,
+  `Free trial: ${TRIAL_DAYS} days of unlimited uploads and AI Tutor. Cancel anytime.`,
+];
+
 const RecurringUpsellBanner = ({ userPlan }: { userPlan: string | null }) => {
   const navigate = useNavigate();
   const [visible, setVisible] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
   const { currency } = useCurrency();
+  const { neverTrialed } = useTrialStatus();
+  const [showTrialPaywall, setShowTrialPaywall] = useState(false);
+  const trialEligible = currency === "USD" && neverTrialed && userPlan === "free";
   const entry = entryPlanFor(currency);
-  const TIPS = buildTips(entry === "starter" ? "Starter" : "Basic", priceFor(entry, currency), periodFor(currency));
+  const TIPS = trialEligible
+    ? trialTips
+    : buildTips(entry === "starter" ? "Starter" : "Basic", priceFor(entry, currency), periodFor(currency));
 
   useEffect(() => {
     if (userPlan !== "free") return;
@@ -41,6 +55,7 @@ const RecurringUpsellBanner = ({ userPlan }: { userPlan: string | null }) => {
 
   return (
     <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92vw] max-w-md animate-in slide-in-from-bottom-5 fade-in duration-500">
+      <ProTrialPaywall open={showTrialPaywall} onClose={() => setShowTrialPaywall(false)} mode="trial" />
       <div className="bg-card border-2 border-primary/40 rounded-2xl shadow-2xl shadow-primary/20 p-4 relative">
         <button
           onClick={() => setVisible(false)}
@@ -54,16 +69,17 @@ const RecurringUpsellBanner = ({ userPlan }: { userPlan: string | null }) => {
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-primary uppercase tracking-wide mb-1">Did you know?</p>
+            <p className="text-xs font-bold text-primary uppercase tracking-wide mb-1">{trialEligible ? "Free trial" : "Did you know?"}</p>
             <p className="text-foreground text-sm leading-snug mb-3">{TIPS[tipIndex]}</p>
             <button
               onClick={() => {
                 setVisible(false);
-                navigate("/pricing");
+                if (trialEligible) setShowTrialPaywall(true);
+                else navigate("/pricing");
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
             >
-              <Crown className="w-3.5 h-3.5" /> See plans
+              <Crown className="w-3.5 h-3.5" /> {trialEligible ? "Start free trial" : "See plans"}
             </button>
           </div>
         </div>

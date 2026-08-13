@@ -10,6 +10,9 @@ import testioLogo from "@/assets/testio-logo.png";
 import ElitePricingBanner from "@/components/app/ElitePricingBanner";
 import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
 import ComparisonReceipt from "@/components/app/ComparisonReceipt";
+import ProTrialPaywall from "@/components/app/ProTrialPaywall";
+import { useTrialStatus } from "@/hooks/useTrialStatus";
+import { TRIAL_DAYS, formatTrialDate } from "@/lib/trial";
 
 type PlanId = "free" | "starter" | "basic" | "pro" | "scholar";
 
@@ -164,6 +167,10 @@ const Pricing = () => {
   const [searchParams] = useSearchParams();
   const { currency, setCurrency, isNigeria, isCurrencyLoading } = useCurrency();
   const [activePlan, setActivePlan] = useState<string | null>(null);
+  const { trialEndsAt, onTrial, neverTrialed } = useTrialStatus();
+  const [showTrialPaywall, setShowTrialPaywall] = useState(false);
+  const trialEligible =
+    currency === "USD" && neverTrialed && (!activePlan || activePlan === "free") && !isAndroidApp;
 
   const fetchActivePlan = async () => {
     if (!user) return null;
@@ -391,6 +398,10 @@ const Pricing = () => {
       navigate("/auth");
       return;
     }
+    if (plan.id === "pro" && trialEligible) {
+      setShowTrialPaywall(true);
+      return;
+    }
     setLoadingPlan(plan.id);
     try {
       const fnName = currency === "NGN" ? "korapay-initialize" : "initialize-payment";
@@ -429,6 +440,37 @@ const Pricing = () => {
 
       <div className="max-w-6xl mx-auto px-6 py-10">
         <ElitePricingBanner />
+        <ProTrialPaywall open={showTrialPaywall} onClose={() => setShowTrialPaywall(false)} mode="trial" />
+
+        {onTrial && (
+          <div className="mb-6 rounded-2xl border border-primary/40 bg-primary/10 p-4 text-center">
+            <p className="text-foreground text-sm font-semibold">
+              Your free trial ends {formatTrialDate(trialEndsAt)} — cancel anytime before then to avoid being charged.
+            </p>
+            <button onClick={() => navigate("/profile")} className="text-xs text-primary font-semibold hover:underline mt-1">
+              Manage subscription
+            </button>
+          </div>
+        )}
+
+        {trialEligible && !isCurrencyLoading && (
+          <div className="mb-8 rounded-2xl border-2 border-primary/40 bg-gradient-to-r from-primary/15 to-transparent p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1">
+              <h2 className="text-foreground font-bold text-lg flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" /> Try Pro free for {TRIAL_DAYS} days
+              </h2>
+              <p className="text-muted-foreground text-xs mt-1">
+                Full Pro access today for $0.00. Then $9.99/mo — cancel anytime before the trial ends and you're never charged.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowTrialPaywall(true)}
+              className="shrink-0 bg-primary text-primary-foreground font-bold text-sm px-6 py-3 rounded-xl shadow-md hover:opacity-90 transition-opacity"
+            >
+              Start free trial
+            </button>
+          </div>
+        )}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-xs font-semibold mb-4">
             <Sparkles className="w-3.5 h-3.5" /> Choose Your Plan
@@ -541,6 +583,8 @@ const Pricing = () => {
                         <>
                           <BadgeCheck className="w-4 h-4" /> Subscribed · Current Plan
                         </>
+                      ) : plan.id === "pro" && trialEligible ? (
+                        <>Try Pro free for {TRIAL_DAYS} days</>
                       ) : (
                         plan.cta
                       )}

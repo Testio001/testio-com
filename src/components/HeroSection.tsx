@@ -2,9 +2,12 @@ import { motion } from "framer-motion";
 import { ArrowRight, Upload, FileText, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import testioLogo from "@/assets/testio-logo.png";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const HeroSection = () => {
   const navigate = useNavigate();
+  const { currency } = useCurrency();
+  const isUsd = currency === "USD";
   return (
     <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
       <div className="absolute inset-0 bg-testio-glow pointer-events-none" />
@@ -58,8 +61,11 @@ const HeroSection = () => {
             transition={{ delay: 0.55 }}
           >
             <button onClick={() => navigate("/auth")} className="btn-testio-primary text-lg px-8 py-4">
-              Get Started - It's Free
+              {isUsd ? "Start 3-Day Free Pro Trial" : "Get Started - It's Free"}
             </button>
+            <p className="text-xs text-muted-foreground mt-2">
+              {isUsd ? "$0.00 due today · cancel anytime" : "No card needed to start · upgrade anytime"}
+            </p>
           </motion.div>
         </div>
 

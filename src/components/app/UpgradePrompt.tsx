@@ -1,7 +1,11 @@
-import { Crown, Gift, Flame, GraduationCap } from "lucide-react";
+import { Crown, Gift, Flame, GraduationCap, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 import { useCurrency, priceFor, periodFor, entryPlanFor } from "@/hooks/useCurrency";
+import { useTrialStatus } from "@/hooks/useTrialStatus";
+import { TRIAL_DAYS } from "@/lib/trial";
+import ProTrialPaywall from "@/components/app/ProTrialPaywall";
+import { useState } from "react";
 
 interface UpgradePromptProps {
   onRefer: () => void;
@@ -16,6 +20,9 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken, curr
   const navigate = useNavigate();
   const isAndroidApp = useIsAndroidApp();
   const { currency } = useCurrency();
+  const { neverTrialed } = useTrialStatus();
+  const [showTrialPaywall, setShowTrialPaywall] = useState(false);
+  const trialEligible = currency === "USD" && neverTrialed && currentPlan === "free" && !isAndroidApp;
   const entryPlan = entryPlanFor(currency); // "starter" for NGN, "basic" for USD
   const entryPrice = priceFor(entryPlan, currency);
   const entryName = entryPlan === "starter" ? "Starter" : "Basic";
@@ -72,6 +79,37 @@ const UpgradePrompt = ({ onRefer, onUpgrade, type = "upload", streakBroken, curr
 
   const msg = upgradeCopy[currentPlan] || upgradeCopy.free;
   const Icon = currentPlan === "pro" ? GraduationCap : Crown;
+
+  if (trialEligible) {
+    return (
+      <div className="bg-testio-card rounded-xl p-5 border border-primary/40">
+        <ProTrialPaywall open={showTrialPaywall} onClose={() => setShowTrialPaywall(false)} mode="trial" />
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-primary" />
+          </div>
+          <h3 className="text-foreground font-semibold text-sm">Try Pro free for {TRIAL_DAYS} days</h3>
+        </div>
+        <p className="text-muted-foreground text-xs mb-4">
+          {msg.title}. Unlock unlimited uploads, full-length podcasts and AI Tutor — $0.00 due today, then $9.99/mo. Cancel anytime.
+        </p>
+        <div className="flex gap-2">
+          <button onClick={() => setShowTrialPaywall(true)} className="flex-1 btn-testio-primary text-xs !py-2.5 flex items-center justify-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" /> Start free trial
+          </button>
+          <button
+            onClick={onRefer}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-secondary hover:bg-secondary/80 rounded-full text-xs font-medium text-foreground transition-colors"
+          >
+            <Gift className="w-3.5 h-3.5" /> Refer a Friend
+          </button>
+        </div>
+        <button onClick={() => navigate("/pricing")} className="w-full mt-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+          See all pricing options
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={`bg-testio-card rounded-xl p-5 border ${msg.pressure === "high" ? "border-primary/30" : msg.pressure === "medium" ? "border-primary/20" : "border-border"}`}>

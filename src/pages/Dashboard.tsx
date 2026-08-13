@@ -17,8 +17,11 @@ import type { Tables } from "@/integrations/supabase/types";
 import testioLogo from "@/assets/testio-logo.png";
 import { Badge } from "@/components/ui/badge";
 import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
-import FirstWeekDiscountBanner from "@/components/app/FirstWeekDiscountBanner";
-import WelcomeDiscountModal from "@/components/app/WelcomeDiscountModal";
+import SignupOfferPaywall from "@/components/app/SignupOfferPaywall";
+import TrialStatusBanner from "@/components/app/TrialStatusBanner";
+import ProTrialPaywall from "@/components/app/ProTrialPaywall";
+import { useTrialStatus } from "@/hooks/useTrialStatus";
+import { TRIAL_DAYS } from "@/lib/trial";
 import EmptyStateDemo from "@/components/app/EmptyStateDemo";
 import InAppTestimonials from "@/components/app/InAppTestimonials";
 import NotificationBell from "@/components/app/NotificationBell";
@@ -121,6 +124,10 @@ const Dashboard = () => {
   const [renameValue, setRenameValue] = useState("");
   const [userPlan, setUserPlan] = useState<string | null>(null);
   const [showPeriodicUpgrade, setShowPeriodicUpgrade] = useState(false);
+  const [showTrialPaywall, setShowTrialPaywall] = useState(false);
+  const { trialEndsAt, neverTrialed } = useTrialStatus();
+  // Free trial is a USD/LemonSqueezy feature (also applies to NG users who toggle to $)
+  const trialEligible = currency === "USD" && neverTrialed && (!userPlan || userPlan === "free");
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [celebration, setCelebration] = useState<{ title: string; seconds: number } | null>(null);
   const [uploadStartedAt, setUploadStartedAt] = useState<number | null>(null);
@@ -505,8 +512,9 @@ const Dashboard = () => {
         title="Processing your document…"
         subtitle={uploading || "This may take a while. We'll open your summary automatically when it's ready."}
       />
-      <FirstWeekDiscountBanner signupAt={user?.created_at} userPlan={userPlan} />
-      <WelcomeDiscountModal signupAt={user?.created_at} userPlan={userPlan} />
+      <TrialStatusBanner trialEndsAt={trialEndsAt} />
+      <SignupOfferPaywall userPlan={userPlan} trialEndsAt={trialEndsAt} />
+      <ProTrialPaywall open={showTrialPaywall} onClose={() => setShowTrialPaywall(false)} mode={currency === "NGN" ? "ngn" : "trial"} />
       {/* Desktop/Tablet header */}
       <header className="border-b border-border/50 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
@@ -611,7 +619,7 @@ const Dashboard = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-6 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/15 border-2 border-primary/30 rounded-xl p-4 sm:p-5 cursor-pointer hover:border-primary/50 transition-all shadow-lg shadow-primary/5"
-                onClick={() => navigate("/pricing")}
+                onClick={() => (trialEligible ? setShowTrialPaywall(true) : navigate("/pricing"))}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0 animate-pulse">
@@ -620,14 +628,18 @@ const Dashboard = () => {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-foreground font-bold text-xs sm:text-sm flex items-center gap-1.5">
                       <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
-                      Upgrade to Pro — Unlock Everything
+                      {trialEligible ? `Try Pro free for ${TRIAL_DAYS} days` : "Upgrade to Pro — Unlock Everything"}
                     </h3>
                     <p className="text-muted-foreground text-[10px] sm:text-xs mt-0.5">
-                      Unlimited uploads, full podcasts & AI Tutor — starting at <span className="text-primary font-bold">{priceFor(entryPlanFor(currency), currency)}{periodFor(currency)}</span>
+                      {trialEligible ? (
+                        <>Unlimited uploads, full podcasts & AI Tutor. <span className="text-primary font-bold">$0 today</span> · cancel anytime</>
+                      ) : (
+                        <>Unlimited uploads, full podcasts & AI Tutor — starting at <span className="text-primary font-bold">{priceFor(entryPlanFor(currency), currency)}{periodFor(currency)}</span></>
+                      )}
                     </p>
                   </div>
                   <div className="hidden sm:block shrink-0 bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-full">
-                    Upgrade
+                    {trialEligible ? "Try Free" : "Upgrade"}
                   </div>
                 </div>
               </motion.div>
@@ -643,11 +655,18 @@ const Dashboard = () => {
                   <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
                     <Crown className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="text-foreground font-bold text-lg mb-2">Unlock the Full Testio Experience</h3>
+                  <h3 className="text-foreground font-bold text-lg mb-2">
+                    {trialEligible ? `Try Pro free for ${TRIAL_DAYS} days` : "Unlock the Full Testio Experience"}
+                  </h3>
                   <p className="text-muted-foreground text-sm mb-1">Get unlimited uploads, full-length podcasts, unlimited quizzes & flashcards.</p>
-                  <p className="text-primary font-bold text-lg mb-4">Starting at {priceFor(entryPlanFor(currency), currency)}{periodFor(currency)}</p>
-                  <button onClick={() => { setShowPeriodicUpgrade(false); navigate("/pricing"); }} className="w-full btn-testio-primary text-sm !py-3 flex items-center justify-center gap-2 mb-2">
-                    <Crown className="w-4 h-4" /> Upgrade Now
+                  <p className="text-primary font-bold text-lg mb-4">
+                    {trialEligible ? "$0.00 due today · cancel anytime" : `Starting at ${priceFor(entryPlanFor(currency), currency)}${periodFor(currency)}`}
+                  </p>
+                  <button
+                    onClick={() => { setShowPeriodicUpgrade(false); if (trialEligible) setShowTrialPaywall(true); else navigate("/pricing"); }}
+                    className="w-full btn-testio-primary text-sm !py-3 flex items-center justify-center gap-2 mb-2"
+                  >
+                    <Crown className="w-4 h-4" /> {trialEligible ? "Start Free Trial" : "Upgrade Now"}
                   </button>
                   <button onClick={() => setShowPeriodicUpgrade(false)} className="text-muted-foreground text-xs hover:text-foreground transition-colors">
                     Continue with Free Plan
