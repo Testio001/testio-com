@@ -220,10 +220,10 @@ const Profile = () => {
                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-destructive/60 text-destructive hover:bg-destructive/10"
                   >
                     <XCircle className="w-4 h-4" />
-                    {onTrial || subInfo?.status === "on_trial" ? "Cancel Free Trial" : "Cancel Subscription"}
+                    {isTrial ? "Cancel Free Trial" : "Cancel Subscription"}
                   </button>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {onTrial || subInfo?.status === "on_trial"
+                    {isTrial
                       ? "Cancelling now ends your trial's auto-renewal — you keep access until the trial end date and are never charged."
                       : "You keep full access until the end of your current billing period. No further charges."}
                   </p>
