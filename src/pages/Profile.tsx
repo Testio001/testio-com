@@ -28,6 +28,8 @@ const Profile = () => {
   const [cancelling, setCancelling] = useState(false);
   const [showCancelFlow, setShowCancelFlow] = useState(false);
   const { trialEndsAt, onTrial, refresh: refreshTrial } = useTrialStatus();
+  /** Billing status wins: a converted paid user keeps a past trial_ends_at value. */
+  const isTrial = subInfo?.status ? subInfo.status === "on_trial" : onTrial;
 
   useEffect(() => {
     if (user) fetchProfile();
