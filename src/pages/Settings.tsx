@@ -112,6 +112,9 @@ const Settings = () => {
           </select>
         </div>
 
+        {/* Subscription */}
+        <SubscriptionManager />
+
         {/* Push Notifications */}
         <PushNotificationSettings />
 
