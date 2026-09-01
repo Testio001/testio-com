@@ -174,7 +174,7 @@ const Profile = () => {
               </span>
             </div>
           )}
-          {onTrial && (
+          {isTrial && trialEndsAt && (
             <div className="rounded-xl border border-primary/40 bg-primary/10 p-3">
               <p className="text-foreground text-xs font-semibold">
                 Your free trial ends {formatTrialDate(trialEndsAt)} — cancel anytime before then to avoid being charged.
