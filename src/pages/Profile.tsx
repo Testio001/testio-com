@@ -28,6 +28,8 @@ const Profile = () => {
   const [cancelling, setCancelling] = useState(false);
   const [showCancelFlow, setShowCancelFlow] = useState(false);
   const { trialEndsAt, onTrial, refresh: refreshTrial } = useTrialStatus();
+  /** Billing status wins: a converted paid user keeps a past trial_ends_at value. */
+  const isTrial = subInfo?.status ? subInfo.status === "on_trial" : onTrial;
 
   useEffect(() => {
     if (user) fetchProfile();
@@ -172,7 +174,7 @@ const Profile = () => {
               </span>
             </div>
           )}
-          {onTrial && (
+          {isTrial && trialEndsAt && (
             <div className="rounded-xl border border-primary/40 bg-primary/10 p-3">
               <p className="text-foreground text-xs font-semibold">
                 Your free trial ends {formatTrialDate(trialEndsAt)} — cancel anytime before then to avoid being charged.
@@ -218,10 +220,10 @@ const Profile = () => {
                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-destructive/60 text-destructive hover:bg-destructive/10"
                   >
                     <XCircle className="w-4 h-4" />
-                    {onTrial || subInfo?.status === "on_trial" ? "Cancel Free Trial" : "Cancel Subscription"}
+                    {isTrial ? "Cancel Free Trial" : "Cancel Subscription"}
                   </button>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {onTrial || subInfo?.status === "on_trial"
+                    {isTrial
                       ? "Cancelling now ends your trial's auto-renewal — you keep access until the trial end date and are never charged."
                       : "You keep full access until the end of your current billing period. No further charges."}
                   </p>
