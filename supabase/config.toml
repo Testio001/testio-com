@@ -45,3 +45,6 @@ project_id = "kjdduozjlfhgznrcsoxr"
     verify_jwt = false
   [functions.detect-country]
     verify_jwt = false
+  [functions.sync-subscription-access]
+    verify_jwt = false
+

@@ -90,17 +90,43 @@ Deno.serve(async (req) => {
               return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
             }
 
-            if (subStatus === "active" || subStatus === "past_due" || subStatus === "paused") {
+            // Only a genuinely paid, active subscription grants/extends access.
+            if (subStatus === "active") {
               const renews = attrs.renews_at || null;
               const expires = renews || new Date(Date.now() + 30 * 864e5).toISOString();
               await adminClient.from("profiles").update({
                 subscription_plan: subPlan,
                 subscription_expires_at: expires,
+                trial_ends_at: null,
               }).eq("user_id", userId);
               await redeemPendingReferralOnUpgrade(adminClient, userId, subPlan);
-              console.log(`Subscription ${subStatus}: ${subPlan} for ${userId}`);
+              console.log(`Subscription active: ${subPlan} for ${userId} until ${expires}`);
               return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
             }
+
+            // Failed payment (dunning) or paused: NEVER extend access. Keep it only
+            // while the already-paid/trial window is still in the future.
+            if (subStatus === "past_due" || subStatus === "paused") {
+              const renews = attrs.renews_at ? new Date(attrs.renews_at).getTime() : 0;
+              const trialEnd = attrs.trial_ends_at ? new Date(attrs.trial_ends_at).getTime() : 0;
+              const paidUntil = Math.max(renews, trialEnd);
+              if (paidUntil > Date.now()) {
+                await adminClient.from("profiles").update({
+                  subscription_plan: subPlan,
+                  subscription_expires_at: new Date(paidUntil).toISOString(),
+                }).eq("user_id", userId);
+                console.log(`Subscription ${subStatus}: ${subPlan} for ${userId} kept until ${new Date(paidUntil).toISOString()}`);
+              } else {
+                await adminClient.from("profiles").update({
+                  subscription_plan: "free",
+                  subscription_expires_at: paidUntil ? new Date(paidUntil).toISOString() : new Date().toISOString(),
+                  trial_ends_at: null,
+                }).eq("user_id", userId);
+                console.log(`Downgraded ${userId} to free (${subStatus}, payment never succeeded)`);
+              }
+              return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
+            }
+
 
             if (subStatus === "cancelled" || subStatus === "expired" || subStatus === "unpaid") {
               const endsAt = attrs.ends_at || attrs.trial_ends_at || null;
