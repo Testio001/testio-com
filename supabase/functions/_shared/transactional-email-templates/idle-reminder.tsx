@@ -14,13 +14,13 @@ interface IdleReminderProps {
 const IdleReminderEmail = ({ displayName }: IdleReminderProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>It's been 3 days — don't let your notes pile up!</Preview>
+    <Preview>It's been a while — don't let your notes pile up!</Preview>
     <Body style={main}>
       <Container style={container}>
         <Text style={logo}>{SITE_NAME}</Text>
         <Heading style={h1}>We miss you! 📚</Heading>
         <Text style={text}>
-          {displayName ? `Hey ${displayName},` : 'Hey there,'} it's been 3 days since your last upload.
+          {displayName ? `Hey ${displayName},` : 'Hey there,'} it's been a while since your last upload.
         </Text>
         <Text style={text}>
           Don't let your notes pile up — upload your latest lecture now and keep your study materials organized!
@@ -37,7 +37,7 @@ const IdleReminderEmail = ({ displayName }: IdleReminderProps) => (
 
 export const template = {
   component: IdleReminderEmail,
-  subject: "It's been 3 days — don't let your notes pile up! 📚",
+  subject: "Don't let your notes pile up 📚",
   displayName: 'Idle reminder',
   previewData: { displayName: 'Jane' },
 } satisfies TemplateEntry

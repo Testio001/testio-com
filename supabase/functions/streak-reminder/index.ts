@@ -57,7 +57,10 @@ serve(async (req) => {
         lastUpload.setHours(0, 0, 0, 0);
         const diffDays = Math.floor((today.getTime() - lastUpload.getTime()) / (1000 * 60 * 60 * 24));
 
-        if (diffDays >= 1) {
+        // Email/push at most once every 5 days per user (day 5, 10, 15...)
+        const shouldRemind = diffDays >= 5 && diffDays % 5 === 0;
+
+        if (shouldRemind) {
           // Send push notification
           await sendPush(supabase, user.user_id, {
             title: "🔥 Keep the streak alive!",
@@ -99,11 +102,18 @@ serve(async (req) => {
       }
     }
 
-    // Idle reminder (3+ days no upload) — email + push
+    // Idle reminder — email + push, at most once every 5 days per user
     if (idleUsers) {
       for (const user of idleUsers) {
         const alreadyNotified = activeStreaks?.some(s => s.user_id === user.user_id);
         if (alreadyNotified) continue;
+
+        if (!user.last_upload_date) continue;
+        const lastUpload = new Date(user.last_upload_date);
+        lastUpload.setHours(0, 0, 0, 0);
+        const idleDays = Math.floor((today.getTime() - lastUpload.getTime()) / (1000 * 60 * 60 * 24));
+        if (idleDays < 5 || idleDays % 5 !== 0) continue;
+
 
         // Send re-engagement push
         await sendPush(supabase, user.user_id, {
