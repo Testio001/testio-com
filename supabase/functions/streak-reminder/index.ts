@@ -57,7 +57,10 @@ serve(async (req) => {
         lastUpload.setHours(0, 0, 0, 0);
         const diffDays = Math.floor((today.getTime() - lastUpload.getTime()) / (1000 * 60 * 60 * 24));
 
-        if (diffDays >= 1) {
+        // Email/push at most once every 5 days per user (day 5, 10, 15...)
+        const shouldRemind = diffDays >= 5 && diffDays % 5 === 0;
+
+        if (shouldRemind) {
           // Send push notification
           await sendPush(supabase, user.user_id, {
             title: "🔥 Keep the streak alive!",
