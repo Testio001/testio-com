@@ -3,17 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useTrialStatus } from "@/hooks/useTrialStatus";
-import { formatTrialDate } from "@/lib/trial";
 import { Crown, ExternalLink, Loader2, XCircle } from "lucide-react";
 import CancelRetentionModal from "@/components/app/CancelRetentionModal";
 
-/** Self-contained subscription / trial management card (used on Settings). */
+/** Self-contained subscription management card (used on Settings). */
 const SubscriptionManager = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { trialEndsAt, onTrial, refresh: refreshTrial } = useTrialStatus();
   const [plan, setPlan] = useState("free");
   const [subInfo, setSubInfo] = useState<any>(null);
   const [subLoading, setSubLoading] = useState(false);
@@ -44,8 +41,6 @@ const SubscriptionManager = () => {
     if (user && plan !== "free") loadSubscription();
   }, [user, plan, loadSubscription]);
 
-  const isTrial = subInfo?.status ? subInfo.status === "on_trial" : onTrial;
-
   const handleCancel = async () => {
     setCancelling(true);
     try {
@@ -53,13 +48,12 @@ const SubscriptionManager = () => {
       const payload: any = data;
       if (error || payload?.error) throw new Error(payload?.error || error?.message || "Failed to cancel");
       toast({
-        title: isTrial ? "Free trial cancelled" : "Subscription cancelled",
+        title: "Subscription cancelled",
         description: payload?.endsAt
           ? `You keep access until ${new Date(payload.endsAt).toLocaleDateString()}. You won't be billed again.`
           : "You won't be billed again.",
       });
       await loadSubscription();
-      await refreshTrial();
       setShowCancelFlow(false);
     } catch (err: any) {
       toast({ title: "Couldn't cancel", description: err.message, variant: "destructive" });
@@ -76,7 +70,6 @@ const SubscriptionManager = () => {
 
       <p className="text-sm text-muted-foreground mb-4">
         Current plan: <span className="text-foreground font-medium capitalize">{plan}</span>
-        {isTrial && trialEndsAt ? ` — free trial ends ${formatTrialDate(trialEndsAt)}` : ""}
       </p>
 
       {plan === "free" ? (
@@ -112,18 +105,16 @@ const SubscriptionManager = () => {
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-destructive/60 text-destructive hover:bg-destructive/10"
               >
                 <XCircle className="w-4 h-4" />
-                {isTrial ? "Cancel Free Trial" : "Cancel Subscription"}
+                Cancel Subscription
               </button>
               <p className="text-xs text-muted-foreground mt-2">
-                {isTrial
-                  ? "Cancelling now ends your trial's auto-renewal — you keep access until the trial end date and are never charged."
-                  : "You keep full access until the end of your current billing period. No further charges."}
+                You keep full access until the end of your current billing period. No further charges.
               </p>
               <CancelRetentionModal
                 open={showCancelFlow}
                 onOpenChange={setShowCancelFlow}
                 plan={plan}
-                endsAt={subInfo?.endsAt ?? trialEndsAt}
+                endsAt={subInfo?.endsAt ?? null}
                 cancelling={cancelling}
                 onConfirm={handleCancel}
                 onStay={() => toast({ title: "Great choice — your plan is still active", description: "Nothing changed. Keep the streak going!" })}
@@ -131,7 +122,7 @@ const SubscriptionManager = () => {
             </div>
           ) : subInfo?.cancelled ? (
             <p className="text-xs text-muted-foreground">
-              {isTrial ? "Free trial cancelled" : "Subscription cancelled"}
+              Subscription cancelled
               {subInfo.endsAt ? ` — access ends ${new Date(subInfo.endsAt).toLocaleDateString()}` : ""}. You won't be billed again.
             </p>
           ) : subInfo ? (
