@@ -9,8 +9,6 @@ import { PushNotificationSettings } from "@/components/PushNotificationSettings"
 import StudyMusicModal from "@/components/app/StudyMusicModal";
 import { Badge } from "@/components/ui/badge";
 import CancelRetentionModal from "@/components/app/CancelRetentionModal";
-import { useTrialStatus } from "@/hooks/useTrialStatus";
-import { formatTrialDate } from "@/lib/trial";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -27,9 +25,6 @@ const Profile = () => {
   const [subLoading, setSubLoading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelFlow, setShowCancelFlow] = useState(false);
-  const { trialEndsAt, onTrial, refresh: refreshTrial } = useTrialStatus();
-  /** Billing status wins: a converted paid user keeps a past trial_ends_at value. */
-  const isTrial = subInfo?.status ? subInfo.status === "on_trial" : onTrial;
 
   useEffect(() => {
     if (user) fetchProfile();
@@ -63,7 +58,6 @@ const Profile = () => {
           : "You won't be billed again.",
       });
       await loadSubscription();
-      await refreshTrial();
       setShowCancelFlow(false);
     } catch (err: any) {
       toast({ title: "Couldn't cancel", description: err.message, variant: "destructive" });
@@ -174,13 +168,6 @@ const Profile = () => {
               </span>
             </div>
           )}
-          {isTrial && trialEndsAt && (
-            <div className="rounded-xl border border-primary/40 bg-primary/10 p-3">
-              <p className="text-foreground text-xs font-semibold">
-                Your free trial ends {formatTrialDate(trialEndsAt)} — cancel anytime before then to avoid being charged.
-              </p>
-            </div>
-          )}
           {subscriptionPlan === "free" ? (
             <button
               onClick={() => navigate("/pricing")}
@@ -220,12 +207,10 @@ const Profile = () => {
                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-destructive/60 text-destructive hover:bg-destructive/10"
                   >
                     <XCircle className="w-4 h-4" />
-                    {isTrial ? "Cancel Free Trial" : "Cancel Subscription"}
+                    Cancel Subscription
                   </button>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {isTrial
-                      ? "Cancelling now ends your trial's auto-renewal — you keep access until the trial end date and are never charged."
-                      : "You keep full access until the end of your current billing period. No further charges."}
+                    You keep full access until the end of your current billing period. No further charges.
                   </p>
                   <CancelRetentionModal
                     open={showCancelFlow}
