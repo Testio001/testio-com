@@ -630,6 +630,10 @@ const Dashboard = () => {
               </motion.div>
             )}
 
+            {!isAndroidApp && <CreatorRewardsPromo variant="dashboard" className="mb-6" />}
+
+
+
             {/* Periodic upgrade prompt */}
             {showPeriodicUpgrade && userPlan === "free" && !isAndroidApp && (
               <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowPeriodicUpgrade(false)}>
