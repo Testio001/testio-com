@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Share2, Copy, Check, Users, Gift } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import CreatorRewardsPromo from "@/components/creator/CreatorRewardsPromo";
 
 interface ReferralCardProps {
   referralLink: string;
@@ -98,6 +99,8 @@ const ReferralCard = ({
           You've reached your referral limit for this month. You can still share your link to help friends, but your next reward slot opens in {daysUntilReset} day{daysUntilReset > 1 ? "s" : ""}.
         </p>
       )}
+
+      <CreatorRewardsPromo variant="referral" className="mt-4" />
     </div>
   );
 };

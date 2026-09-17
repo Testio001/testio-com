@@ -553,6 +553,12 @@ const Pricing = () => {
             ))}
         </div>
 
+        <div className="max-w-3xl mx-auto mt-10">
+          <CreatorRewardsPromo variant="pricing" />
+        </div>
+
+
+
         <div className="text-center mt-8 space-y-1">
           <div className="max-w-2xl mx-auto mb-4 text-left rounded-xl border border-border bg-card/60 p-4">
             <p className="text-foreground text-xs font-semibold mb-1">📦 Content retention policy</p>

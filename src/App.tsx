@@ -26,6 +26,8 @@ import ThemeToggle from "./components/ThemeToggle";
 import AdminStreakAssign from "./pages/AdminStreakAssign";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminReferrals from "./pages/AdminReferrals";
+import CreatorRewards from "./pages/CreatorRewards";
+import AdminCreatorRewards from "./pages/AdminCreatorRewards";
 import AuthCallback from "./pages/AuthCallback";
 
 const queryClient = new QueryClient();
@@ -56,6 +58,7 @@ const App = () => (
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/home" element={<Home />} />
               <Route path="/promo" element={<PromoVideo />} />
+              <Route path="/creator-rewards" element={<CreatorRewards />} />
               <Route
                 path="/dashboard"
                 element={
@@ -106,6 +109,7 @@ const App = () => (
               />
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
               <Route path="/admin-referrals" element={<AdminReferrals />} />
+              <Route path="/admin-creator-rewards" element={<AdminCreatorRewards />} />
               <Route path="/_internal/streak-admin-x7k2" element={<AdminStreakAssign />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
