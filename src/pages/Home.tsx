@@ -4,6 +4,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Moon, Sun } from "lucide-react";
 import { useCurrency, NGN_PRICES, formatNgn } from "@/hooks/useCurrency";
 import SampleDocumentGallery from "@/components/app/SampleDocumentGallery";
+import CreatorRewardsPromo from "@/components/creator/CreatorRewardsPromo";
 
 const features = [
   {
@@ -409,6 +410,13 @@ const Home = () => {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Creator Rewards */}
+      <section className="py-16 px-6">
+        <div className="max-w-4xl mx-auto">
+          <CreatorRewardsPromo variant="home" lightTheme={!isDark} />
         </div>
       </section>
 
