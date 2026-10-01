@@ -3,16 +3,14 @@ import { X, Upload, AlertTriangle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { trackEvent } from "@/lib/analytics";
-import { CreatorTier, CLAIM_RULES, PLATFORMS, PlatformId, validateVideoUrl } from "@/lib/creatorRewards";
+import { CLAIM_RULES, PLATFORMS, PlatformId, validateVideoUrl } from "@/lib/creatorRewards";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 const CreatorClaimModal = ({
-  tier,
   onClose,
   onSubmitted,
 }: {
-  tier: CreatorTier;
   onClose: () => void;
   onSubmitted: () => void;
 }) => {
@@ -51,8 +49,7 @@ const CreatorClaimModal = ({
         .upload(path, file, { contentType: file.type || "image/png", upsert: false });
       if (upErr) throw upErr;
 
-      const { data, error } = await supabase.rpc("submit_creator_claim" as never, {
-        _tier: tier.id,
+      const { data, error } = await supabase.rpc("submit_creator_video" as never, {
         _video_url: videoUrl.trim(),
         _platform: platform,
         _screenshot_path: path,
@@ -62,12 +59,12 @@ const CreatorClaimModal = ({
 
       const res = data as unknown as { ok?: boolean; message?: string } | null;
       if (res && res.ok === false) {
-        toast({ title: "Claim not accepted", description: res.message || "Milestone not met yet.", variant: "destructive" });
+        toast({ title: "Submission not accepted", description: res.message || "Please try again.", variant: "destructive" });
         return;
       }
 
-      trackEvent("creator_claim_submitted", { tier: tier.id, platform });
-      toast({ title: "Claim submitted 🎉", description: "Our team will verify your views and get back to you." });
+      trackEvent("creator_claim_submitted", { platform });
+      toast({ title: "Video submitted 🎉", description: "We'll verify your views. Your tiers unlock automatically once verified." });
       onSubmitted();
       onClose();
     } catch (e) {
@@ -83,8 +80,8 @@ const CreatorClaimModal = ({
       <div className="bg-card border border-border w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 max-h-[92vh] overflow-y-auto">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-foreground text-lg font-bold">Claim {tier.name} Reward</h2>
-            <p className="text-muted-foreground text-xs mt-0.5">{tier.reward}</p>
+            <h2 className="text-foreground text-lg font-bold">Submit Video & Screenshot</h2>
+            <p className="text-muted-foreground text-xs mt-0.5">We verify your views, then you claim your plan.</p>
           </div>
           <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
             <X className="w-5 h-5" />
@@ -92,13 +89,6 @@ const CreatorClaimModal = ({
         </div>
 
         <div className="space-y-4">
-          <div>
-            <label className="text-foreground text-xs font-semibold block mb-1.5">Selected tier</label>
-            <div className="rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground capitalize">
-              {tier.name} — {tier.views.toLocaleString()} views + {tier.signups} signups
-            </div>
-          </div>
-
           <div>
             <label className="text-foreground text-xs font-semibold block mb-1.5">Social platform</label>
             <select
@@ -157,7 +147,7 @@ const CreatorClaimModal = ({
               ))}
             </ul>
             <p className="text-muted-foreground text-[11px] mt-2 font-semibold">
-              Once submitted, your claim is locked — the video link, tier and screenshot can't be changed.
+              Once submitted, your video link and screenshot are locked and can't be changed.
             </p>
           </div>
 
@@ -167,7 +157,7 @@ const CreatorClaimModal = ({
             className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-60"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {submitting ? "Submitting..." : "Submit Claim"}
+            {submitting ? "Submitting..." : "Submit Video"}
           </button>
         </div>
       </div>
