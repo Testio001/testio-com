@@ -1,21 +1,33 @@
-import { Check, Crown, Lock } from "lucide-react";
+import { Check, Crown, Lock, Loader2 } from "lucide-react";
 import { CreatorTier, isTierEligible } from "@/lib/creatorRewards";
 
 const CreatorTierCard = ({
   tier,
   views,
   signups,
-  locked,
+  viewsVerified,
+  rewardActive,
+  claiming,
   onClaim,
 }: {
   tier: CreatorTier;
   views: number;
   signups: number;
-  /** True while a claim is already submitted/under review — claiming is disabled. */
-  locked: boolean;
+  /** True once an admin has verified views on the creator's open submission. */
+  viewsVerified: boolean;
+  /** True while a creator reward is already active. */
+  rewardActive: boolean;
+  claiming: boolean;
   onClaim: (tier: CreatorTier) => void;
 }) => {
   const eligible = isTierEligible(tier, views, signups);
+  const canClaim = eligible && viewsVerified && !rewardActive && !claiming;
+
+  const label = rewardActive
+    ? "Reward active"
+    : eligible
+      ? "Claim Plan"
+      : "Milestone not reached";
 
   return (
     <div
@@ -48,16 +60,16 @@ const CreatorTierCard = ({
       </ul>
 
       <button
-        disabled={!eligible || locked}
+        disabled={!canClaim}
         onClick={() => onClaim(tier)}
         className={`w-full py-3 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 transition-all ${
-          eligible && !locked
+          canClaim
             ? "bg-primary text-primary-foreground hover:opacity-90"
             : "bg-muted text-muted-foreground cursor-not-allowed"
         }`}
       >
-        {!eligible && <Lock className="w-3.5 h-3.5" />}
-        {locked ? "Claim under review" : eligible ? tier.cta : "Milestone not reached"}
+        {claiming ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : !eligible && <Lock className="w-3.5 h-3.5" />}
+        {label}
       </button>
     </div>
   );
