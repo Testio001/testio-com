@@ -526,6 +526,18 @@ Deno.serve(async (req) => {
           }
         }
 
+        // Creator Rewards: count this genuine new signup toward the creator's
+        // verified signups (uncapped; DB function rejects self/duplicate/flagged).
+        try {
+          await supabaseAdmin.rpc("record_creator_attribution", {
+            _creator_user_id: referrer.user_id,
+            _referred_user_id: userId,
+            _creator_code: referralCode,
+          });
+        } catch (e) {
+          console.error("record_creator_attribution failed", e);
+        }
+
         if (referrer.referrals_this_month >= MAX_REFERRALS_PER_MONTH) {
           result = {
             success: false,
