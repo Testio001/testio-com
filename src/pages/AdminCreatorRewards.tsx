@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, ExternalLink, Check, X, Eye } from "lucide-react";
+import { ArrowLeft, Loader2, ExternalLink, X, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CREATOR_TIERS } from "@/lib/creatorRewards";
@@ -54,7 +54,7 @@ const AdminCreatorRewards = () => {
     window.open(data.signedUrl, "_blank");
   };
 
-  const review = async (claim: AdminClaim, action: "verify" | "approve" | "reject") => {
+  const review = async (claim: AdminClaim, action: "verify" | "reject") => {
     setBusyId(claim.id);
     try {
       let verified: number | null = null;
@@ -80,7 +80,7 @@ const AdminCreatorRewards = () => {
       const res = data as unknown as { ok?: boolean; message?: string } | null;
       if (res && res.ok === false) throw new Error(res.message || "Action refused.");
 
-      toast({ title: `Claim ${action === "verify" ? "views saved" : action + "d"}` });
+      toast({ title: action === "verify" ? "Views verified — creator's tiers updated" : "Submission rejected" });
       await load();
     } catch (e) {
       toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
@@ -119,9 +119,9 @@ const AdminCreatorRewards = () => {
                 </div>
 
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs mb-4">
-                  <div><p className="text-muted-foreground">Requested tier</p><p className="text-foreground font-semibold capitalize">{c.tier_requested} ({tier?.views.toLocaleString()} views / {tier?.signups} signups)</p></div>
+                  <div><p className="text-muted-foreground">Requested tier</p><p className="text-foreground font-semibold capitalize">{tier ? `${c.tier_requested} (claimed)` : "Not claimed yet"}</p></div>
                   <div><p className="text-muted-foreground">Platform</p><p className="text-foreground font-semibold capitalize">{c.platform}</p></div>
-                  <div><p className="text-muted-foreground">Verified signups (frozen)</p><p className="text-foreground font-semibold">{c.verified_signups ?? 0}</p></div>
+                  <div><p className="text-muted-foreground">Verified signups</p><p className="text-foreground font-semibold">{c.verified_signups ?? 0}</p></div>
                   <div><p className="text-muted-foreground">Submitted</p><p className="text-foreground font-semibold">{new Date(c.submitted_at).toLocaleString()}</p></div>
                 </div>
 
@@ -140,7 +140,7 @@ const AdminCreatorRewards = () => {
                 {c.rejection_reason && <p className="text-destructive text-xs mb-3">Rejected: {c.rejection_reason}</p>}
                 {c.reward_expires_at && <p className="text-primary text-xs mb-3">Reward active until {new Date(c.reward_expires_at).toLocaleDateString()}</p>}
 
-                {c.status === "pending" && (
+                {(c.status === "submitted" || c.status === "verified") && (
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="number"
@@ -150,11 +150,8 @@ const AdminCreatorRewards = () => {
                       onChange={(e) => setViewInputs((p) => ({ ...p, [c.id]: e.target.value }))}
                       className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground sm:w-44"
                     />
-                    <button disabled={busyId === c.id} onClick={() => review(c, "verify")} className="px-4 py-2 rounded-xl border border-border text-foreground text-xs font-semibold">
-                      Save verified views
-                    </button>
-                    <button disabled={busyId === c.id} onClick={() => review(c, "approve")} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold">
-                      <Check className="w-3.5 h-3.5" /> Approve & grant 30 days
+                    <button disabled={busyId === c.id} onClick={() => review(c, "verify")} className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold">
+                      {c.status === "verified" ? "Update verified views" : "Verify views"}
                     </button>
                     <button disabled={busyId === c.id} onClick={() => review(c, "reject")} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-destructive text-destructive-foreground text-xs font-semibold">
                       <X className="w-3.5 h-3.5" /> Reject

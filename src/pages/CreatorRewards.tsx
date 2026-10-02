@@ -35,7 +35,7 @@ const STEPS = [
   { icon: Video, title: "Create & Post", body: "Make a short video about Testio — studying, AI podcasts, exam prep, flashcards, productivity, or your own creative idea." },
   { icon: Link2, title: "Add Your Link", body: "Put your unique creator link in your bio or caption so we can track the students you bring in." },
   { icon: Target, title: "Hit Your Milestone", body: "Reach the verified views and legitimate new signups for your tier." },
-  { icon: Send, title: "Submit & Unlock", body: "Submit your video link and analytics screenshot. We verify it and unlock your free plan." },
+  { icon: Send, title: "Submit & Unlock", body: "Submit your video link and analytics screenshot anytime. Once we verify your views, claim your free plan." },
 ];
 
 const CreatorRewards = () => {
@@ -45,7 +45,8 @@ const CreatorRewards = () => {
   const [data, setData] = useState<CreatorDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [claimTier, setClaimTier] = useState<CreatorTier | null>(null);
+  const [submitOpen, setSubmitOpen] = useState(false);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!user) {
@@ -67,7 +68,10 @@ const CreatorRewards = () => {
   const signups = data?.verified_signups ?? 0;
   const eligible = highestEligibleTier(views, signups);
   const target = nextTier(views, signups);
-  const locked = !!data?.claim && ["pending", "under_review"].includes(data.claim.status);
+  const underReview = data?.claim?.status === "under_review";
+  const viewsVerified = data?.claim?.status === "verified";
+  const rewardActive = !!data?.reward_plan;
+  const canSubmit = !underReview && !viewsVerified;
 
   const copyLink = async () => {
     if (!link) return;
@@ -89,9 +93,25 @@ const CreatorRewards = () => {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
-  const startClaim = (tier: CreatorTier) => {
-    trackEvent("creator_claim_started", { tier: tier.id });
-    setClaimTier(tier);
+  const openSubmit = () => {
+    if (!user) { navigate("/auth"); return; }
+    trackEvent("creator_claim_started", {});
+    setSubmitOpen(true);
+  };
+
+  const claimPlan = async (tier: CreatorTier) => {
+    if (!window.confirm(`Claim 30 days of ${tier.name} free? You can only claim one tier per video.`)) return;
+    setClaimingId(tier.id);
+    const { data: res, error } = await supabase.rpc("claim_creator_reward" as never, { _tier: tier.id } as never);
+    setClaimingId(null);
+    const r = res as unknown as { ok?: boolean; message?: string } | null;
+    if (error || !r?.ok) {
+      toast({ title: "Could not claim", description: error?.message || r?.message || "Try again.", variant: "destructive" });
+      return;
+    }
+    trackEvent("creator_reward_granted", { tier: tier.id });
+    toast({ title: `🎉 ${tier.name} unlocked for 30 days!` });
+    load();
   };
 
   return (
@@ -151,7 +171,17 @@ const CreatorRewards = () => {
       {/* Tracker */}
       <section id="creator-tracker" className="px-4 sm:px-6 py-10">
         <div className="max-w-3xl mx-auto rounded-2xl border border-border bg-card p-5 sm:p-6">
-          <h3 className="text-foreground font-bold mb-4">Your Creator Dashboard</h3>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+            <h3 className="text-foreground font-bold">Your Creator Dashboard</h3>
+            <button
+              onClick={openSubmit}
+              disabled={!!user && !canSubmit}
+              className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-5 py-3 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-60"
+            >
+              <Send className="w-4 h-4" />
+              {underReview ? "Video under review" : viewsVerified ? "Views verified — claim below" : "Submit Video & Screenshot"}
+            </button>
+          </div>
 
           {!user ? (
             <div className="text-center py-6">
@@ -215,15 +245,20 @@ const CreatorRewards = () => {
               {data?.claim && (
                 <div className="mt-5 rounded-xl border border-primary/30 bg-primary/10 p-4">
                   <p className="text-foreground text-sm font-bold flex items-center gap-1.5 capitalize">
-                    <Clock className="w-4 h-4 text-primary" /> {data.claim.tier_requested} claim — {data.claim.status.replace("_", " ")}
+                    <Clock className="w-4 h-4 text-primary" /> {data.claim.tier_requested ? `${data.claim.tier_requested} reward` : "Video submission"} — {data.claim.status.replace("_", " ")}
                   </p>
                   <p className="text-muted-foreground text-xs mt-1 break-all">{data.claim.video_url}</p>
                   {data.claim.rejection_reason && (
                     <p className="text-destructive text-xs mt-2">Reason: {data.claim.rejection_reason}</p>
                   )}
-                  {locked && (
+                  {underReview && (
                     <p className="text-muted-foreground text-[11px] mt-2">
-                      Your claim is locked while we verify it — views and signups from now on won't change this claim.
+                      We're verifying your views. Your tier buttons unlock automatically once verified.
+                    </p>
+                  )}
+                  {viewsVerified && (
+                    <p className="text-muted-foreground text-[11px] mt-2">
+                      Views verified! Claim any tier you've reached below.
                     </p>
                   )}
                 </div>
@@ -250,7 +285,16 @@ const CreatorRewards = () => {
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {CREATOR_TIERS.map((tier) => (
-              <CreatorTierCard key={tier.id} tier={tier} views={views} signups={signups} locked={locked} onClaim={startClaim} />
+              <CreatorTierCard
+                key={tier.id}
+                tier={tier}
+                views={views}
+                signups={signups}
+                viewsVerified={viewsVerified}
+                rewardActive={rewardActive}
+                claiming={claimingId === tier.id}
+                onClaim={claimPlan}
+              />
             ))}
           </div>
           <p className="text-muted-foreground text-xs text-center mt-6">
@@ -274,8 +318,8 @@ const CreatorRewards = () => {
         </div>
       </section>
 
-      {claimTier && (
-        <CreatorClaimModal tier={claimTier} onClose={() => setClaimTier(null)} onSubmitted={load} />
+      {submitOpen && (
+        <CreatorClaimModal onClose={() => setSubmitOpen(false)} onSubmitted={load} />
       )}
     </div>
   );
