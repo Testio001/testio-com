@@ -5,25 +5,10 @@ import CreatorRewardsPromo from "@/components/creator/CreatorRewardsPromo";
 
 interface ReferralCardProps {
   referralLink: string;
-  referralsThisMonth: number;
-  maxReferrals: number;
-  canRefer: boolean;
-  daysUntilReset: number;
-  referralsRemaining: number;
-  uploadsRemaining: number;
-  totalAllowed: number;
+  totalSignups: number;
 }
 
-const ReferralCard = ({
-  referralLink,
-  referralsThisMonth,
-  maxReferrals,
-  canRefer,
-  daysUntilReset,
-  referralsRemaining,
-  uploadsRemaining,
-  totalAllowed,
-}: ReferralCardProps) => {
+const ReferralCard = ({ referralLink, totalSignups }: ReferralCardProps) => {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
@@ -56,11 +41,7 @@ const ReferralCard = ({
         </div>
         <div>
           <p className="text-foreground font-semibold text-sm">Refer Friends</p>
-          <p className="text-muted-foreground text-xs">
-            {canRefer
-              ? `${referralsRemaining} referral${referralsRemaining > 1 ? "s" : ""} left this month`
-              : `Limit reached. Resets in ${daysUntilReset} day${daysUntilReset > 1 ? "s" : ""}`}
-          </p>
+          <p className="text-muted-foreground text-xs">No limit — invite as many friends as you like</p>
         </div>
       </div>
 
@@ -68,13 +49,9 @@ const ReferralCard = ({
         You'll earn <span className="text-primary font-medium">+1 bonus upload</span> when your friend upgrades to any paid plan (Starter and up).
       </p>
 
-      <div className="flex items-center gap-1 mb-3">
-        {Array.from({ length: maxReferrals }).map((_, i) => (
-          <div
-            key={i}
-            className={`h-1.5 flex-1 rounded-full ${i < referralsThisMonth ? "bg-primary" : "bg-muted"}`}
-          />
-        ))}
+      <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 mb-3">
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Users className="w-3.5 h-3.5" /> Signed up with your link</span>
+        <span className="text-foreground font-bold text-sm">{totalSignups}</span>
       </div>
 
       <div className="flex gap-2">
@@ -93,12 +70,6 @@ const ReferralCard = ({
           Share
         </button>
       </div>
-
-      {!canRefer && (
-        <p className="text-xs text-muted-foreground mt-3 text-center">
-          You've reached your referral limit for this month. You can still share your link to help friends, but your next reward slot opens in {daysUntilReset} day{daysUntilReset > 1 ? "s" : ""}.
-        </p>
-      )}
 
       <CreatorRewardsPromo variant="referral" className="mt-4" />
     </div>

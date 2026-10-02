@@ -86,7 +86,6 @@ export const CLAIM_RULES = [
   "Submit when your video has reached its peak verified views.",
   "Your analytics screenshot must clearly show the relevant view information.",
   "Testio may reject fraudulent or misleading submissions.",
-  "Disclose the incentive (free plan reward) where the platform or local advertising rules require it.",
 ];
 
 export const UGC_RULES = [
@@ -100,5 +99,4 @@ export const UGC_RULES = [
   "Self-referrals do not count.",
   "Submitted videos must stay publicly available for verification.",
   "Testio can reject fraudulent or misleading submissions.",
-  "Disclose the incentive or free plan when platform rules require it.",
 ];

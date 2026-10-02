@@ -6,10 +6,11 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useGamification } from "@/hooks/useGamification";
 import { trackEvent } from "@/lib/analytics";
 import CreatorTierCard from "@/components/creator/CreatorTierCard";
 import CreatorClaimModal from "@/components/creator/CreatorClaimModal";
-import { CREATOR_TIERS, CreatorTier, UGC_RULES, highestEligibleTier, nextTier } from "@/lib/creatorRewards";
+import { CREATOR_TIERS, CreatorTier, UGC_RULES, highestEligibleTier } from "@/lib/creatorRewards";
 
 interface CreatorDashboard {
   creator_code: string | null;
@@ -47,6 +48,8 @@ const CreatorRewards = () => {
   const [copied, setCopied] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [selfViews, setSelfViews] = useState("");
+  const gamification = useGamification();
 
   const load = useCallback(async () => {
     if (!user) {
@@ -63,11 +66,18 @@ const CreatorRewards = () => {
     load();
   }, [load]);
 
-  const link = data?.creator_code ? `https://testio.online/?ref=${data.creator_code}` : "";
+  const code = data?.creator_code || gamification.stats?.referral_code || "";
+  const link = code ? `https://testio.online/?ref=${code}` : "";
   const views = data?.verified_views ?? 0;
-  const signups = data?.verified_signups ?? 0;
+  const signups = Math.max(data?.verified_signups ?? 0, gamification.referrals.length);
   const eligible = highestEligibleTier(views, signups);
-  const target = nextTier(views, signups);
+  // Signups are tracked inside Testio; views are checked manually.
+  const signupTier = [...CREATOR_TIERS].reverse().find((t) => signups >= t.signups) ?? null;
+  const nextSignupTier = CREATOR_TIERS.find((t) => signups < t.signups) ?? null;
+  const reported = Number(selfViews);
+  const reportedTier = selfViews && Number.isFinite(reported)
+    ? [...CREATOR_TIERS].reverse().find((t) => signups >= t.signups && reported >= t.views) ?? null
+    : null;
   const underReview = data?.claim?.status === "under_review";
   const viewsVerified = data?.claim?.status === "verified";
   const rewardActive = !!data?.reward_plan;
@@ -213,13 +223,13 @@ const CreatorRewards = () => {
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
                 <div className="rounded-xl border border-border p-3">
-                  <p className="text-muted-foreground text-[11px] font-semibold">Verified Signups</p>
+                  <p className="text-muted-foreground text-[11px] font-semibold">Signups from your link</p>
                   <p className="text-foreground text-xl font-extrabold">{signups}</p>
                 </div>
                 <div className="rounded-xl border border-border p-3">
-                  <p className="text-muted-foreground text-[11px] font-semibold">Views</p>
+                  <p className="text-muted-foreground text-[11px] font-semibold">Verified Views</p>
                   <p className="text-foreground text-xl font-extrabold">
-                    {data?.views_pending ? <span className="text-sm font-bold text-amber-500">Pending Verification</span> : views.toLocaleString()}
+                    {data?.views_pending ? <span className="text-sm font-bold text-amber-500">Pending Verification</span> : viewsVerified ? views.toLocaleString() : <span className="text-sm font-bold text-muted-foreground">Not submitted</span>}
                   </p>
                 </div>
                 <div className="rounded-xl border border-border p-3 col-span-2 sm:col-span-1">
@@ -228,18 +238,56 @@ const CreatorRewards = () => {
                 </div>
               </div>
 
-              <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground font-semibold">
-                <span>Progress to {target.name}</span>
-                <span>{views.toLocaleString()}/{target.views.toLocaleString()} views · {signups}/{target.signups} signups</span>
-              </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden mb-1">
-                <div
-                  className="h-full bg-primary transition-all"
-                  style={{ width: `${Math.min(100, Math.round(((views / target.views + signups / target.signups) / 2) * 100))}%` }}
-                />
-              </div>
+              {nextSignupTier ? (
+                <>
+                  <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground font-semibold">
+                    <span>Signups to {nextSignupTier.name}</span>
+                    <span>{signups}/{nextSignupTier.signups} signups</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden mb-1">
+                    <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, Math.round((signups / nextSignupTier.signups) * 100))}%` }} />
+                  </div>
+                </>
+              ) : (
+                <p className="text-primary text-xs font-semibold">You've hit the top signup milestone (Pro)! 🎉</p>
+              )}
+
+              {signupTier && !underReview && !viewsVerified && !rewardActive && (
+                <div className="mt-5 rounded-xl border border-primary/40 bg-primary/10 p-4">
+                  <p className="text-foreground text-sm font-bold">
+                    🎉 You've reached {signupTier.signups} signups — the {signupTier.name} signup milestone!
+                  </p>
+                  <label className="text-muted-foreground text-xs block mt-2 mb-1.5">How many views has your video gotten?</label>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={selfViews}
+                    onChange={(e) => setSelfViews(e.target.value)}
+                    placeholder="e.g. 8000"
+                    className="w-full sm:w-48 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  />
+                  {selfViews && (
+                    reportedTier ? (
+                      <div className="mt-3">
+                        <p className="text-foreground text-xs mb-2">
+                          That's enough for <span className="font-bold">{reportedTier.name}</span>. Submit your video and screenshot so we can verify it.
+                        </p>
+                        <button onClick={openSubmit} className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-xl text-xs font-semibold">
+                          <Send className="w-3.5 h-3.5" /> Submit for {reportedTier.name}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-xs mt-3">
+                        You need {CREATOR_TIERS[0].views.toLocaleString()}+ views for Starter. Keep going — you can still submit anytime.
+                      </p>
+                    )
+                  )}
+                </div>
+              )}
+
               <p className="text-muted-foreground text-[11px] flex items-center gap-1.5 mt-3">
-                <ShieldCheck className="w-3.5 h-3.5 text-primary" /> Signups are verified automatically. We never show you anyone's personal details.
+                <ShieldCheck className="w-3.5 h-3.5 text-primary" /> Signups are counted automatically. Views are checked by our team from your screenshot.
               </p>
 
               {data?.claim && (
