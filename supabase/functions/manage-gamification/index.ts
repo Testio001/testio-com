@@ -11,7 +11,7 @@ const STARTER_UPLOAD_LIMIT = 10; // NGN-only entry plan
 const BASIC_UPLOAD_LIMIT = 15;
 const PRO_UPLOAD_LIMIT = 40;
 const SCHOLAR_UPLOAD_LIMIT = 80; // Hard cap (UI says unlimited, backend enforces fair-use)
-const MAX_REFERRALS_PER_MONTH = 5;
+const MAX_REFERRALS_PER_MONTH = 999999; // uncapped
 const STREAK_BONUS_INTERVAL = 10;
 
 const BADGE_DEFINITIONS = [
@@ -288,10 +288,8 @@ Deno.serve(async (req) => {
           totalUploadsAllowed: effectiveTotal,
           uploadsRemaining,
           canUpload: uploadsRemaining > 0,
-          referralsRemaining: MAX_REFERRALS_PER_MONTH - (stats.referrals_this_month || 0),
-          canRefer:
-            !isAbuseFlagged &&
-            (MAX_REFERRALS_PER_MONTH - (stats.referrals_this_month || 0)) > 0,
+          referralsRemaining: MAX_REFERRALS_PER_MONTH,
+          canRefer: !isAbuseFlagged,
           isAbuseFlagged,
           abuseReason: stats.abuse_reason || null,
         };
@@ -538,14 +536,7 @@ Deno.serve(async (req) => {
           console.error("record_creator_attribution failed", e);
         }
 
-        if (referrer.referrals_this_month >= MAX_REFERRALS_PER_MONTH) {
-          result = {
-            success: false,
-            message: "Referrer has reached their monthly limit",
-          };
-          break;
-        }
-
+        // No monthly referral cap — every genuine signup is recorded.
         // NEW POLICY: Record the referral as PENDING. The referrer only earns
         // their bonus upload once this referred user upgrades to ANY paid plan.
         await supabaseAdmin.from("referrals").insert({

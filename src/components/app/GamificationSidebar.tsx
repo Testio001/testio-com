@@ -19,11 +19,8 @@ const GamificationSidebar = ({ onUpgrade, gamification, userPlan, onUpload }: Ga
     loading,
     uploadsRemaining,
     totalUploadsAllowed,
-    referralsRemaining,
-    canRefer,
-    daysUntilReferralReset,
     getReferralLink,
-    MAX_REFERRALS_PER_MONTH,
+    referrals,
   } = gamification;
 
   if (loading || !stats) return null;
@@ -81,13 +78,7 @@ const GamificationSidebar = ({ onUpgrade, gamification, userPlan, onUpload }: Ga
 
       <ReferralCard
         referralLink={getReferralLink()}
-        referralsThisMonth={stats.referrals_this_month}
-        maxReferrals={MAX_REFERRALS_PER_MONTH}
-        canRefer={canRefer}
-        daysUntilReset={daysUntilReferralReset}
-        referralsRemaining={referralsRemaining}
-        uploadsRemaining={uploadsRemaining}
-        totalAllowed={totalUploadsAllowed}
+        totalSignups={referrals.length}
       />
 
       <BadgesDisplay badges={badges} currentStreak={stats.current_streak} />
