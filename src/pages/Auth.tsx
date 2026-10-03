@@ -11,7 +11,7 @@ import { isDisposableEmail } from "@/lib/disposableEmails";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
-  const referralCode = searchParams.get("ref");
+  const referralCode = searchParams.get("ref") || (typeof window !== "undefined" ? localStorage.getItem("testio_pending_ref") : null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
