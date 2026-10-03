@@ -1,6 +1,9 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { captureReferralFromUrl } from "./lib/referralCapture";
+
+captureReferralFromUrl();
 
 // Register unified service worker (caching + push) at startup
 // Guard against iframe/preview contexts

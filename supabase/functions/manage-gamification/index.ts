@@ -494,6 +494,14 @@ Deno.serve(async (req) => {
           break;
         }
 
+        // Only genuinely new accounts count (no retroactive referrals).
+        const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+        const createdAt = authUser?.user?.created_at ? new Date(authUser.user.created_at).getTime() : 0;
+        if (!createdAt || Date.now() - createdAt > 7 * 24 * 60 * 60 * 1000) {
+          result = { success: false, message: "Referral links only apply to new accounts." };
+          break;
+        }
+
         // Block same-device referrals: if referrer and referred share any fingerprint, void the reward
         const { data: myFps } = await supabaseAdmin
           .from("device_fingerprints")
