@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { redeemPendingReferral } from "@/lib/referralCapture";
 
 interface AuthContextType {
   session: Session | null;
@@ -26,6 +27,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setLoading(false);
+
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
+        const meta = session.user.user_metadata?.referred_by_code as string | undefined;
+        setTimeout(() => { redeemPendingReferral(meta).catch(() => {}); }, 0);
+      }
 
       // Send a one-time welcome email on the first SIGNED_IN after a brand-new
       // account is created (catches Google OAuth signups and any other path
