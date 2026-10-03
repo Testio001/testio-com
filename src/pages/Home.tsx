@@ -1,3 +1,4 @@
+import testioLogo from "@/assets/testio-logo.png";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Brain, Headphones, MessageCircle, Check, ArrowRight, Gift, Users, Star, Clock, ShieldCheck } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
@@ -158,9 +159,12 @@ const Home = () => {
       {/* Navbar */}
       <nav className={`border-b px-6 py-4 ${isDark ? "border-gray-800" : "border-gray-100"}`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <span className="text-xl font-bold tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#4f46e5" }}>
-            testio
-          </span>
+          <a href="/home" className="flex items-center gap-2" aria-label="Testio home">
+            <img src={testioLogo} alt="Testio logo" className="w-9 h-9 rounded-md object-contain bg-white" />
+            <span className={`text-xl font-bold tracking-tight ${isDark ? "text-white" : "text-gray-900"}`} style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+              testio
+            </span>
+          </a>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setTheme(isDark ? "light" : "dark")}

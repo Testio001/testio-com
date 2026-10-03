@@ -131,71 +131,55 @@ Deno.serve(async (req) => {
       const plan: string | undefined = customData.plan;
       const subStatus: string | undefined = attrs.status;
 
-      // ---- Subscription lifecycle (incl. native Lemon Squeezy free trials) ----
+      // ---- Subscription lifecycle ----
       if (subEvents.includes(eventName) && subStatus) {
         const variantIdSub = attrs.variant_id || attrs.first_subscription_item?.variant_id;
         const subPlan = plan || (variantIdSub ? VARIANT_TO_PLAN[variantIdSub] : null) || "pro";
-
-        if (subStatus === "on_trial") {
-          const trialEndsAt = attrs.trial_ends_at || attrs.renews_at || null;
-          await updateProfile(admin, userId, {
-            subscription_plan: subPlan,
-            subscription_expires_at: trialEndsAt,
-            trial_ends_at: trialEndsAt,
-          }, "trial started");
-          await resetQuota(admin, userId);
-          return json({ ok: true, status: subStatus, until: trialEndsAt });
-        }
 
         if (subStatus === "active") {
           const expires = attrs.renews_at || new Date(Date.now() + 30 * 864e5).toISOString();
           await updateProfile(admin, userId, {
             subscription_plan: subPlan,
-            subscription_expires_at: expires,
-            trial_ends_at: null,
+            subscription_expires_at: expires
           }, "subscription active");
           await redeemPendingReferralOnUpgrade(admin, userId, subPlan);
           return json({ ok: true, status: subStatus, until: expires });
         }
 
         // Dunning / paused / unpaid / expired: NEVER extend access. Keep the plan
-        // only while an already-paid (or trial) window is still in the future.
+        // only while an already-paid window is still in the future.
         if (NON_GRANTING.includes(subStatus) || eventName === "subscription_payment_failed") {
           const renews = attrs.renews_at ? new Date(attrs.renews_at).getTime() : 0;
-          const trialEnd = attrs.trial_ends_at ? new Date(attrs.trial_ends_at).getTime() : 0;
-          const endsAt = attrs.ends_at ? new Date(attrs.ends_at).getTime() : 0;
-          const paidUntil = Math.max(renews, trialEnd, endsAt);
+                    const endsAt = attrs.ends_at ? new Date(attrs.ends_at).getTime() : 0;
+          const paidUntil = Math.max(renews, endsAt);
           const hardDowngrade = subStatus === "unpaid" || subStatus === "expired";
 
           if (!hardDowngrade && paidUntil > Date.now()) {
             await updateProfile(admin, userId, {
               subscription_plan: subPlan,
-              subscription_expires_at: new Date(paidUntil).toISOString(),
-              trial_ends_at: null,
+              subscription_expires_at: new Date(paidUntil).toISOString()
             }, `${subStatus} within paid window`);
           } else {
             await updateProfile(admin, userId, {
               subscription_plan: "free",
-              subscription_expires_at: paidUntil ? new Date(paidUntil).toISOString() : new Date().toISOString(),
-              trial_ends_at: null,
+              subscription_expires_at: paidUntil ? new Date(paidUntil).toISOString() : new Date().toISOString()
             }, `downgraded (${subStatus}, payment never succeeded)`);
           }
           return json({ ok: true, status: subStatus });
         }
 
         if (subStatus === "cancelled") {
-          const endsAtRaw = attrs.ends_at || attrs.renews_at || attrs.trial_ends_at || null;
+          const endsAtRaw = attrs.ends_at || attrs.renews_at || null;
           const stillHasAccess = endsAtRaw ? new Date(endsAtRaw).getTime() > Date.now() : false;
           if (stillHasAccess) {
-            // Cancelled but still inside a window they already paid for / trial.
+            // Cancelled but still inside a window they already paid for.
             await updateProfile(admin, userId, {
               subscription_expires_at: endsAtRaw,
             }, "cancelled, access kept");
           } else {
             await updateProfile(admin, userId, {
               subscription_plan: "free",
-              subscription_expires_at: endsAtRaw ?? new Date().toISOString(),
-              trial_ends_at: null,
+              subscription_expires_at: endsAtRaw ?? new Date().toISOString()
             }, "downgraded (cancelled, window over)");
           }
           return json({ ok: true, status: subStatus });
@@ -220,8 +204,7 @@ Deno.serve(async (req) => {
       const expiresAt = new Date(Date.now() + 30 * 864e5).toISOString();
       await updateProfile(admin, userId, {
         subscription_plan: finalPlan,
-        subscription_expires_at: expiresAt,
-        trial_ends_at: null,
+        subscription_expires_at: expiresAt
       }, "order_created");
       await resetQuota(admin, userId);
       await redeemPendingReferralOnUpgrade(admin, userId, finalPlan);
@@ -247,7 +230,7 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await admin
       .from("profiles")
-      .select("email, subscription_plan, subscription_expires_at, trial_ends_at")
+      .select("email, subscription_plan, subscription_expires_at")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -257,7 +240,6 @@ Deno.serve(async (req) => {
           success: true,
           plan: profile.subscription_plan,
           expires_at: profile.subscription_expires_at,
-          trial_ends_at: (profile as any).trial_ends_at ?? null,
         });
       }
     }
@@ -278,17 +260,16 @@ Deno.serve(async (req) => {
         if (subRes.ok) {
           const subJson = await subRes.json();
           const subs: any[] = Array.isArray(subJson?.data) ? subJson.data : [];
-          const granting = subs.find((s) => ["active", "on_trial"].includes(s.attributes?.status));
+          const granting = subs.find((s) => s.attributes?.status === "active");
           if (granting) {
             const a = granting.attributes || {};
             const variant = a.variant_id || a.first_subscription_item?.variant_id;
             const p = (variant ? VARIANT_TO_PLAN[variant] : null) || "pro";
-            const until = a.status === "on_trial" ? (a.trial_ends_at || a.renews_at) : a.renews_at;
+            const until = a.renews_at;
             if (until) {
               await updateProfile(admin, user.id, {
                 subscription_plan: p,
                 subscription_expires_at: until,
-                trial_ends_at: a.status === "on_trial" ? until : null,
               }, `manual verify (${a.status})`);
               await redeemPendingReferralOnUpgrade(admin, user.id, p);
               return json({ success: true, plan: p, expires_at: until, status: a.status });
@@ -331,8 +312,7 @@ Deno.serve(async (req) => {
             const expires = new Date(Date.now() + 30 * 864e5).toISOString();
             await updateProfile(admin, user.id, {
               subscription_plan: matchedPlan,
-              subscription_expires_at: expires,
-              trial_ends_at: null,
+              subscription_expires_at: expires
             }, `manual verify (order ${paid.id})`);
             await resetQuota(admin, user.id);
             await redeemPendingReferralOnUpgrade(admin, user.id, matchedPlan);
