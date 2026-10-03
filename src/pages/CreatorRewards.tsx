@@ -110,7 +110,12 @@ const CreatorRewards = () => {
   };
 
   const claimPlan = async (tier: CreatorTier) => {
-    if (!window.confirm(`Claim 30 days of ${tier.name} free? You can only claim one tier per video.`)) return;
+    const best = highestEligibleTier(views, signups);
+    if (best && best.id !== tier.id) {
+      toast({ title: `You qualify for ${best.name}`, description: `Claim ${best.name} instead — you only get one plan per campaign.` });
+      return;
+    }
+    if (!window.confirm(`Claim 30 days of ${tier.name} free? This uses up this campaign — you can't claim another tier for this video.`)) return;
     setClaimingId(tier.id);
     const { data: res, error } = await supabase.rpc("claim_creator_reward" as never, { _tier: tier.id } as never);
     setClaimingId(null);
@@ -181,6 +186,13 @@ const CreatorRewards = () => {
       {/* Tracker */}
       <section id="creator-tracker" className="px-4 sm:px-6 py-10">
         <div className="max-w-3xl mx-auto rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 mb-5">
+            <p className="text-foreground text-xs font-bold mb-1">⚠️ One plan per campaign</p>
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              Each video submission unlocks only <span className="font-semibold text-foreground">one</span> plan — the highest tier your verified views and signups qualify for at the time you submit.
+              Views your video gets after submitting won't upgrade it, so <span className="font-semibold text-foreground">let your video collect as many views as possible before you submit.</span>
+            </p>
+          </div>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
             <h3 className="text-foreground font-bold">Your Creator Dashboard</h3>
             <button
@@ -329,7 +341,7 @@ const CreatorRewards = () => {
         <div className="max-w-5xl mx-auto">
           <h3 className="text-foreground text-xl font-bold text-center mb-2">Creator Tiers</h3>
           <p className="text-muted-foreground text-sm text-center mb-8">
-            You need both the views <span className="font-semibold text-foreground">and</span> the signups. Your highest eligible tier is the one you claim — one reward per campaign.
+            You need both the views <span className="font-semibold text-foreground">and</span> the signups. You can claim only one plan per campaign — the highest tier you're eligible for when you submit. Let your video gather views first.
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {CREATOR_TIERS.map((tier) => (

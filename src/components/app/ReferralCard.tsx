@@ -51,7 +51,7 @@ const ReferralCard = ({ referralLink, totalSignups }: ReferralCardProps) => {
 
       <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 mb-3">
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Users className="w-3.5 h-3.5" /> Signed up with your link</span>
-        <span className="text-foreground font-bold text-sm">{totalSignups}</span>
+        <span className="text-foreground font-bold text-sm">{totalSignups ?? 0}</span>
       </div>
 
       <div className="flex gap-2">
