@@ -80,6 +80,16 @@ const AdminCreatorRewards = () => {
       const res = data as unknown as { ok?: boolean; message?: string } | null;
       if (res && res.ok === false) throw new Error(res.message || "Action refused.");
 
+      // Let the creator know on their phone (best effort).
+      supabase.functions.invoke("send-push-notification", {
+        body: {
+          user_id: claim.user_id,
+          payload: action === "verify"
+            ? { title: "🎬 Your creator video was approved!", body: `We verified ${verified?.toLocaleString()} views. Open Creator Rewards to claim your free plan.`, url: "/creator-rewards" }
+            : { title: "Creator submission update", body: "Your video submission needs attention. Tap to see why.", url: "/creator-rewards" },
+        },
+      }).catch(() => {});
+
       toast({ title: action === "verify" ? "Views verified — creator's tiers updated" : "Submission rejected" });
       await load();
     } catch (e) {

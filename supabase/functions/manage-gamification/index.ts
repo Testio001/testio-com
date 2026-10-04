@@ -91,21 +91,18 @@ async function sendPush(supabaseAdmin: any, userId: string, payload: { title: st
   }
 }
 
+// In-app bell removed — these now go out as phone/browser push notifications.
 async function createInAppNotification(
   supabaseAdmin: any,
   userId: string,
   payload: { type: string; title: string; body: string; link?: string }
 ) {
   try {
-    await supabaseAdmin.from("in_app_notifications").insert({
-      user_id: userId,
-      type: payload.type,
-      title: payload.title,
-      body: payload.body,
-      link: payload.link ?? null,
+    await supabaseAdmin.functions.invoke("send-push-notification", {
+      body: { user_id: userId, payload: { title: payload.title, body: payload.body, url: payload.link ?? "/dashboard" } },
     });
   } catch (e) {
-    console.error(`Failed to create in-app notification for ${userId}:`, e);
+    console.error(`Failed to send push for ${userId}:`, e);
   }
 }
 
@@ -233,16 +230,7 @@ Deno.serve(async (req) => {
             stats.bonus_uploads = newBonusUploads;
             stats.streak_bonus_uploads = newStreakBonus;
 
-            // Notify the user in-app so they see what happened on next login.
-            const revokedMsg = unusedStreakBonus > 0
-              ? ` We also removed ${unusedStreakBonus} unused streak bonus upload${unusedStreakBonus === 1 ? "" : "s"}.`
-              : "";
-            await createInAppNotification(supabaseAdmin, userId, {
-              type: "streak_broken",
-              title: "🔥 Your streak was reset",
-              body: `You missed a day, so your streak went back to 0.${revokedMsg} Upload today to start a new streak!`,
-              link: "/dashboard",
-            });
+            // No "streak reset" notification — it was repeating and annoying users.
           }
         }
       }
