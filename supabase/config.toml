@@ -48,3 +48,5 @@ project_id = "kjdduozjlfhgznrcsoxr"
   [functions.sync-subscription-access]
     verify_jwt = false
 
+  [functions.engagement-push]
+    verify_jwt = false

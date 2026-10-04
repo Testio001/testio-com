@@ -20,7 +20,6 @@ import RecurringUpsellBanner from "@/components/app/RecurringUpsellBanner";
 import CreatorRewardsPromo from "@/components/creator/CreatorRewardsPromo";
 import EmptyStateDemo from "@/components/app/EmptyStateDemo";
 import InAppTestimonials from "@/components/app/InAppTestimonials";
-import NotificationBell from "@/components/app/NotificationBell";
 import ProcessingOverlay from "@/components/app/ProcessingOverlay";
 import { useCurrency, priceFor, periodFor, entryPlanFor } from "@/hooks/useCurrency";
 import LimitReachedModal from "@/components/app/LimitReachedModal";
@@ -517,7 +516,6 @@ const Dashboard = () => {
         </div>
         <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4">
           <StreakDisplay stats={gamification.stats} compact />
-          <NotificationBell />
           {/* These icons hidden on mobile, shown on md+ */}
           <button
             onClick={() => {

@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
+import PushPermissionPrompt from "@/components/PushPermissionPrompt";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import DocumentView from "./pages/DocumentView";
@@ -114,6 +115,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
             <PWAInstallBanner />
+            <PushPermissionPrompt />
             <ThemeToggle />
           </BrowserRouter>
         </TooltipProvider>
