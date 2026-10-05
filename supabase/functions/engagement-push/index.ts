@@ -65,6 +65,11 @@ function choose(slot: string, p: any, s: any): Msg {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  // SECURITY: only the scheduled job (which knows CRON_SECRET) may trigger mass pushes.
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: cors });
+  }
   try {
     const { slot = "afternoon" } = await req.json().catch(() => ({}));
     if (!["morning", "afternoon", "evening"].includes(slot)) {

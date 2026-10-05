@@ -79,6 +79,26 @@ Deno.serve(async (req) => {
     )
   }
 
+  // SECURITY: only our own server (service role) may send any template to any
+  // address. A signed-in browser may only send itself the welcome email.
+  {
+    const bearer = (req.headers.get('Authorization') ?? '').replace('Bearer ', '')
+    if (bearer !== supabaseServiceKey) {
+      const { createClient: mk } = await import('npm:@supabase/supabase-js@2')
+      const uc = mk(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+        global: { headers: { Authorization: `Bearer ${bearer}` } },
+      })
+      const { data: u } = await uc.auth.getUser()
+      const email = u?.user?.email?.toLowerCase()
+      if (!email || templateName !== 'welcome' || recipientEmail?.toLowerCase() !== email) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      templateData = { displayName: String(templateData.displayName ?? '').slice(0, 60) }
+    }
+  }
+
   if (!templateName) {
     return new Response(
       JSON.stringify({ error: 'templateName is required' }),

@@ -176,6 +176,28 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // SECURITY: server (service role) can push to anyone; a signed-in user can
+    // only push to themselves (test button); admins can push to anyone.
+    const bearer = (req.headers.get('Authorization') ?? '').replace('Bearer ', '');
+    if (bearer !== supabaseServiceKey) {
+      const uc = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+        global: { headers: { Authorization: `Bearer ${bearer}` } },
+      });
+      const { data: u } = await uc.auth.getUser();
+      const callerId = u?.user?.id;
+      let allowed = !!callerId && callerId === user_id;
+      if (callerId && !allowed) {
+        const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: callerId, _role: 'admin' });
+        allowed = !!isAdmin;
+      }
+      if (!allowed) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    if (typeof payload.url === 'string' && !payload.url.startsWith('/')) payload.url = '/';
+
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
 

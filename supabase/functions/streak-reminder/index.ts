@@ -18,6 +18,11 @@ async function sendPush(supabase: any, userId: string, payload: { title: string;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  // SECURITY: only the scheduled job may trigger mass emails/pushes.
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
+  }
 
   try {
     const supabase = createClient(
