@@ -251,6 +251,30 @@ serve(async (req) => {
       return json({ success: true });
     }
 
+    if (action === "pwa-installs") {
+      const { data, error } = await supabaseAdmin
+        .from("pwa_installs")
+        .select("user_id, email, platform, first_installed_at, last_seen_at")
+        .order("first_installed_at", { ascending: false })
+        .limit(2000);
+      if (error) {
+        console.error("admin-ops pwa-installs error", error);
+        return json({ error: "Unable to load PWA installs" }, 500);
+      }
+      const rows = data ?? [];
+      const byPlatform: Record<string, number> = {};
+      const dayAgo = Date.now() - 86400000;
+      const weekAgo = Date.now() - 7 * 86400000;
+      let last24h = 0, last7d = 0;
+      for (const r of rows) {
+        byPlatform[r.platform || "unknown"] = (byPlatform[r.platform || "unknown"] || 0) + 1;
+        const t = new Date(r.first_installed_at).getTime();
+        if (t > dayAgo) last24h++;
+        if (t > weekAgo) last7d++;
+      }
+      return json({ total: rows.length, last24h, last7d, byPlatform, users: rows });
+    }
+
     if (action === "paying-users") {
       const { data, error } = await supabaseAdmin
         .from("profiles")
