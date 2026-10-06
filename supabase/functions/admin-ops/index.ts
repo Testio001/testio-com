@@ -251,6 +251,42 @@ serve(async (req) => {
       return json({ success: true });
     }
 
+    if (action === "revenue") {
+      const monthAgo = Date.now() - 30 * 86400000;
+      const { data: txs, error } = await supabaseAdmin
+        .from("korapay_transactions").select("amount_ngn, created_at").eq("status", "success").limit(10000);
+      if (error) return json({ error: "Unable to load revenue" }, 500);
+      let ngnTotal = 0, ngnMonth = 0;
+      for (const t of txs ?? []) {
+        ngnTotal += t.amount_ngn || 0;
+        if (new Date(t.created_at).getTime() > monthAgo) ngnMonth += t.amount_ngn || 0;
+      }
+      let usdTotal = 0, usdMonth = 0, usdOrders = 0, usdAvailable = false;
+      const lsKey = Deno.env.get("LEMONSQUEEZY_API_KEY");
+      if (lsKey) {
+        let url: string | null = "https://api.lemonsqueezy.com/v1/orders?page[size]=100";
+        let pages = 0;
+        while (url && pages < 20) {
+          const r = await fetch(url, { headers: { Accept: "application/vnd.api+json", Authorization: `Bearer ${lsKey}` } });
+          if (!r.ok) break;
+          usdAvailable = true;
+          const j = await r.json();
+          for (const o of j?.data ?? []) {
+            const a = o.attributes || {};
+            if (a.status !== "paid" || a.test_mode) continue;
+            const usd = (a.total_usd ?? a.total ?? 0) / 100;
+            usdTotal += usd; usdOrders++;
+            if (new Date(a.created_at).getTime() > monthAgo) usdMonth += usd;
+          }
+          url = j?.links?.next ?? null; pages++;
+        }
+      }
+      return json({
+        ngn: { total: ngnTotal, last30d: ngnMonth, payments: (txs ?? []).length },
+        usd: { total: Math.round(usdTotal * 100) / 100, last30d: Math.round(usdMonth * 100) / 100, payments: usdOrders, available: usdAvailable },
+      });
+    }
+
     if (action === "pwa-installs") {
       const { data, error } = await supabaseAdmin
         .from("pwa_installs")

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import AdminPwaInstalls from "@/components/app/AdminPwaInstalls";
+import AdminRevenue from "@/components/app/AdminRevenue";
 
 type DashboardData = {
   totalUsers: number;
@@ -161,6 +162,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      <AdminRevenue />
       <AdminPwaInstalls />
 
       {/* PAYING USERS */}

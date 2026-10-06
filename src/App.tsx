@@ -30,6 +30,7 @@ import AdminReferrals from "./pages/AdminReferrals";
 import CreatorRewards from "./pages/CreatorRewards";
 import AdminCreatorRewards from "./pages/AdminCreatorRewards";
 import AuthCallback from "./pages/AuthCallback";
+import CoolOff from "./pages/CoolOff";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="/home" element={<Home />} />
               <Route path="/promo" element={<PromoVideo />} />
               <Route path="/creator-rewards" element={<CreatorRewards />} />
+              <Route path="/cool-off" element={<ProtectedRoute><CoolOff /></ProtectedRoute>} />
               <Route
                 path="/dashboard"
                 element={

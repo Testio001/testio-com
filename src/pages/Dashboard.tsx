@@ -629,6 +629,17 @@ const Dashboard = () => {
             )}
 
             {!isAndroidApp && <CreatorRewardsPromo variant="dashboard" className="mb-6" />}
+            <button
+              onClick={() => navigate("/cool-off")}
+              className="w-full mb-6 flex items-center gap-4 rounded-2xl border border-border bg-card p-4 text-left hover:border-primary/50 transition-colors"
+            >
+              <span className="text-3xl">🎮</span>
+              <span className="flex-1">
+                <span className="block font-semibold text-foreground">Cool Off Zone</span>
+                <span className="block text-sm text-muted-foreground">Done reading? Take a quick brain break with Brick Breaker.</span>
+              </span>
+              <span className="text-primary text-sm font-medium">Play →</span>
+            </button>
 
 
 
