@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import AdminPwaInstalls from "@/components/app/AdminPwaInstalls";
 
 type DashboardData = {
   totalUsers: number;
@@ -159,6 +160,8 @@ export default function AdminDashboard() {
           </h2>
         </div>
       </div>
+
+      <AdminPwaInstalls />
 
       {/* PAYING USERS */}
       <div className="bg-zinc-900 rounded-2xl p-5 mb-8 overflow-auto">
