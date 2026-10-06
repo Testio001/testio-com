@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { redeemPendingReferral } from "@/lib/referralCapture";
+import { recordPwaInstall } from "@/lib/pwaInstallTracking";
 
 interface AuthContextType {
   session: Session | null;
@@ -37,6 +38,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // account is created (catches Google OAuth signups and any other path
       // that didn't go through the email/password form). Idempotent because
       // send-transactional-email dedupes on idempotencyKey per user.
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
+        recordPwaInstall(session.user.id, session.user.email).catch(() => {});
+      }
       if (event === "SIGNED_IN" && session?.user) {
         const user = session.user;
         // Track site visit (once per browser session)
