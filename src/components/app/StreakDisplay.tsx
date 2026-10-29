@@ -49,8 +49,8 @@ const StreakDisplay = ({ stats, compact, userPlan, onUpdated }: StreakDisplayPro
   if (compact) {
     return (
       <div className="flex items-center gap-1.5 text-sm">
-        <Flame className={`w-4 h-4 ${streak > 0 ? "text-orange-400" : "text-muted-foreground"}`} />
-        <span className={`font-bold ${streak > 0 ? "text-orange-400" : "text-muted-foreground"}`}>{streak}</span>
+        <Flame className={`w-4 h-4 ${streak > 0 ? "text-warning" : "text-muted-foreground"}`} />
+        <span className={`font-bold ${streak > 0 ? "text-warning" : "text-muted-foreground"}`}>{streak}</span>
       </div>
     );
   }
@@ -59,8 +59,8 @@ const StreakDisplay = ({ stats, compact, userPlan, onUpdated }: StreakDisplayPro
     <div className="bg-testio-card rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${streak > 0 ? "bg-orange-500/20" : "bg-muted"}`}>
-            <Flame className={`w-5 h-5 ${streak > 0 ? "text-orange-400" : "text-muted-foreground"}`} />
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${streak > 0 ? "bg-warning/15" : "bg-muted"}`}>
+            <Flame className={`w-5 h-5 ${streak > 0 ? "text-warning" : "text-muted-foreground"}`} />
           </div>
           <div>
             <p className="text-foreground font-bold text-lg">{streak} day streak</p>
@@ -83,7 +83,7 @@ const StreakDisplay = ({ stats, compact, userPlan, onUpdated }: StreakDisplayPro
           </div>
           <div className="h-1.5 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-orange-400 to-orange-500 rounded-full transition-all"
+              className="h-full bg-warning rounded-full transition-all"
               style={{ width: `${((10 - nextBonus) / 10) * 100}%` }}
             />
           </div>

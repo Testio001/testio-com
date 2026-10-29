@@ -55,7 +55,7 @@ const FeaturesSection = () => {
               transition={{ delay: i * 0.1 }}
               className="group bg-testio-card rounded-2xl p-8 hover:border-primary/30 transition-all duration-300 cursor-pointer"
             >
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-6`}>
+              <div className={`w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-6`}>
                 <feature.icon className="w-6 h-6 text-primary" />
               </div>
               <h3 className="text-lg font-bold text-foreground mb-3">{feature.title}</h3>

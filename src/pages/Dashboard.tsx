@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { useGamification } from "@/hooks/useGamification";
-import { motion } from "framer-motion";
-import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Crown, Zap, X, Home, LayoutDashboard } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, FileText, Upload, Search, LogOut, Trash2, Settings, UserCircle, Image, Gift, Trophy, MoreVertical, Pencil, Share2, HelpCircle, Crown, X, LayoutDashboard, ArrowRight, Gamepad2, Type, Sun, Moon } from "lucide-react";
 import { useIsAndroidApp } from "@/hooks/useIsAndroidApp";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -108,6 +109,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { currency } = useCurrency();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const gamification = useGamification();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [search, setSearch] = useState("");
@@ -496,198 +498,248 @@ const Dashboard = () => {
     { icon: UserCircle, label: "Profile", action: () => navigate("/profile") },
   ];
 
+  const firstName = ((user?.user_metadata as any)?.display_name || (user?.user_metadata as any)?.full_name || "")
+    .toString()
+    .split(" ")[0];
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+  const shareReferral = () => {
+    const link = gamification.getReferralLink();
+    if (navigator.share) {
+      navigator.share({ title: "Join Testio!", text: "Study smarter with AI-powered notes. Use my link to get a bonus upload!", url: link });
+    } else {
+      navigator.clipboard.writeText(link);
+      toast({ title: "Link copied!", description: "Share it with friends to earn uploads." });
+    }
+  };
+
+  const iconBtn =
+    "pressable w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary";
+
+  const sourceIcon = (type: string) => (type === "image" ? Image : FileText);
+
+  const statusStyle: Record<string, { label: string; dot: string; text: string }> = {
+    completed: { label: "Ready", dot: "bg-success", text: "text-success" },
+    processing: { label: "Processing", dot: "bg-warning animate-pulse", text: "text-warning" },
+    pending: { label: "Queued", dot: "bg-muted-foreground", text: "text-muted-foreground" },
+    failed: { label: "Failed", dot: "bg-destructive", text: "text-destructive" },
+  };
+
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
+    <div className="min-h-screen bg-background pb-24 md:pb-0">
       <ProcessingOverlay
         open={!!uploading}
         title="Processing your document…"
         subtitle={uploading || "This may take a while. We'll open your summary automatically when it's ready."}
       />
-      {/* Desktop/Tablet header */}
-      <header className="border-b border-border/50 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <img src={testioLogo} alt="Testio" className="w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9 shrink-0" />
-          <span className="text-foreground font-bold text-base sm:text-lg md:text-xl shrink-0" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>testio</span>
-          {userPlan && (
-            <Badge variant={userPlan === "pro" ? "default" : userPlan === "basic" ? "secondary" : "outline"} className="text-[9px] sm:text-[10px] md:text-xs uppercase ml-0.5 sm:ml-1 shrink-0">
-              {userPlan}
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4">
-          <StreakDisplay stats={gamification.stats} compact />
-          {/* These icons hidden on mobile, shown on md+ */}
-          <button
-            onClick={() => {
-              const link = gamification.getReferralLink();
-              if (navigator.share) {
-                navigator.share({ title: "Join Testio!", text: "Study smarter with AI-powered notes. Use my link to get a bonus upload!", url: link });
-              } else {
-                navigator.clipboard.writeText(link);
-                toast({ title: "Link copied!", description: "Share it with friends to earn uploads." });
-              }
-            }}
-            className="hidden md:block text-muted-foreground hover:text-foreground transition-colors"
-            title="Share referral link"
-          >
-            <Gift className="w-5 h-5 md:w-6 md:h-6" />
-          </button>
-          <button onClick={() => navigate("/leaderboard")} className="hidden md:block text-muted-foreground hover:text-foreground transition-colors" title="Leaderboard">
-            <Trophy className="w-5 h-5 md:w-6 md:h-6" />
-          </button>
-          <button onClick={() => navigate("/profile")} className="hidden md:block text-muted-foreground hover:text-foreground transition-colors" title="Profile">
-            <UserCircle className="w-5 h-5 md:w-6 md:h-6" />
-          </button>
-          <Dialog>
-            <DialogTrigger asChild>
-              <button className="hidden sm:block text-muted-foreground hover:text-foreground transition-colors" title="Watch Tutorial">
-                <HelpCircle className="w-5 h-5 md:w-6 md:h-6" />
+
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <img src={testioLogo} alt="Testio" className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white object-contain shrink-0" />
+            <span className="text-foreground font-semibold text-base sm:text-lg tracking-tight shrink-0">testio</span>
+            {userPlan && (
+              <Badge variant="outline" className="ml-1 text-[10px] uppercase tracking-wider font-medium shrink-0 rounded-md">
+                {userPlan}
+              </Badge>
+            )}
+            <nav className="hidden md:flex items-center gap-1 ml-6 text-sm">
+              <span className="px-3 py-1.5 rounded-lg bg-secondary text-foreground font-medium">Documents</span>
+              <button onClick={() => navigate("/leaderboard")} className="px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+                Leaderboard
               </button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>How to use Testio</DialogTitle>
-              </DialogHeader>
-              <div className="w-full rounded-xl overflow-hidden">
-                <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-                  <iframe
-                    src="https://www.loom.com/embed/8f58c3a8db8c4ec3b6efa8cdd5d52781"
-                    frameBorder="0"
-                    allowFullScreen
-                    className="absolute inset-0 w-full h-full"
-                  />
+              <button onClick={() => navigate("/profile")} className="px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+                Profile
+              </button>
+            </nav>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <StreakDisplay stats={gamification.stats} compact />
+            <button onClick={shareReferral} className={`${iconBtn} hidden md:flex`} title="Share referral link" aria-label="Share referral link">
+              <Gift className="w-[18px] h-[18px]" />
+            </button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <button className={`${iconBtn} hidden sm:flex`} title="Watch tutorial" aria-label="Watch tutorial">
+                  <HelpCircle className="w-[18px] h-[18px]" />
+                </button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>How to use Testio</DialogTitle>
+                </DialogHeader>
+                <div className="w-full rounded-xl overflow-hidden">
+                  <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+                    <iframe
+                      src="https://www.loom.com/embed/8f58c3a8db8c4ec3b6efa8cdd5d52781"
+                      title="How to use Testio"
+                      frameBorder="0"
+                      allowFullScreen
+                      className="absolute inset-0 w-full h-full"
+                    />
+                  </div>
                 </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-          <button onClick={() => navigate("/settings")} className="text-muted-foreground hover:text-foreground transition-colors" title="Settings">
-            <Settings className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-          </button>
-          <button onClick={signOut} className="text-muted-foreground hover:text-foreground transition-colors" title="Sign out">
-            <LogOut className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-          </button>
+              </DialogContent>
+            </Dialog>
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className={iconBtn}
+              title="Toggle theme"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
+            </button>
+            <button onClick={() => navigate("/settings")} className={iconBtn} title="Settings" aria-label="Settings">
+              <Settings className="w-[18px] h-[18px]" />
+            </button>
+            <button onClick={signOut} className={iconBtn} title="Sign out" aria-label="Sign out">
+              <LogOut className="w-[18px] h-[18px]" />
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-10">
           {/* Main content */}
           <div className="flex-1 min-w-0">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+            <motion.div
+              initial={{ opacity: 0, transform: "translateY(8px)" }}
+              animate={{ opacity: 1, transform: "translateY(0px)" }}
+              transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
+              className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-8"
+            >
               <div>
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">My Documents</h1>
-                <p className="text-muted-foreground text-xs sm:text-sm mt-1">
+                <p className="text-sm text-muted-foreground">{greeting}{firstName ? `, ${firstName}` : ""}</p>
+                <h1 className="font-display text-3xl sm:text-4xl font-medium tracking-tight text-foreground mt-1">Your documents</h1>
+                <p className="text-muted-foreground text-sm mt-2">
                   {gamification.loading
-                    ? "Loading…"
+                    ? "Checking your uploads…"
                     : gamification.canUpload
                       ? `${gamification.uploadsRemaining} upload${gamification.uploadsRemaining > 1 ? "s" : ""} remaining`
                       : "Upload limit reached"}
                 </p>
               </div>
-              {/* Prominent upload button — visible on every screen size */}
               <button
                 onClick={tryUpload}
                 disabled={gamification.loading}
-                className="w-full sm:w-auto btn-testio-primary text-sm flex items-center justify-center gap-2 !py-2.5 !px-5 md:!py-3 md:!px-7 md:text-base shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto btn-testio-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus className="w-4 h-4 md:w-5 md:h-5" /> {gamification.loading ? "Loading…" : "Upload document"}
+                <Plus className="w-4 h-4" /> {gamification.loading ? "Loading…" : "Upload document"}
+              </button>
+            </motion.div>
+
+            <div className="relative mb-6">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search your documents"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="field pl-10 bg-card"
+              />
+              {documents.length > 0 && (
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono">
+                  {filteredDocs.length}/{documents.length}
+                </span>
+              )}
+            </div>
+
+            {/* Upgrade banner — only shown to free users */}
+            {userPlan === "free" && !isAndroidApp && (
+              <motion.button
+                initial={{ opacity: 0, transform: "translateY(8px)" }}
+                animate={{ opacity: 1, transform: "translateY(0px)" }}
+                transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1], delay: 0.05 }}
+                className="pressable w-full text-left mb-4 surface rounded-2xl p-4 sm:p-5 hover:border-primary/40 flex items-center gap-4"
+                onClick={() => navigate("/pricing")}
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Crown className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-foreground font-semibold text-sm">Upgrade to unlock everything</h3>
+                  <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
+                    More uploads, full podcasts & AI Tutor — from{" "}
+                    <span className="text-foreground font-medium">{priceFor(entryPlanFor(currency), currency)}{periodFor(currency)}</span>
+                  </p>
+                </div>
+                <span className="hidden sm:inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                  Upgrade <ArrowRight className="w-4 h-4" />
+                </span>
+              </motion.button>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2 mb-8">
+              {!isAndroidApp && <CreatorRewardsPromo variant="dashboard" />}
+              <button
+                onClick={() => navigate("/cool-off")}
+                className={`pressable w-full flex items-center gap-4 surface rounded-2xl p-4 sm:p-5 text-left hover:border-foreground/20 ${isAndroidApp ? "sm:col-span-2" : ""}`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
+                  <Gamepad2 className="w-5 h-5 text-foreground" />
+                </div>
+                <span className="flex-1 min-w-0">
+                  <span className="block font-semibold text-sm text-foreground">Cool Off Zone</span>
+                  <span className="block text-xs sm:text-sm text-muted-foreground mt-0.5">Done reading? Take a quick brain break with Brick Breaker.</span>
+                </span>
+                <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
               </button>
             </div>
 
-            <div className="relative mb-6">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input type="text" placeholder="Search documents..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            </div>
-
-            {/* Upgrade to Pro Banner — only shown to free users */}
-            {userPlan === "free" && !isAndroidApp && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-6 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/15 border-2 border-primary/30 rounded-xl p-4 sm:p-5 cursor-pointer hover:border-primary/50 transition-all shadow-lg shadow-primary/5"
-                onClick={() => navigate("/pricing")}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0 animate-pulse">
-                    <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-foreground font-bold text-xs sm:text-sm flex items-center gap-1.5">
-                      <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
-                      Upgrade to Pro — Unlock Everything
-                    </h3>
-                    <p className="text-muted-foreground text-[10px] sm:text-xs mt-0.5">
-                      <>Unlimited uploads, full podcasts & AI Tutor — starting at <span className="text-primary font-bold">{priceFor(entryPlanFor(currency), currency)}{periodFor(currency)}</span></>
-                    </p>
-                  </div>
-                  <div className="hidden sm:block shrink-0 bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-full">
-                    Upgrade
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {!isAndroidApp && <CreatorRewardsPromo variant="dashboard" className="mb-6" />}
-            <button
-              onClick={() => navigate("/cool-off")}
-              className="w-full mb-6 flex items-center gap-4 rounded-2xl border border-border bg-card p-4 text-left hover:border-primary/50 transition-colors"
-            >
-              <span className="text-3xl">🎮</span>
-              <span className="flex-1">
-                <span className="block font-semibold text-foreground">Cool Off Zone</span>
-                <span className="block text-sm text-muted-foreground">Done reading? Take a quick brain break with Brick Breaker.</span>
-              </span>
-              <span className="text-primary text-sm font-medium">Play →</span>
-            </button>
-
-
-
             {/* Periodic upgrade prompt */}
             {showPeriodicUpgrade && userPlan === "free" && !isAndroidApp && (
-              <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowPeriodicUpgrade(false)}>
-                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} onClick={(e) => e.stopPropagation()} className="bg-card border border-primary/30 rounded-2xl p-6 w-full max-w-sm text-center relative">
-                  <button onClick={() => setShowPeriodicUpgrade(false)} className="absolute top-3 right-3 text-muted-foreground hover:text-foreground">
+              <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-center justify-center p-4" onClick={() => setShowPeriodicUpgrade(false)}>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm text-center relative shadow-lifted"
+                >
+                  <button onClick={() => setShowPeriodicUpgrade(false)} className={`${iconBtn} absolute top-3 right-3`} aria-label="Close">
                     <X className="w-4 h-4" />
                   </button>
-                  <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                    <Crown className="w-8 h-8 text-primary" />
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <Crown className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="text-foreground font-bold text-lg mb-2">
-                    Unlock the Full Testio Experience
-                  </h3>
-                  <p className="text-muted-foreground text-sm mb-1">Get unlimited uploads, full-length podcasts, unlimited quizzes & flashcards.</p>
-                  <p className="text-primary font-bold text-lg mb-4">
+                  <h3 className="font-display text-xl font-medium text-foreground mb-2">Unlock the full Testio experience</h3>
+                  <p className="text-muted-foreground text-sm mb-4">More uploads, full-length podcasts, unlimited quizzes & flashcards.</p>
+                  <p className="text-foreground font-semibold mb-5">
                     {`Starting at ${priceFor(entryPlanFor(currency), currency)}${periodFor(currency)}`}
                   </p>
                   <button
                     onClick={() => { setShowPeriodicUpgrade(false); navigate("/pricing"); }}
-                    className="w-full btn-testio-primary text-sm !py-3 flex items-center justify-center gap-2 mb-2"
+                    className="w-full btn-testio-primary mb-2"
                   >
-                    <Crown className="w-4 h-4" /> Upgrade Now
+                    Upgrade now
                   </button>
-                  <button onClick={() => setShowPeriodicUpgrade(false)} className="text-muted-foreground text-xs hover:text-foreground transition-colors">
-                    Continue with Free Plan
+                  <button onClick={() => setShowPeriodicUpgrade(false)} className="w-full py-2 text-muted-foreground text-sm hover:text-foreground transition-colors">
+                    Continue with free plan
                   </button>
                 </motion.div>
               </div>
             )}
 
-            {showUpload && <UploadModal onClose={() => setShowUpload(false)} onFileUpload={handleFileUpload} onTextUpload={handleTextUpload} onImageUpload={handleImageUpload} />}
+            <AnimatePresence>
+              {showUpload && <UploadModal onClose={() => setShowUpload(false)} onFileUpload={handleFileUpload} onTextUpload={handleTextUpload} onImageUpload={handleImageUpload} />}
+            </AnimatePresence>
 
             {showReferral && (
-              <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowReferral(false)}>
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm">
+              <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-center justify-center p-4" onClick={() => setShowReferral(false)}>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full max-w-sm"
+                >
                   <UpgradePrompt
                     onUpgrade={() => navigate("/pricing")}
                     onRefer={() => {
-                      const link = gamification.getReferralLink();
-                      if (navigator.share) {
-                        navigator.share({ title: "Join Testio!", text: "Study smarter with AI-powered notes. Use my link to get a bonus upload!", url: link });
-                      } else {
-                        navigator.clipboard.writeText(link);
-                        toast({ title: "Link copied!", description: "Share it with friends to earn uploads." });
-                      }
+                      shareReferral();
                       setShowReferral(false);
                     }}
                     streakBroken={gamification.stats?.current_streak === 0 && (gamification.stats?.longest_streak || 0) > 0}
@@ -697,133 +749,164 @@ const Dashboard = () => {
               </div>
             )}
 
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-foreground">Library</h2>
+              {!loading && documents.length > 0 && (
+                <span className="text-xs text-muted-foreground">{documents.length} document{documents.length === 1 ? "" : "s"}</span>
+              )}
+            </div>
+
             {loading || gamification.loading ? (
-              <div className="text-center text-muted-foreground py-20">Loading...</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4" aria-busy>
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="surface rounded-2xl p-5 animate-pulse">
+                    <div className="w-9 h-9 rounded-lg bg-secondary mb-4" />
+                    <div className="h-3.5 w-2/3 rounded bg-secondary mb-2.5" />
+                    <div className="h-3 w-1/3 rounded bg-secondary" />
+                  </div>
+                ))}
+              </div>
             ) : filteredDocs.length === 0 ? (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16 sm:py-20">
-                <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground/30 mx-auto mb-4" />
-                <h3 className="text-foreground font-semibold mb-2 text-sm sm:text-base">No documents yet</h3>
-                <p className="text-muted-foreground text-xs sm:text-sm mb-6">Upload a PDF, paste text, or upload an image to get started</p>
-                <button onClick={tryUpload} className="btn-testio-primary text-sm !py-2 !px-6">Upload Your First Document</button>
-                <EmptyStateDemo />
-                <div className="max-w-md mx-auto mt-8 text-left">
-                  <InAppTestimonials />
+              search && documents.length > 0 ? (
+                <div className="surface rounded-2xl py-14 text-center">
+                  <p className="text-foreground font-medium">No documents match “{search}”</p>
+                  <button onClick={() => setSearch("")} className="mt-2 text-sm text-primary hover:underline">Clear search</button>
                 </div>
-              </motion.div>
+              ) : (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl border border-dashed border-border py-14 sm:py-16 px-5 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4">
+                    <Upload className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-display text-xl font-medium text-foreground mb-1.5">Start with one document</h3>
+                  <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">
+                    Upload a PDF, paste text, or snap a photo of your notes. We'll turn it into a study pack.
+                  </p>
+                  <button onClick={tryUpload} className="btn-testio-primary">
+                    <Plus className="w-4 h-4" /> Upload your first document
+                  </button>
+                  <EmptyStateDemo />
+                  <div className="max-w-md mx-auto mt-8 text-left">
+                    <InAppTestimonials />
+                  </div>
+                </motion.div>
+              )
             ) : (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {filteredDocs.map((doc, i) => (
-                  <motion.div key={doc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                    onClick={() => { if (doc.status !== "failed") navigate(`/document/${doc.id}`); }}
-                    className={`bg-testio-card rounded-xl p-4 sm:p-5 transition-all group ${doc.status === "failed" ? "opacity-70 cursor-default" : "cursor-pointer hover:border-primary/30"}`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-primary/60" />
-                      <div className="flex items-center gap-1">
-                        <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full ${doc.status === "completed" ? "bg-testio-green/20 text-testio-green" : doc.status === "processing" ? "bg-yellow-500/20 text-yellow-400" : doc.status === "failed" ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>{doc.status}</span>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <button className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-secondary">
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenuItem onClick={() => { setRenamingDoc(doc.id); setRenameValue(doc.title); }}>
-                              <Pencil className="w-4 h-4 mr-2" /> Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => shareDocument(doc)}>
-                              <Share2 className="w-4 h-4 mr-2" /> Share
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => deleteDocument(doc.id)} className="text-destructive focus:text-destructive">
-                              <Trash2 className="w-4 h-4 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                    {renamingDoc === doc.id ? (
-                      <input
-                        autoFocus
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onBlur={() => renameDocument(doc.id, renameValue)}
-                        onKeyDown={(e) => { if (e.key === "Enter") renameDocument(doc.id, renameValue); if (e.key === "Escape") setRenamingDoc(null); }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full bg-background border border-primary/50 rounded px-2 py-1 text-foreground text-sm mb-1 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      />
-                    ) : (
-                      <h3 className="text-foreground font-semibold text-sm mb-1 truncate">{doc.title}</h3>
-                    )}
-                    <p className="text-muted-foreground text-xs">{doc.source_type.toUpperCase()} · {new Date(doc.created_at).toLocaleDateString()}</p>
-                    {doc.status === "failed" && (
-                      <p className="text-destructive text-[11px] mt-2">Document too long or unreadable. Please delete and upload a shorter version.</p>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-              <div className="mt-6">
-                <InAppTestimonials />
-              </div>
+                  {filteredDocs.map((doc, i) => {
+                    const Icon = sourceIcon(doc.source_type);
+                    const st = statusStyle[doc.status] || statusStyle.pending;
+                    const isFailed = doc.status === "failed";
+                    return (
+                      <motion.div
+                        key={doc.id}
+                        initial={{ opacity: 0, transform: "translateY(10px)" }}
+                        animate={{ opacity: 1, transform: "translateY(0px)" }}
+                        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1], delay: Math.min(i, 10) * 0.04 }}
+                        onClick={() => { if (!isFailed) navigate(`/document/${doc.id}`); }}
+                        className={`group surface rounded-2xl p-4 sm:p-5 transition-[border-color,box-shadow] duration-200 ${
+                          isFailed ? "cursor-default" : "cursor-pointer hover:border-foreground/20 hover:shadow-soft"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center">
+                            <Icon className="w-[18px] h-[18px] text-muted-foreground" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${st.text}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                              {st.label}
+                            </span>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <button className="p-1.5 -mr-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-secondary" aria-label="Document actions">
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenuItem onClick={() => { setRenamingDoc(doc.id); setRenameValue(doc.title); }}>
+                                  <Pencil className="w-4 h-4 mr-2" /> Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => shareDocument(doc)}>
+                                  <Share2 className="w-4 h-4 mr-2" /> Share
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => deleteDocument(doc.id)} className="text-destructive focus:text-destructive">
+                                  <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                        {renamingDoc === doc.id ? (
+                          <input
+                            autoFocus
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onBlur={() => renameDocument(doc.id, renameValue)}
+                            onKeyDown={(e) => { if (e.key === "Enter") renameDocument(doc.id, renameValue); if (e.key === "Escape") setRenamingDoc(null); }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="field !py-1.5 !px-2 mb-1"
+                          />
+                        ) : (
+                          <h3 className="text-foreground font-medium text-[15px] mb-1 truncate">{doc.title}</h3>
+                        )}
+                        <p className="text-muted-foreground text-xs">
+                          <span className="font-mono uppercase">{doc.source_type}</span> · {new Date(doc.created_at).toLocaleDateString()}
+                        </p>
+                        {isFailed && (
+                          <p className="text-destructive text-xs mt-3 leading-relaxed">
+                            Too long or unreadable. Delete it and upload a shorter version.
+                          </p>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </div>
+                <div className="mt-8">
+                  <InAppTestimonials />
+                </div>
               </>
             )}
           </div>
 
-          {/* Gamification sidebar - hidden on mobile, shown on lg+ */}
-          <div className="hidden lg:block w-80 shrink-0">
+          {/* Gamification sidebar */}
+          <aside className="w-full lg:w-80 shrink-0 space-y-6">
             <GamificationSidebar
               onUpgrade={() => navigate("/pricing")}
               gamification={gamification}
               userPlan={userPlan}
               onUpload={tryUpload}
             />
-            <div className="mt-6">
-              <PremiumTeaseSidebar subscriptionPlan={userPlan} />
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile gamification - shown only on mobile */}
-        <div className="lg:hidden mt-8">
-          <GamificationSidebar
-            onUpgrade={() => navigate("/pricing")}
-            gamification={gamification}
-            userPlan={userPlan}
-            onUpload={tryUpload}
-          />
-          <div className="mt-6">
             <PremiumTeaseSidebar subscriptionPlan={userPlan} />
-          </div>
+          </aside>
         </div>
 
-        {/* TechWorld branding */}
-        <div className="text-center py-4 mt-4">
-          <p className="text-[10px] text-muted-foreground">Created by <span className="font-semibold">TechWorld</span></p>
-        </div>
+        <p className="text-center text-[11px] text-muted-foreground py-8">
+          Created by <span className="font-medium">TechWorld</span>
+        </p>
       </div>
 
-      {/* Mobile Bottom Navigation Bar - Facebook style */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border/60 backdrop-blur-xl safe-bottom">
-        <div className="flex items-center justify-around px-1 py-1.5">
+      {/* Mobile bottom navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-lg border-t border-border safe-bottom">
+        <div className="flex items-center justify-around px-2 h-16">
           {bottomNavItems.map((item) => (
             <button
               key={item.label}
               onClick={item.action}
-              className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
-                item.primary
-                  ? "relative"
-                  : "text-muted-foreground active:text-foreground"
+              className={`pressable flex flex-col items-center justify-center gap-1 w-14 h-12 rounded-xl ${
+                item.primary ? "" : item.label === "Home" ? "text-foreground" : "text-muted-foreground"
               }`}
             >
               {item.primary ? (
-                <div className="w-11 h-11 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/30 -mt-4">
+                <span className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center">
                   <item.icon className="w-5 h-5 text-primary-foreground" />
-                </div>
+                </span>
               ) : (
-                <item.icon className="w-6 h-6" />
+                <>
+                  <item.icon className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </>
               )}
-              <span className={`text-[10px] font-semibold ${item.primary ? "text-primary mt-0.5" : ""}`}>
-                {item.label}
-              </span>
             </button>
           ))}
         </div>
@@ -862,50 +945,90 @@ const UploadModal = ({ onClose, onFileUpload, onTextUpload, onImageUpload }: { o
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const tabs = [
+    { id: "file" as const, label: "File", icon: FileText },
+    { id: "text" as const, label: "Paste text", icon: Type },
+    { id: "image" as const, label: "Image", icon: Image },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center" onClick={onClose}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-end sm:items-center justify-center"
+      onClick={onClose}
+    >
       <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ transform: "translateY(24px)", opacity: 0 }}
+        animate={{ transform: "translateY(0px)", opacity: 1 }}
+        exit={{ transform: "translateY(16px)", opacity: 0 }}
+        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-card border border-border rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 w-full sm:max-w-lg max-h-[85vh] overflow-y-auto"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="upload-title"
+        className="bg-card border border-border rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 w-full sm:max-w-lg max-h-[85vh] overflow-y-auto shadow-lifted safe-bottom"
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-foreground">Add Content</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
-            <X className="w-5 h-5" />
+        <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4 sm:hidden" aria-hidden />
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 id="upload-title" className="text-lg font-semibold text-foreground">Add content</h2>
+            <p className="text-sm text-muted-foreground">We'll build notes, flashcards and a quiz from it.</p>
+          </div>
+          <button onClick={onClose} className="pressable w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary" aria-label="Close">
+            <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-5">
-          {(["file", "text", "image"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2.5 px-2 rounded-md text-xs font-medium transition-colors ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              {t === "file" ? "📄 File" : t === "text" ? "📝 Text" : "🖼️ Image"}
+        <div className="grid grid-cols-3 gap-1 bg-secondary rounded-xl p-1 mb-5">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`pressable flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs sm:text-sm font-medium ${
+                tab === t.id ? "bg-card text-foreground shadow-soft" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <t.icon className="w-4 h-4" /> {t.label}
             </button>
           ))}
         </div>
         {tab === "file" && (
-          <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
-            <Upload className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm mb-3">Upload a PDF, DOCX, or text file</p>
-            <label className="btn-testio-primary text-sm !py-2.5 !px-6 cursor-pointer">Choose File<input type="file" accept=".pdf,.txt,.docx,.md" onChange={onFileUpload} className="hidden" /></label>
-          </div>
+          <label className="block cursor-pointer text-center py-10 px-4 border border-dashed border-border rounded-2xl bg-background hover:border-primary/50 hover:bg-primary/[0.03] transition-colors">
+            <div className="w-11 h-11 rounded-xl bg-secondary flex items-center justify-center mx-auto mb-3">
+              <Upload className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-foreground">Choose a file</p>
+            <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, TXT or Markdown · up to 15 MB</p>
+            <input type="file" accept=".pdf,.txt,.docx,.md" onChange={onFileUpload} className="hidden" />
+          </label>
         )}
         {tab === "text" && (
           <div className="space-y-3">
-            <input type="text" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            <textarea placeholder="Paste your text content here..." value={text} onChange={(e) => setText(e.target.value)} rows={5} className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" />
-            <button onClick={() => onTextUpload(text, title)} disabled={!text.trim()} className="w-full btn-testio-primary text-sm !py-2.5 disabled:opacity-50">Process with AI</button>
+            <input type="text" placeholder="Title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} className="field" />
+            <textarea placeholder="Paste your lecture notes or any text here…" value={text} onChange={(e) => setText(e.target.value)} rows={6} className="field resize-none" />
+            <button onClick={() => onTextUpload(text, title)} disabled={!text.trim()} className="w-full btn-testio-primary disabled:opacity-50">Process with AI</button>
           </div>
         )}
         {tab === "image" && (
-          <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
-            <Image className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm mb-3">Upload an image to extract text via AI</p>
-            <label className="btn-testio-primary text-sm !py-2.5 !px-6 cursor-pointer">Choose Image<input type="file" accept="image/*" onChange={onImageUpload} className="hidden" /></label>
-          </div>
+          <label className="block cursor-pointer text-center py-10 px-4 border border-dashed border-border rounded-2xl bg-background hover:border-primary/50 hover:bg-primary/[0.03] transition-colors">
+            <div className="w-11 h-11 rounded-xl bg-secondary flex items-center justify-center mx-auto mb-3">
+              <Image className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-foreground">Choose an image</p>
+            <p className="text-xs text-muted-foreground mt-1">A photo of your notes or a slide — we'll read the text</p>
+            <input type="file" accept="image/*" onChange={onImageUpload} className="hidden" />
+          </label>
         )}
       </motion.div>
-    </div>
+    </motion.div>
   );
 };
 

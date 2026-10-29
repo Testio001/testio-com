@@ -93,7 +93,7 @@ const WelcomeDiscountModal = ({ signupAt, userPlan }: Props) => {
 
       {/* Body */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center overflow-y-auto">
-        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary to-primary/60 text-primary-foreground flex items-center justify-center mb-6 shadow-xl shadow-primary/30">
+        <div className="w-20 h-20 rounded-3xl bg-primary text-primary-foreground flex items-center justify-center mb-6">
           <Sparkles className="w-10 h-10" />
         </div>
 
@@ -136,7 +136,7 @@ const WelcomeDiscountModal = ({ signupAt, userPlan }: Props) => {
       <div className="px-5 pt-3 pb-5 border-t border-border bg-background">
         <button
           onClick={claim}
-          className="w-full bg-primary text-primary-foreground font-bold text-base py-4 rounded-2xl shadow-lg shadow-primary/30 active:scale-[0.99] transition-transform"
+          className="w-full bg-primary text-primary-foreground font-bold text-base py-4 rounded-2xl shadow-lifted active:scale-[0.99] transition-transform"
         >
           Claim 50% Off →
         </button>

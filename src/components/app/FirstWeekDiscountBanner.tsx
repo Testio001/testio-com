@@ -45,7 +45,7 @@ const FirstWeekDiscountBanner = ({ signupAt, userPlan }: Props) => {
   };
 
   return (
-    <div className="relative bg-gradient-to-r from-primary via-primary/90 to-primary/70 text-primary-foreground px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 shadow-sm">
+    <div className="relative bg-foreground text-background px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 shadow-sm">
       <button
         onClick={() => navigate("/pricing")}
         className="flex items-center gap-2 sm:gap-3 text-left flex-1 min-w-0"

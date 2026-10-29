@@ -230,7 +230,7 @@ const PodcastPlayer = ({
         }}
       />
 
-      <div className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 rounded-2xl p-6">
+      <div className="bg-card border border-border rounded-2xl p-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-4">
           <div className="w-14 h-14 rounded-xl bg-primary/30 flex items-center justify-center">

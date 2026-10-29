@@ -34,7 +34,7 @@ const GamificationSidebar = ({ onUpgrade, gamification, userPlan, onUpload }: Ga
           if (uploadsRemaining <= 0) onUpgrade();
           else onUpload?.();
         }}
-        className="w-full text-left bg-testio-card rounded-xl p-4 hover:ring-2 hover:ring-primary/40 transition-all"
+        className="pressable w-full text-left surface rounded-2xl p-5 hover:border-primary/40"
         title={uploadsRemaining <= 0 ? "Upload limit reached — upgrade for more" : "Tap to upload a document"}
       >
         <div className="flex items-center justify-between mb-2">
@@ -46,13 +46,13 @@ const GamificationSidebar = ({ onUpgrade, gamification, userPlan, onUpload }: Ga
             {stats.uploads_used}/{totalUploadsAllowed}
           </span>
         </div>
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${
               uploadsRemaining <= 0
                 ? "bg-destructive"
                 : uploadsRemaining <= 1
-                ? "bg-yellow-400"
+                ? "bg-warning"
                 : "bg-primary"
             }`}
             style={{ width: `${Math.min(100, (stats.uploads_used / totalUploadsAllowed) * 100)}%` }}

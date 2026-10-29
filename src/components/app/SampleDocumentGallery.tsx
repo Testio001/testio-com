@@ -20,7 +20,7 @@ const SAMPLES: Sample[] = [
     title: "Biology — Chapter 1: The Cell",
     subject: "Biology",
     icon: BookOpen,
-    color: "text-emerald-400 bg-emerald-500/15",
+    color: "text-foreground bg-secondary",
     summary:
       "Cells are the smallest unit of life. All living things are made up of one or more cells. The cell theory states: (1) all life is composed of cells, (2) cells are the basic unit of structure and function, (3) all cells come from pre-existing cells. Prokaryotic cells lack a nucleus, while eukaryotic cells have a defined nucleus and organelles like mitochondria, ER, and Golgi.",
     flashcards: [
@@ -38,7 +38,7 @@ const SAMPLES: Sample[] = [
     title: "Calculus — Limits & Derivatives",
     subject: "Mathematics",
     icon: Sigma,
-    color: "text-blue-400 bg-blue-500/15",
+    color: "text-foreground bg-secondary",
     summary:
       "A limit describes the value a function approaches as the input approaches a point. Derivatives represent the instantaneous rate of change of a function. The power rule states d/dx[xⁿ] = n·xⁿ⁻¹. Common rules include the product rule, quotient rule, and chain rule for composite functions.",
     flashcards: [
@@ -56,7 +56,7 @@ const SAMPLES: Sample[] = [
     title: "World History — WWII Overview",
     subject: "History",
     icon: Landmark,
-    color: "text-amber-400 bg-amber-500/15",
+    color: "text-foreground bg-secondary",
     summary:
       "World War II (1939–1945) was a global conflict between the Allies (USA, UK, USSR, France, China) and the Axis (Germany, Italy, Japan). Triggered by Germany's invasion of Poland in September 1939. Key events: Pearl Harbor (1941), D-Day (1944), Hiroshima & Nagasaki (1945). Resulted in ~70–85 million deaths and reshaped the world order, leading to the Cold War.",
     flashcards: [
@@ -79,11 +79,9 @@ const SampleDocumentGallery = () => {
   return (
     <div className="mt-10">
       <div className="text-center mb-5">
-        <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-[10px] font-semibold px-3 py-1 rounded-full mb-2">
-          <Sparkles className="w-3 h-3" /> Try without uploading
-        </div>
-        <h3 className="text-foreground font-bold text-base sm:text-lg">See what you'll get</h3>
-        <p className="text-muted-foreground text-xs">Open these sample study packs to preview the magic.</p>
+        <p className="eyebrow mb-2">Try without uploading</p>
+        <h3 className="text-foreground font-semibold text-lg">See what you'll get</h3>
+        <p className="text-muted-foreground text-sm mt-1">Open a sample study pack to preview the output.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl mx-auto">
@@ -93,7 +91,7 @@ const SampleDocumentGallery = () => {
             <button
               key={s.id}
               onClick={() => { setOpen(s); setTab("summary"); }}
-              className="text-left bg-card border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md hover:shadow-primary/10 transition-all group"
+              className="pressable text-left bg-card border border-border rounded-2xl p-4 hover:border-foreground/20 hover:shadow-lifted transition-all group"
             >
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${s.color}`}>
                 <Icon className="w-5 h-5" />

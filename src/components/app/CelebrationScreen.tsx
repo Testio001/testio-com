@@ -62,7 +62,7 @@ const CelebrationScreen = ({ open, onClose, docTitle, elapsedSeconds }: Props) =
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: "spring", damping: 18 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative bg-card border-2 border-primary/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl shadow-primary/20"
+            className="relative bg-card border border-border rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-lifted"
           >
             <button
               onClick={onClose}
@@ -77,7 +77,7 @@ const CelebrationScreen = ({ open, onClose, docTitle, elapsedSeconds }: Props) =
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ delay: 0.15, type: "spring", damping: 12 }}
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/60 mx-auto flex items-center justify-center mb-4 shadow-lg shadow-primary/40"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-primary mx-auto flex items-center justify-center mb-4"
               >
                 <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-primary-foreground" />
               </motion.div>

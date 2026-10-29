@@ -2,7 +2,7 @@ import { Users, ShieldCheck, Globe } from "lucide-react";
 
 const ElitePricingBanner = () => {
   return (
-    <div className="mb-8 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/5 to-primary/15 px-5 py-4 sm:px-6 sm:py-5">
+    <div className="mb-8 rounded-2xl border border-border bg-card px-5 py-4 sm:px-6 sm:py-5">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 shrink-0 rounded-xl bg-primary/20 flex items-center justify-center">

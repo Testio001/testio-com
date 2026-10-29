@@ -207,8 +207,8 @@ const QuizViewer = ({ documentId }: { documentId: string }) => {
             transition={{ type: "spring", stiffness: 140, damping: 14 }}
             className={`inline-flex items-center justify-center w-32 h-32 md:w-40 md:h-40 rounded-full mb-5 ${
               passed
-                ? "bg-gradient-to-br from-testio-green/20 to-primary/10 border-2 border-testio-green/40"
-                : "bg-gradient-to-br from-destructive/20 to-orange-500/10 border-2 border-destructive/40"
+                ? "bg-success/10 border border-success/40"
+                : "bg-destructive/10 border border-destructive/40"
             }`}
           >
             <div className={`text-5xl md:text-6xl font-black ${passed ? "text-testio-green" : "text-destructive"}`}>

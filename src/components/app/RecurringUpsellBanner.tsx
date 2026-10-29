@@ -41,7 +41,7 @@ const RecurringUpsellBanner = ({ userPlan }: { userPlan: string | null }) => {
 
   return (
     <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92vw] max-w-md animate-in slide-in-from-bottom-5 fade-in duration-500">
-      <div className="bg-card border-2 border-primary/40 rounded-2xl shadow-2xl shadow-primary/20 p-4 relative">
+      <div className="bg-card border border-border rounded-2xl shadow-lifted p-4 relative">
         <button
           onClick={() => setVisible(false)}
           className="absolute top-2 right-2 text-muted-foreground hover:text-foreground p-1"

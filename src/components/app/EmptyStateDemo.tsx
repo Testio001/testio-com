@@ -75,7 +75,7 @@ const EmptyStateDemo = () => {
         {/* Progress shimmer */}
         <div className="mt-4 h-1 rounded-full bg-secondary overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-primary/40 via-primary to-primary/40"
+            className="h-full bg-primary"
             animate={{ x: ["-100%", "100%"] }}
             transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
             style={{ width: "50%" }}

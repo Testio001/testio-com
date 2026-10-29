@@ -464,7 +464,7 @@ const Pricing = () => {
                 transition={{ delay: i * 0.08 }}
                 className={`relative rounded-2xl p-6 border flex flex-col ${
                   plan.highlight
-                    ? "bg-primary/5 border-primary/40 shadow-lg shadow-primary/10"
+                    ? "bg-primary/5 border-primary/40 shadow-lifted"
                     : plan.id === "starter"
                       ? "bg-card border-amber-500/30"
                       : "bg-card border-border"
@@ -591,7 +591,7 @@ const Pricing = () => {
           >
             <div className="inline-flex items-center gap-1 mb-3">
               {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                <Star key={i} className="w-4 h-4 fill-warning text-warning" />
               ))}
             </div>
             <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
@@ -610,11 +610,11 @@ const Pricing = () => {
                 viewport={{ once: true, margin: "-30px" }}
                 transition={{ duration: 0.5, delay: i * 0.1, ease: "easeOut" }}
                 whileHover={{ y: -4, scale: 1.02 }}
-                className="bg-card border border-border rounded-2xl p-5 transition-shadow hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30"
+                className="bg-card border border-border rounded-2xl p-5 transition-shadow hover:shadow-lifted hover:border-primary/30"
               >
                 <div className="flex items-center gap-0.5 mb-3">
                   {[...Array(5)].map((_, j) => (
-                    <Star key={j} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                    <Star key={j} className="w-3 h-3 fill-warning text-warning" />
                   ))}
                 </div>
                 <p className="text-foreground text-xs leading-relaxed mb-4">"{t.quote}"</p>
