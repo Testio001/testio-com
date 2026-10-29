@@ -39,7 +39,7 @@ const ProcessingOverlay = ({ open, title = "Processing your document...", subtit
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4 pointer-events-none">
       <div className="absolute inset-0 bg-background/40 backdrop-blur-[2px] pointer-events-auto" />
-      <div className="relative w-full max-w-lg bg-card border-2 border-primary/40 rounded-3xl shadow-2xl shadow-primary/20 p-8 pointer-events-auto animate-in fade-in zoom-in-95">
+      <div className="relative w-full max-w-lg bg-card border border-border rounded-3xl shadow-lifted p-8 pointer-events-auto animate-in fade-in zoom-in-95">
         <div className="flex flex-col items-center text-center">
           <div className="w-20 h-20 rounded-2xl bg-primary/15 flex items-center justify-center mb-5 relative">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />

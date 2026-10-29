@@ -260,274 +260,359 @@ const Auth = () => {
     }
   };
 
+  const title = showForgotPassword
+    ? "Reset your password"
+    : showSignupVerification
+    ? "Check your inbox"
+    : isLogin
+    ? "Welcome back"
+    : "Create your account";
+
+  const subtitle = showForgotPassword
+    ? resetStep === "request"
+      ? "Enter your account email and we'll send you a recovery code."
+      : `Enter the 8-character code sent to ${forgotEmail}.`
+    : showSignupVerification
+    ? `We sent an 8-character code to ${email}.`
+    : isLogin
+    ? "Sign in to pick up where you left off."
+    : "Turn your lecture notes into notes, quizzes and podcasts.";
+
+  const viewKey = showSignupVerification ? "verify" : showForgotPassword ? `forgot-${resetStep}` : isLogin ? "login" : "signup";
+
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-center items-center px-4 py-12 select-none">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-[420px] space-y-6 bg-card border border-border p-8 rounded-3xl shadow-sm"
-      >
-        {/* Header / Logo */}
-        <div className="flex flex-col items-center text-center space-y-2">
-          <img src={testioLogo} alt="Testio Logo" className="w-12 h-12 mb-1 object-contain" />
-          <h1 className="text-2xl font-bold tracking-tight text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            {showForgotPassword ? "Reset Password" : showSignupVerification ? "Verify Email" : isLogin ? "Welcome back" : "Create account"}
-          </h1>
-          <p className="text-sm text-muted-foreground max-w-[280px]">
-            {showForgotPassword
-              ? resetStep === "request" ? "Enter your account email to receive a secure recovery code." : `Enter the 8-character token sent to ${forgotEmail}`
-              : showSignupVerification
-              ? `We sent a code to ${email}`
-              : isLogin
-              ? "Sign in to turn your lecture notes into interactive podcasts."
-              : "Start converting documents and lectures into interactive study assets."}
-          </p>
-        </div>
+    <div className="min-h-screen bg-background grid lg:grid-cols-[1fr_1.05fr]">
+      {/* Form column */}
+      <div className="flex flex-col px-5 sm:px-8 py-6">
+        <a href="/home" className="flex items-center gap-2 self-start" aria-label="Testio home">
+          <img src={testioLogo} alt="" className="w-8 h-8 rounded-lg object-contain bg-white" />
+          <span className="text-lg font-semibold tracking-tight text-foreground">testio</span>
+        </a>
 
-        {referralCode && !showForgotPassword && !showSignupVerification && (
-          <div className="bg-primary/10 border border-primary/20 text-primary text-xs font-medium px-4 py-2.5 rounded-xl flex items-center gap-2">
-            <Gift className="w-4 h-4 shrink-0 animate-bounce" />
-            <span>You've been invited! Completing signup grants bonus credits.</span>
-          </div>
-        )}
-
-        {/* VIEW 1: SIGNUP EMAIL CODE VERIFICATION */}
-        {showSignupVerification ? (
-          <form onSubmit={handleVerifySignupCode} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">8-Character Verification Code</label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-                <input
-                  type="text"
-                  maxLength={8}
-                  placeholder="XXXXXXXX"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                  className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none transition-all tracking-widest font-mono text-center text-lg uppercase"
-                />
-              </div>
-            </div>
-
-            <button type="submit" disabled={loading || verificationCode.length < 6} className="w-full btn-testio-primary !py-2.5 flex items-center justify-center gap-2 font-medium disabled:opacity-50">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Verify Code <ArrowRight className="w-4 h-4" /></>}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowSignupVerification(false);
-                setIsLogin(false);
-              }}
-              className="w-full text-center text-xs text-muted-foreground hover:text-foreground hover:underline pt-2"
+        <div className="flex-1 flex items-center justify-center py-10">
+          <motion.div
+            initial={{ opacity: 0, transform: "translateY(12px)" }}
+            animate={{ opacity: 1, transform: "translateY(0px)" }}
+            transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+            className="w-full max-w-[400px]"
+          >
+            <motion.div
+              key={viewKey}
+              initial={{ opacity: 0, filter: "blur(2px)" }}
+              animate={{ opacity: 1, filter: "blur(0px)" }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
             >
-              Back to registration
-            </button>
-          </form>
-        ) : showForgotPassword ? (
-          /* VIEW 2: FORGOT PASSWORD INTEGRATED CODE FLOW */
-          resetStep === "request" ? (
-            <form onSubmit={handleForgotPasswordRequest} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-                  <input
-                    type="email"
-                    placeholder="name@university.edu"
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none transition-all"
-                  />
-                </div>
-              </div>
+              <h1 className="font-display text-3xl sm:text-[2.1rem] font-medium tracking-tight text-foreground">{title}</h1>
+              <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowForgotPassword(false)}
-                  className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-border font-medium hover:bg-secondary transition-colors"
-                >
-                  Cancel
-                </button>
-                <button type="submit" disabled={forgotLoading} className="flex-1 btn-testio-primary !py-2.5 text-sm flex items-center justify-center gap-2">
-                  {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Code"}
-                </button>
-              </div>
-            </form>
-          ) : (
-            /* SUB-VIEW: CODE RECEIVED -> COLLECT CODE + PASSWORD TOGETHER */
-            <form onSubmit={handleVerifyAndResetPassword} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">8-Character Reset Token</label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-                  <input
-                    type="text"
-                    maxLength={8}
-                    placeholder="XXXXXXXX"
-                    value={forgotCode}
-                    onChange={(e) => setForgotCode(e.target.value)}
-                    className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none transition-all tracking-widest font-mono text-center uppercase"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">New Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-                  <input
-                    type={showNewPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-10 py-2.5 text-sm text-foreground focus:outline-none transition-all"
-                  />
-                  <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confirm Password</label>
-                <div className="relative">
-                  <CheckCircle2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-                  <input
-                    type={showNewPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setResetStep("request")}
-                  className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-border font-medium hover:bg-secondary transition-colors"
-                >
-                  Back
-                </button>
-                <button type="submit" disabled={forgotLoading} className="flex-1 btn-testio-primary !py-2.5 text-sm flex items-center justify-center gap-2">
-                  {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reset Password"}
-                </button>
-              </div>
-            </form>
-          )
-        ) : (
-          /* VIEW 3: MAIN SIGN UP / SIGN IN FORM */
-          <div className="space-y-4">
-            {/* GMAIL OAUTH — PRIMARY REGISTRATION METHOD */}
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-3 bg-primary text-primary-foreground text-base font-bold py-4 px-4 rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all"
-              >
-                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                  <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                </svg>
-                {isLogin ? "Sign in with Google" : "Sign up with Google"}
-              </button>
-              <p className="text-center text-xs text-muted-foreground">
-                Fastest &amp; recommended — one tap, no password to remember
-              </p>
-            </div>
-
-            <div className="relative my-5 flex items-center justify-center">
-              <div className="absolute w-full border-t border-border" />
-              <span className="relative bg-card px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                or use email
-              </span>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {!isLogin && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Name</label>
-                  <div className="relative">
-                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-                    <input
-                      type="text"
-                      placeholder="Amaka O."
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none transition-all"
-                    />
-                  </div>
+              {referralCode && !showForgotPassword && !showSignupVerification && (
+                <div className="mt-6 rounded-xl border border-border bg-card px-4 py-3 flex items-start gap-3 text-sm">
+                  <Gift className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
+                  <span className="text-foreground">You've been invited. Finish signing up to get bonus credits.</span>
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-                  <input
-                    type="email"
-                    placeholder="student@domain.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none transition-all"
-                  />
-                </div>
-              </div>
+              <div className="mt-8">
+                {/* VIEW 1: SIGNUP EMAIL CODE VERIFICATION */}
+                {showSignupVerification ? (
+                  <form onSubmit={handleVerifySignupCode} className="space-y-5">
+                    <div className="space-y-1.5">
+                      <label htmlFor="verify-code" className="text-sm font-medium text-foreground">Verification code</label>
+                      <input
+                        id="verify-code"
+                        type="text"
+                        maxLength={8}
+                        autoComplete="one-time-code"
+                        placeholder="XXXXXXXX"
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value)}
+                        className="field !py-3.5 tracking-[0.4em] font-mono text-center text-lg uppercase"
+                      />
+                    </div>
 
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Password</label>
-                  {isLogin && (
-                    <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs text-primary hover:underline font-medium">
-                      Forgot?
+                    <button type="submit" disabled={loading || verificationCode.length < 6} className="w-full btn-testio-primary disabled:opacity-50">
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Verify code <ArrowRight className="w-4 h-4" /></>}
                     </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-secondary/50 border border-border/80 focus:border-primary rounded-xl pl-10 pr-10 py-2.5 text-sm text-foreground focus:outline-none transition-all"
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSignupVerification(false);
+                        setIsLogin(false);
+                      }}
+                      className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Back to sign up
+                    </button>
+                  </form>
+                ) : showForgotPassword ? (
+                  /* VIEW 2: FORGOT PASSWORD INTEGRATED CODE FLOW */
+                  resetStep === "request" ? (
+                    <form onSubmit={handleForgotPasswordRequest} className="space-y-5">
+                      <div className="space-y-1.5">
+                        <label htmlFor="forgot-email" className="text-sm font-medium text-foreground">Email</label>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <input
+                            id="forgot-email"
+                            type="email"
+                            autoComplete="email"
+                            placeholder="name@university.edu"
+                            value={forgotEmail}
+                            onChange={(e) => setForgotEmail(e.target.value)}
+                            className="field pl-10"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setShowForgotPassword(false)}
+                          className="pressable flex-1 px-4 py-3 text-sm rounded-xl border border-border bg-card font-medium hover:bg-secondary"
+                        >
+                          Cancel
+                        </button>
+                        <button type="submit" disabled={forgotLoading} className="flex-1 btn-testio-primary disabled:opacity-50">
+                          {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send code"}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    /* SUB-VIEW: CODE RECEIVED -> COLLECT CODE + PASSWORD TOGETHER */
+                    <form onSubmit={handleVerifyAndResetPassword} className="space-y-5">
+                      <div className="space-y-1.5">
+                        <label htmlFor="reset-code" className="text-sm font-medium text-foreground">Reset code</label>
+                        <input
+                          id="reset-code"
+                          type="text"
+                          maxLength={8}
+                          autoComplete="one-time-code"
+                          placeholder="XXXXXXXX"
+                          value={forgotCode}
+                          onChange={(e) => setForgotCode(e.target.value)}
+                          className="field tracking-[0.4em] font-mono text-center uppercase"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label htmlFor="new-password" className="text-sm font-medium text-foreground">New password</label>
+                        <div className="relative">
+                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <input
+                            id="new-password"
+                            type={showNewPassword ? "text" : "password"}
+                            autoComplete="new-password"
+                            placeholder="At least 8 characters"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="field pl-10 pr-10"
+                          />
+                          <button
+                            type="button"
+                            aria-label={showNewPassword ? "Hide password" : "Show password"}
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label htmlFor="confirm-password" className="text-sm font-medium text-foreground">Confirm password</label>
+                        <div className="relative">
+                          <CheckCircle2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <input
+                            id="confirm-password"
+                            type={showNewPassword ? "text" : "password"}
+                            autoComplete="new-password"
+                            placeholder="Repeat new password"
+                            value={confirmNewPassword}
+                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                            className="field pl-10"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setResetStep("request")}
+                          className="pressable flex-1 px-4 py-3 text-sm rounded-xl border border-border bg-card font-medium hover:bg-secondary"
+                        >
+                          Back
+                        </button>
+                        <button type="submit" disabled={forgotLoading} className="flex-1 btn-testio-primary disabled:opacity-50">
+                          {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reset password"}
+                        </button>
+                      </div>
+                    </form>
+                  )
+                ) : (
+                  /* VIEW 3: MAIN SIGN UP / SIGN IN FORM */
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleGoogleSignIn}
+                      disabled={loading}
+                      className="pressable w-full flex items-center justify-center gap-3 rounded-xl border border-border bg-card py-3 px-4 text-[15px] font-medium text-foreground hover:bg-secondary disabled:opacity-60"
+                    >
+                      <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden>
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                      </svg>
+                      {isLogin ? "Continue with Google" : "Sign up with Google"}
+                    </button>
+                    <p className="mt-2 text-center text-xs text-muted-foreground">Fastest — one tap, no password to remember.</p>
+
+                    <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="h-px flex-1 bg-border" />
+                      or with email
+                      <span className="h-px flex-1 bg-border" />
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      {!isLogin && (
+                        <div className="space-y-1.5">
+                          <label htmlFor="name" className="text-sm font-medium text-foreground">Full name</label>
+                          <div className="relative">
+                            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <input
+                              id="name"
+                              type="text"
+                              autoComplete="name"
+                              placeholder="Amaka O."
+                              value={displayName}
+                              onChange={(e) => setDisplayName(e.target.value)}
+                              className="field pl-10"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5">
+                        <label htmlFor="email" className="text-sm font-medium text-foreground">Email</label>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <input
+                            id="email"
+                            type="email"
+                            autoComplete="email"
+                            placeholder="you@university.edu"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="field pl-10"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <label htmlFor="password" className="text-sm font-medium text-foreground">Password</label>
+                          {isLogin && (
+                            <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs text-primary hover:underline font-medium">
+                              Forgot password?
+                            </button>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            autoComplete={isLogin ? "current-password" : "new-password"}
+                            placeholder={isLogin ? "Your password" : "At least 8 characters"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="field pl-10 pr-10"
+                          />
+                          <button
+                            type="button"
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <button type="submit" disabled={loading} className="w-full btn-testio-primary !mt-6 disabled:opacity-60">
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{isLogin ? "Sign in" : "Create account"} <ArrowRight className="w-4 h-4" /></>}
+                      </button>
+                    </form>
+
+                    <p className="text-center text-sm text-muted-foreground mt-6">
+                      {isLogin ? "New to Testio?" : "Already have an account?"}{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsLogin(!isLogin);
+                          setShowForgotPassword(false);
+                          setShowSignupVerification(false);
+                        }}
+                        className="text-foreground font-medium underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors"
+                      >
+                        {isLogin ? "Create an account" : "Sign in"}
+                      </button>
+                    </p>
+                    {!isLogin && (
+                      <p className="mt-4 text-center text-xs text-muted-foreground">
+                        By signing up you agree to our{" "}
+                        <a href="/terms" className="underline underline-offset-2 hover:text-foreground">Terms of Service</a>.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </div>
 
-              <button type="submit" disabled={loading} className="w-full btn-testio-primary !py-2.5 mt-2 flex items-center justify-center gap-2 font-medium">
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{isLogin ? "Sign In" : "Create Account"} <ArrowRight className="w-4 h-4" /></>}
-              </button>
-            </form>
+      {/* Brand column (desktop only) */}
+      <aside className="hidden lg:flex relative flex-col justify-between bg-card border-l border-border p-12 overflow-hidden">
+        <div className="absolute inset-0 dot-grid pointer-events-none" aria-hidden />
+        <div className="relative">
+          <p className="eyebrow">Study smarter</p>
+        </div>
 
-            {/* Toggle Footer */}
-            <p className="text-center text-sm text-muted-foreground pt-2">
-              {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setShowForgotPassword(false);
-                  setShowSignupVerification(false);
-                }}
-                className="text-primary hover:underline font-semibold"
+        <motion.div
+          initial={{ opacity: 0, transform: "translateY(16px)" }}
+          animate={{ opacity: 1, transform: "translateY(0px)" }}
+          transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1], delay: 0.15 }}
+          className="relative max-w-md"
+        >
+          <div className="space-y-3">
+            {[
+              { k: "Notes", v: "Key ideas from 24 pages" },
+              { k: "Flashcards", v: "36 cards ready to review" },
+              { k: "Quiz", v: "20 exam-style questions" },
+              { k: "Podcast", v: "7 min · two-host episode" },
+            ].map((row, i) => (
+              <motion.div
+                key={row.k}
+                initial={{ opacity: 0, transform: "translateY(10px)" }}
+                animate={{ opacity: 1, transform: "translateY(0px)" }}
+                transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1], delay: 0.3 + i * 0.07 }}
+                className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3 shadow-soft"
               >
-                {isLogin ? "Sign up" : "Sign in"}
-              </button>
-            </p>
+                <span className="text-sm font-medium text-foreground">{row.k}</span>
+                <span className="text-sm text-muted-foreground">{row.v}</span>
+              </motion.div>
+            ))}
           </div>
-        )}
-      </motion.div>
+          <p className="mt-10 font-display text-[1.75rem] leading-snug text-foreground">
+            “Reading PDFs used to put me to sleep. Now I get a podcast in 30 seconds and revise while I cook.”
+          </p>
+          <p className="mt-4 text-sm text-muted-foreground">Bankole O. · Final Year Law Student</p>
+        </motion.div>
+
+        <p className="relative text-xs text-muted-foreground">© 2026 Testio</p>
+      </aside>
     </div>
   );
 };

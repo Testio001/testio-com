@@ -22,9 +22,9 @@ const PERKS: Perk[] = [
 ];
 
 const tierColor: Record<Tier, string> = {
-  Basic: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  Pro: "bg-primary/15 text-primary border-primary/30",
-  Scholar: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  Basic: "bg-secondary text-muted-foreground border-border",
+  Pro: "bg-primary/10 text-primary border-primary/25",
+  Scholar: "bg-highlight/15 text-foreground border-highlight/40",
 };
 
 interface Props {
@@ -42,8 +42,8 @@ const PremiumTeaseSidebar = ({ subscriptionPlan }: Props) => {
   if (locked.length === 0) return null;
 
   return (
-    <aside className="w-full lg:w-72 lg:shrink-0 lg:sticky lg:top-6 lg:self-start">
-      <div className="rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm p-4">
+    <aside className="w-full lg:sticky lg:top-24 lg:self-start">
+      <div className="surface rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-1">
           <Crown className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Premium features</h3>
@@ -56,10 +56,10 @@ const PremiumTeaseSidebar = ({ subscriptionPlan }: Props) => {
           {locked.map((perk) => (
             <li
               key={perk.title}
-              className="relative rounded-lg border border-border/40 bg-muted/20 p-3 opacity-60 hover:opacity-90 transition-opacity"
+              className="relative rounded-xl border border-border bg-background p-3"
             >
               <div className="flex items-start gap-2.5">
-                <div className="mt-0.5 w-7 h-7 rounded-md bg-muted/40 flex items-center justify-center shrink-0">
+                <div className="mt-0.5 w-7 h-7 rounded-md bg-secondary flex items-center justify-center shrink-0">
                   <perk.icon className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -79,7 +79,7 @@ const PremiumTeaseSidebar = ({ subscriptionPlan }: Props) => {
 
         <button
           onClick={() => navigate("/pricing")}
-          className="btn-testio-primary w-full text-xs !py-2 mt-4 flex items-center justify-center gap-1.5"
+          className="btn-testio-primary w-full !text-sm !py-2.5 mt-4"
         >
           <Sparkles className="w-3.5 h-3.5" /> Upgrade to unlock
         </button>

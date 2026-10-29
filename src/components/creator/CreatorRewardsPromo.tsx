@@ -59,39 +59,38 @@ const CreatorRewardsPromo = ({
     navigate("/creator-rewards");
   };
 
-  if (lightTheme) {
+  if (variant === "home" || lightTheme) {
     return (
-      <div className={`rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-6 sm:p-8 ${className}`}>
-        <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-indigo-600 mb-3">
+      <div className={`surface rounded-2xl p-6 sm:p-8 flex flex-col ${className}`}>
+        <p className="eyebrow mb-3 inline-flex items-center gap-1.5">
           <Video className="w-3.5 h-3.5" /> {copy.eyebrow}
-        </div>
-        <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-3">{copy.title}</h3>
-        <p className="text-gray-600 mb-5 max-w-2xl">{copy.body}</p>
-        <button
-          onClick={go}
-          className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
-        >
+        </p>
+        <h3 className="font-display text-2xl sm:text-3xl font-medium text-foreground mb-3">{copy.title}</h3>
+        <p className="text-muted-foreground mb-6 max-w-2xl">{copy.body}</p>
+        {copy.note && (
+          <p className="text-sm text-foreground mb-7 rounded-xl border border-border bg-background px-4 py-3">{copy.note}</p>
+        )}
+        <button onClick={go} className="btn-testio-primary self-start mt-auto">
           {copy.cta} <ArrowRight className="w-4 h-4" />
         </button>
-        {copy.note && <p className="text-xs text-gray-500 mt-3">{copy.note}</p>}
       </div>
     );
   }
 
   return (
-    <div className={`rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent p-4 sm:p-5 ${className}`}>
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+    <div className={`surface rounded-2xl p-4 sm:p-5 ${className}`}>
+      <div className="flex items-start gap-4">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
           <Sparkles className="w-5 h-5 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-primary mb-1">{copy.eyebrow}</p>
-          <h3 className="text-foreground font-bold text-sm sm:text-base">{copy.title}</h3>
+          <p className="eyebrow mb-1">{copy.eyebrow}</p>
+          <h3 className="text-foreground font-semibold text-sm sm:text-base">{copy.title}</h3>
           <p className="text-muted-foreground text-xs mt-1">{copy.body}</p>
           {copy.note && <p className="text-[11px] text-muted-foreground mt-1">{copy.note}</p>}
           <button
             onClick={go}
-            className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
+            className="pressable mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline underline-offset-4"
           >
             {copy.cta} <ArrowRight className="w-3.5 h-3.5" />
           </button>

@@ -181,7 +181,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
         </div>
       )}
       {/* Top bar: counter + progress */}
-      <div className="sticky top-0 z-20 px-4 md:px-8 pt-2 pb-3 bg-gradient-to-b from-background/95 to-background/0 backdrop-blur-sm">
+      <div className="sticky top-0 z-20 px-4 md:px-8 pt-2 pb-3 bg-background/85 backdrop-blur-md">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-muted-foreground tracking-wide">
             {Math.min(currentIndex + 1, cards.length)} / {cards.length}
@@ -190,7 +190,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
         </div>
         <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
+            className="h-full bg-primary rounded-full"
             animate={{ width: `${progressPct}%` }}
             transition={{ type: "spring", stiffness: 120, damping: 20 }}
           />
@@ -227,7 +227,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
                 >
                   {/* Front (Question) */}
                   <div
-                    className="absolute inset-0 rounded-3xl bg-gradient-to-br from-testio-card via-testio-card to-secondary/40 border border-border/60 shadow-[0_20px_60px_-20px_hsl(var(--primary)/0.25)] flex flex-col items-center justify-center p-8 md:p-14 text-center"
+                    className="absolute inset-0 rounded-3xl bg-card border border-border shadow-lifted flex flex-col items-center justify-center p-8 md:p-14 text-center"
                     style={{ backfaceVisibility: "hidden" }}
                   >
                     <span className="text-[11px] tracking-[0.25em] font-semibold text-primary/80 uppercase mb-6">
@@ -242,7 +242,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
                   </div>
                   {/* Back (Answer) */}
                   <div
-                    className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/15 via-testio-card to-primary/5 border border-primary/30 shadow-[0_20px_60px_-20px_hsl(var(--primary)/0.45)] flex flex-col items-center justify-center p-8 md:p-14 text-center"
+                    className="absolute inset-0 rounded-3xl bg-card border border-primary/40 shadow-lifted flex flex-col items-center justify-center p-8 md:p-14 text-center"
                     style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
                   >
                     <span className="text-[11px] tracking-[0.25em] font-semibold text-primary uppercase mb-6">
@@ -264,7 +264,7 @@ const FlashcardViewer = ({ documentId }: { documentId: string }) => {
           ref={(el) => (cardRefs.current[cards.length] = el)}
           className="snap-center shrink-0 w-full h-full flex items-center justify-center px-4 md:px-8 py-4"
         >
-          <div className="w-full max-w-2xl text-center px-6 py-10 rounded-3xl bg-gradient-to-br from-testio-card to-secondary/30 border border-border/60">
+          <div className="w-full max-w-2xl text-center px-6 py-10 rounded-3xl bg-card border border-border">
             <div className="text-6xl mb-4">🎉</div>
             <h3 className="text-foreground text-3xl font-bold mb-2">All done!</h3>
             <p className="text-muted-foreground mb-6">

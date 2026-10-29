@@ -68,7 +68,7 @@ const LimitReachedModal = ({ open, onClose, onRefer, signupAt, type = "upload" }
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 40, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-card border-2 border-primary/40 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-2xl shadow-primary/20 relative"
+            className="bg-card border border-border rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-lifted relative"
           >
             <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary">
               <X className="w-4 h-4" />
@@ -78,7 +78,7 @@ const LimitReachedModal = ({ open, onClose, onRefer, signupAt, type = "upload" }
               <motion.div
                 animate={{ scale: [1, 1.03, 1] }}
                 transition={{ repeat: Infinity, duration: 2 }}
-                className="bg-gradient-to-r from-primary to-primary/70 text-primary-foreground rounded-xl px-3 py-2 mb-4 flex items-center gap-2"
+                className="bg-foreground text-background rounded-xl px-3 py-2 mb-4 flex items-center gap-2"
               >
                 <Clock className="w-4 h-4 shrink-0" />
                 <div className="text-xs font-bold leading-tight flex-1 min-w-0">
@@ -89,7 +89,7 @@ const LimitReachedModal = ({ open, onClose, onRefer, signupAt, type = "upload" }
             )}
 
             <div className="flex items-start gap-3 mb-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shrink-0 shadow-lg shadow-primary/30">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                 <Crown className="w-6 h-6 text-primary-foreground" />
               </div>
               <div className="min-w-0">
